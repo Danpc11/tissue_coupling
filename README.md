@@ -4,7 +4,6 @@
 [![Tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
 [![Browser tool](https://img.shields.io/badge/Phase%20estimator-live-4285F4?logo=googlechrome&logoColor=white)](https://danpc11.github.io/tissue_coupling/)
 [![DOI](https://img.shields.io/badge/DOI-pending-lightgrey)](https://zenodo.org/)
-![License](https://img.shields.io/badge/License-MIT-green)
 
 Analysis code for the manuscript *Human metabolic tissues are coupled in two separable ways: rhythm
 amplitude and rhythm phase*. Everything reported in the paper is produced
