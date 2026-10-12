@@ -14,13 +14,15 @@ figure.constrained_layout.hspace : 0.06
 figure.constrained_layout.wspace : 0.06
 
 font.family           : sans-serif
-font.sans-serif       : DejaVu Sans, Arial, Helvetica
-font.size             : 7.0
-axes.titlesize        : 7.5
+# Elsevier admite Arial, Helvetica, Times, Courier y Symbol. Liberation Sans es
+# metricamente compatible con Arial y se sustituye sin cambiar la maquetacion.
+font.sans-serif       : Arial, Liberation Sans, Helvetica, DejaVu Sans
+font.size             : 7.5
+axes.titlesize        : 7.5   # solo para paneles sin titulo propio; Elsevier pide el titulo en el pie
 axes.labelsize        : 7.0
-xtick.labelsize       : 6.5
-ytick.labelsize       : 6.5
-legend.fontsize       : 6.0
+xtick.labelsize       : 7.0
+ytick.labelsize       : 7.0
+legend.fontsize       : 6.5
 legend.title_fontsize : 6.0
 
 axes.linewidth        : 0.7

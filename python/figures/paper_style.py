@@ -37,14 +37,11 @@ def figure(width=WIDTH_DOUBLE, height=None, **kw):
     return plt.figure(figsize=(width, height or width * 0.62), layout="constrained", **kw)
 
 def panel_label(ax, letter, dx=-0.02, dy=0.02):
-    """Etiqueta de panel en negrita, arriba a la izquierda, fuera del area de datos.
-
-    Se ancla al eje y no a coordenadas absolutas, de modo que constrained_layout la tiene en
-    cuenta al repartir el espacio y no se solapa con el titulo.
-    """
-    ax.set_title(ax.get_title(), loc="center")
-    ax.text(dx, 1 + dy, letter, transform=ax.transAxes, fontsize=9, fontweight="bold",
-            va="bottom", ha="right")
+    """Etiqueta de panel segun el estilo de Elsevier: MAYUSCULA, Arial, 10.5 pt, negrita,
+    en la esquina superior izquierda. Los titulos de panel NO van dentro de la figura: el pie
+    lleva un titulo breve y la descripcion de cada panel."""
+    ax.text(dx, 1 + dy, str(letter).upper(), transform=ax.transAxes, fontsize=10.5,
+            fontweight="bold", family="Liberation Sans", va="bottom", ha="right")
 
 def stars(p):
     return "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else "ns"

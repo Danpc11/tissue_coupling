@@ -1,6 +1,13 @@
-# Independent hormonal and circadian signals coordinate human metabolic tissues
+# Human metabolic tissues are coupled in two separable ways
 
-Analysis code for the manuscript of the same title. Everything reported in the paper is produced
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+[![Tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
+[![Browser tool](https://img.shields.io/badge/Phase%20estimator-live-4285F4?logo=googlechrome&logoColor=white)](https://danpc11.github.io/tissue_coupling/)
+[![DOI](https://img.shields.io/badge/DOI-pending-lightgrey)](https://zenodo.org/)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+Analysis code for the manuscript *Human metabolic tissues are coupled in two separable ways: rhythm
+amplitude and rhythm phase*. Everything reported in the paper is produced
 by `run_all.sh` from public data.
 
 ## What the analysis asks
@@ -13,9 +20,6 @@ circulating signals partly so, local programmes not at all.
 ## Reproducing the results
 
 ```bash
-git clone https://github.com/Danpc11/tissue_coupling.git
-cd tissue_coupling
-pip install -r requirements.txt
 python python/analyses/00_prepare_data.py     # lists what to download and from where
 bash run_all.sh                               # runs everything and verifies the output
 ```
@@ -48,11 +52,22 @@ and we report both rather than the favourable one. Highly expressed and variable
 measured and therefore correlate better between tissues; the matched null removes that advantage and
 some real signal with it.
 
-**Phase is a pseudo-quantification.** The unsupervised ordering defines phase only up to rotation and
-reflection, so absolute hours are not interpretable and values are not comparable between cohorts
-with different sampling windows. All comparisons use rotation-invariant statistics, and two
-orderings are aligned before being compared — omitting that step inflates the error estimate
-fivefold and makes it exceed the signal.
+**Phase is a pseudo-quantification.** The ordering defines phase only up to rotation and reflection,
+so absolute hours are not interpretable and values are not comparable between cohorts with different
+sampling windows. All comparisons use rotation-invariant statistics, and two orderings are aligned
+before being compared — omitting that step inflates the error estimate fivefold and makes it exceed
+the signal.
+
+**Phase and amplitude need different procedures.** Free ordering fits the waveform to the data, so
+the projection basis is the tissue's own and amplitude is well estimated (stable at 0.30–0.37 across
+template sizes), but phase is left subject to period ambiguity (0.21–0.62). Anchoring the period to
+a template from a cohort with known sampling times fixes phase (0.32–0.47) but projects amplitude
+onto a waveform that is not the tissue's (0.07–0.38). `phase.py` provides both and the module header
+states which to use for what. Using one method for both quantities gets one of them wrong.
+
+A residual check, `double_angle`, detects whether period ambiguity survives: a free ordering of
+muscle and adipose tissue gives 0.221 on the double angle, the signature of an axial relationship,
+which falls to 0.056 once the period is anchored.
 
 ## The verification step is not optional
 
@@ -65,10 +80,34 @@ monotone, and that all files come from one run. It exists because these checks c
 - a cross-tissue prediction inflated by the same genes appearing on both sides (R² 0.14 → 0.47)
 - four genes wrongly declared absent through symbol drift
 - an apparent treatment effect that random non-rhythmic gene sets reproduced (P = 0.408)
+- a phase-coupling estimate of 0.061 that was an artefact of period ambiguity; with the period
+  anchored the same pair gives 0.327
 
 A fifth check lives in `phase.is_clock`: the recovered cycle must reproduce the canonical BMAL1–DBP
 antiphase. Blood, hypothalamus and cerebral cortex fail it. Without that filter blood would have been
 reported as the best-coupled tissue, which is the opposite of what it is.
+
+## Browser tool
+
+`docs/` holds a static page, served by GitHub Pages at
+https://danpc11.github.io/tissue_coupling/, that runs the phase estimator on a pasted expression
+matrix. It is a JavaScript port of `python/lib/phase.py`, so the computation happens entirely in the
+browser and no data is uploaded — which matters if you want to try it on a clinical cohort of your
+own. Paste one matrix for phase and amplitude per individual; paste a second tissue from the same
+people for the coupling estimate.
+
+The page carries the same validation and the same two-method split as the library: phase with the
+period anchored, amplitude with free ordering, the BMAL1–DBP check, and the double-angle statistic
+that flags residual period ambiguity. It says plainly when the recovered cycle is not the clock,
+rather than returning phases that look like results. It also states, where a reader will see it, that absolute clock time is not recoverable and
+that values are not comparable between datasets with different sampling windows.
+
+To enable it: repository Settings → Pages → Source: *Deploy from a branch*, branch `main`,
+folder `/docs`.
+
+`docs/.nojekyll` is required and must not be deleted. Without it GitHub Pages runs the files
+through Jekyll, which loads its default theme, tries to generate `assets/css/style.scss` and fails
+with `No such file or directory @ dir_chdir0`. The page is plain HTML and needs no build step.
 
 ## Relation to the earlier repository
 
@@ -78,10 +117,7 @@ cohort and did not replicate; it is retained there as a record of what was tried
 
 ## Citation
 
-Repository: https://github.com/Danpc11/tissue_coupling
-
-[Manuscript reference and archived Zenodo DOI to be added on acceptance. Connect the repository to
-Zenodo **before** creating the GitHub release, or the release will not be captured.]
+[Manuscript reference and archived DOI to be added on acceptance.]
 
 ## Licence
 

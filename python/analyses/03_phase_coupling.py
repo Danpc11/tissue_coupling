@@ -4,11 +4,18 @@
 Produce, en orden:
   1. fase inferida por donante y tejido, sin etiquetas de tiempo
   2. el control que decide si el ciclo recuperado es el reloj
-  3. acoplamiento de fase entre todos los pares de tejidos validados
-  4. amplitud del ritmo por individuo y su concordancia entre tejidos
+  3. acoplamiento de FASE entre pares de tejidos validados, con el periodo anclado
+  4. acoplamiento de AMPLITUD, con ordenamiento libre
+  5. la medida compuesta que no separa ambas, para comparar con lo que mide un analisis
+     que no descompone
 
-El resultado central del articulo sale de 3 y 4: musculo y adiposo comparten la AMPLITUD de su
-ritmo (rho = 0.410) pero no su FASE (0.061, P = 0.12).
+Cada cantidad se estima con el procedimiento que es estable para ella: el ordenamiento libre
+ajusta la onda a los datos y estima bien la amplitud pero deja la fase sujeta a ambiguedad de
+periodo; anclar el periodo fija la fase pero proyecta la amplitud sobre una onda que no es la
+del tejido. Usar un solo metodo para las dos cosas da una de ellas mal.
+
+Resultado central: las dos modalidades ordenan los pares de forma distinta, y la medida
+compuesta sigue a la amplitud (rho = 0.515) mas que a la fase (0.309).
 
 Uso:  python python/analyses/03_phase_coupling.py
 Salidas: results/phase_<tejido>.tsv, results/clock_validation.tsv,

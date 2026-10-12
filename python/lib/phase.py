@@ -1,22 +1,20 @@
-"""Inferencia de fase circadiana a partir de una sola muestra.
+"""Inferencia de fase y amplitud circadianas a partir de una sola muestra.
 
-El problema: ninguna cohorte multiorgano registra la hora de la biopsia, lo que ha impedido medir
-la fase entre organos en humanos. La DIFERENCIA de fase entre dos tejidos de una persona, en cambio,
-no necesita la hora absoluta. Este modulo aprende la fase del propio transcriptoma.
+El problema: ninguna cohorte multiorgano registra la hora de la biopsia. La DIFERENCIA de fase
+entre dos tejidos de una persona, en cambio, no necesita la hora absoluta.
 
-El ordenamiento no supervisado define la fase SALVO rotacion y reflexion, de modo que las horas
-absolutas no son interpretables: es una pseudocuantificacion. Todas las comparaciones usan
-estadisticos invariantes a rotacion, y los valores no se comparan entre cohortes con ventanas de
-muestreo distintas.
+El ordenamiento define la fase SALVO rotacion y reflexion, de modo que las horas absolutas no son
+interpretables: es una pseudocuantificacion. Todas las comparaciones usan estadisticos invariantes
+a rotacion, y los valores no se comparan entre cohortes con ventanas de muestreo distintas.
 
-Tres controles, todos obligatorios:
-  is_clock()   el ciclo recuperado debe SER el reloj (antifase BMAL1-DBP, 8-16 h). Sangre,
-               hipotalamo y corteza fallan; sin este filtro la sangre saldria como el tejido
-               mejor acoplado, que es lo contrario de lo que es.
-  align()      antes de comparar dos ordenaciones hay que alinearlas. Compararlas sin alinear
-               mide la indeterminacion de rotacion y reflexion, no el error por muestra, e infla
-               la estimacion unas cinco veces.
-  coupling()   P por permutacion DENTRO de la cohorte.
+Controles obligatorios:
+  is_clock()     el ciclo recuperado debe SER el reloj (antifase BMAL1-DBP, 8-16 h). Sangre,
+                 hipotalamo y corteza fallan; sin este filtro la sangre saldria como el tejido
+                 mejor acoplado, que es lo contrario de lo que es.
+  align()        antes de comparar dos ordenaciones hay que alinearlas; sin alinear se mide la
+                 indeterminacion de rotacion y reflexion, no el error, y se infla unas cinco veces.
+  double_angle() delata ambiguedad de periodo residual.
+  coupling()     P por permutacion DENTRO de la cohorte.
 """
 import numpy as np, pandas as pd
 CLK=["BMAL1","NPAS2","CLOCK","PER1","PER2","PER3","NR1D1","NR1D2","DBP","TEF","HLF","CIART",
@@ -94,3 +92,55 @@ def is_clock(E,ang,genes=None):
     ph=np.arctan2(B[1],B[0]); gi={x:i for i,x in enumerate(g)}
     sep=abs(np.angle(np.exp(1j*(ph[gi["DBP"]]-ph[gi["BMAL1"]]))))*24/(2*np.pi)
     return (8<=sep<=16), sep
+
+
+# ---------------------------------------------------------------------------
+# ORDENAMIENTO CON PERIODO ANCLADO
+#
+# El ordenamiento libre no fija el periodo: encuentra el ciclo dominante, y si en un tejido ese
+# ciclo es el armonico de 12 h, la fase queda en otra escala y la relacion entre tejidos sale de
+# factor dos. Eso produce una nube en forma de X en el plano fase-fase y anula la correlacion
+# circular simple, que solo detecta pendiente +1.
+#
+# QUE METODO USAR PARA QUE:
+#   FASE      -> order_anchored. Fija la forma de onda con una plantilla de fases relativas
+#                obtenida de una cohorte con horas conocidas, de modo que el periodo queda en
+#                24 h. Estable: 0.32-0.47 entre plantillas de 13 a 200 genes.
+#   AMPLITUD  -> unsup + amplitude. El ordenamiento libre ajusta la onda a los datos, asi que la
+#                base de proyeccion es la del tejido y la amplitud sale bien. Estable: 0.30-0.37.
+#
+# Usar un solo metodo para las dos cosas da una de ellas mal: el anclado desestabiliza la
+# amplitud (0.07-0.38) y el libre desestabiliza la fase (0.21-0.62).
+# ---------------------------------------------------------------------------
+
+def order_anchored(E, template, genes=None, grid=721):
+    """Fase con el periodo anclado a 24 h.
+
+    template: DataFrame indexado por gen con columnas phase_h y amp, obtenido por cosinor en una
+              cohorte con horas de muestreo conocidas.
+    """
+    g = [x for x in (genes or list(template.index)) if x in E.index and x in template.index]
+    Z = E.loc[g]; Z = ((Z.T - Z.mean(1)) / (Z.std(1) + 1e-9)).T.values
+    ph = template.phase_h[g].values * 2 * np.pi / 24
+    amp = template.amp[g].values
+    gr = np.linspace(0, 2 * np.pi, grid, endpoint=False)
+    T = np.array([amp * np.cos(t - ph) for t in gr])
+    T = (T - T.mean(1, keepdims=True)) / (T.std(1, keepdims=True) + 1e-9)
+    O = (Z - Z.mean(0)) / (Z.std(0) + 1e-9)
+    return pd.Series(gr[np.argmax(T @ O, axis=0)], index=E.columns), g
+
+def amplitude(E, ang, genes=None):
+    """Amplitud por individuo: norma de la proyeccion sobre la base ortonormal de la forma de
+    onda de la cohorte. Independiente de la fase por construccion. Usar con ordenamiento LIBRE."""
+    g = [x for x in (genes or CLK) if x in E.index]
+    Z = E.loc[g]; Z = ((Z.T - Z.mean(1)) / (Z.std(1) + 1e-9)).T.values
+    D = np.column_stack([np.cos(ang), np.sin(ang)])
+    B, *_ = np.linalg.lstsq(D, Z.T, rcond=None)
+    Q, _ = np.linalg.qr(B.T)
+    return pd.Series(np.sqrt(((Z.T @ Q) ** 2).sum(1)), index=E.columns)
+
+def double_angle(a, b):
+    """|rho| sobre el angulo doble. Detecta relaciones axiales (modulo pi) que rho_js no ve.
+    Un valor alto delata que persiste la ambiguedad de periodo; con el periodo anclado debe
+    quedar por debajo de ~0.12."""
+    return abs(rho_js(2 * np.asarray(a), 2 * np.asarray(b)))
