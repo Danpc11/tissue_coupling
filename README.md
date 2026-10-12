@@ -108,11 +108,6 @@ folder `/docs`.
 through Jekyll, which loads its default theme, tries to generate `assets/css/style.scss` and fails
 with `No such file or directory @ dir_chdir0`. The page is plain HTML and needs no build step.
 
-## Relation to the earlier repository
-
-This repository supersedes `Danpc11/t2d_landscape`, which contains the earlier analysis of
-directional coherence in the muscle response to insulin. That hypothesis depended entirely on one
-cohort and did not replicate; it is retained there as a record of what was tried and withdrawn.
 
 ## Citation
 
