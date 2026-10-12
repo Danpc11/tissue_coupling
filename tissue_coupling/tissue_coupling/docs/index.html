@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tissue clock phase and amplitude</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+ --bg:#fff;--fg:#1a1a1a;--mut:#666;--line:#ddd;--acc:#D55E00;--acc2:#0072B2;--ok:#009E73;--bad:#A32E20;--card:#fafafa}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141414;--fg:#eee;--mut:#aaa;--line:#333;--card:#1d1d1d}}
+:root[data-theme="dark"]{--bg:#141414;--fg:#eee;--mut:#aaa;--line:#333;--card:#1d1d1d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);
+ font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:62rem;margin:0 auto;padding:1.5rem 1.1rem 4rem}
+h1{font-size:1.5rem;margin:.2rem 0 .4rem;line-height:1.25}
+h2{font-size:1.05rem;margin:2rem 0 .6rem;border-bottom:1px solid var(--line);padding-bottom:.3rem}
+p{margin:.6rem 0}.mut{color:var(--mut);font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin:1rem 0}
+textarea{width:100%;min-height:9rem;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+ background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:.6rem}
+button{font:inherit;padding:.55rem 1.1rem;border-radius:8px;border:1px solid var(--acc2);
+ background:var(--acc2);color:#fff;cursor:pointer}
+button.sec{background:transparent;color:var(--acc2)}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.7rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:.35rem .5rem;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--mut);font-weight:500}
+.scroll{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+.big{font-size:1.5rem;font-weight:600}
+code{background:var(--card);padding:.1rem .3rem;border-radius:4px;font-size:.85em}
+.note{border-left:3px solid var(--acc);padding-left:.8rem;margin:1rem 0}
+canvas{max-width:100%;height:auto}
+</style></head><body><div class="wrap">
+
+<h1>Circadian phase and amplitude from a single transcriptome</h1>
+<p class="mut">Companion tool for <em>Independent hormonal and circadian signals coordinate human
+metabolic tissues</em>. Everything runs in your browser; nothing is uploaded.</p>
+
+<div class="note">
+<p><strong>What this does.</strong> Given an expression matrix of clock genes across individuals,
+it orders the samples around a cycle, returning each individual's <em>relative</em> phase and the
+amplitude of their rhythm. With two tissues from the same people, it measures how coupled their
+phases are.</p>
+<p><strong>What it cannot do.</strong> The ordering defines phase only up to rotation and reflection,
+so <strong>absolute clock time is not recoverable</strong>. Values are not comparable between
+datasets with different sampling windows. This is a pseudo-quantification of phase.</p>
+</div>
+
+<h2>1. Paste an expression matrix</h2>
+<p class="mut">Tab- or comma-separated. First row: sample names. First column: gene symbols.
+Values on any log scale. Include as many clock genes as you have —
+<code>BMAL1</code> (or <code>ARNTL</code>) and <code>DBP</code> are required for the validation check.</p>
+<textarea id="t1" placeholder="gene&#9;S1&#9;S2&#9;S3&#10;BMAL1&#9;5.1&#9;4.2&#9;6.0&#10;DBP&#9;3.0&#9;4.9&#9;2.1&#10;PER1&#9;…"></textarea>
+<div class="row">
+  <button id="demo" class="sec">Load a worked example</button>
+  <button id="run">Analyse</button>
+  <span id="st1" class="mut"></span>
+</div>
+
+<h2>2. Second tissue, same individuals (optional)</h2>
+<p class="mut">Sample names must match those of the first matrix. Only shared samples are used.</p>
+<textarea id="t2" placeholder="Leave empty to analyse one tissue only"></textarea>
+
+<div id="out"></div>
+
+<h2>Method</h2>
+<p>The two leading components of the clock-gene matrix define an initial angle per sample, refined
+iteratively against a cosinor waveform fitted to the dataset itself. Amplitude is the norm of each
+individual's projection onto the orthonormal basis of that waveform, which makes it independent of
+phase. Coupling between tissues uses the absolute Jammalamadaka–Sarma circular correlation,
+invariant to rotation and reflection, with a permutation <em>P</em> computed within the dataset.</p>
+<p>A validation step checks that the recovered cycle is the clock and not merely the dominant cyclic
+axis of that tissue: BMAL1 and DBP must fall in antiphase, 8–16 h apart. In our analysis whole blood,
+hypothalamus and cerebral cortex failed this check. Without it, blood would have been reported as
+the best-coupled tissue, which is the opposite of what it is.</p>
+<p class="mut">Source: <a href="https://github.com/Danpc11/tissue_coupling">github.com/Danpc11/tissue_coupling</a>.
+The browser implementation mirrors <code>python/lib/phase.py</code>.</p>
+
+</div>
+<script src="phase.js"></script>
+<script>
+function parse(txt){
+  const lines=txt.trim().split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<3) return null;
+  const sep=lines[0].includes("\t")?"\t":",";
+  const hdr=lines[0].split(sep).map(s=>s.trim());
+  const samples=hdr.slice(1), genes=[], rows=[];
+  for(let i=1;i<lines.length;i++){
+    const p=lines[i].split(sep).map(s=>s.trim());
+    if(p.length<2) continue;
+    const v=p.slice(1).map(Number);
+    if(v.some(x=>!isFinite(x))) continue;
+    genes.push(p[0].toUpperCase()); rows.push(v);
+  }
+  return {samples,genes,rows};
+}
+function keepClock(d){
+  const keep=[],g=[];
+  d.genes.forEach((gn,i)=>{ if(CLOCK_GENES.includes(gn)){keep.push(d.rows[i]);g.push(gn);} });
+  return {samples:d.samples,genes:g,rows:keep};
+}
+function analyse(d){
+  const Z=zscoreRows(d.rows);
+  const ang=inferPhase(Z);
+  const amp=amplitude(Z,ang);
+  const chk=isClock(d.genes,Z,ang);
+  return {ang,amp,chk};
+}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function drawPhase(ang,amp,title){
+  const c=document.createElement("canvas"),S=260;c.width=S*2;c.height=S*2;c.style.width=S+"px";
+  const x=c.getContext("2d");x.scale(2,2);
+  const cx=S/2,cy=S/2,R=S/2-28;
+  const css=getComputedStyle(document.documentElement);
+  x.strokeStyle=css.getPropertyValue("--line");x.lineWidth=1;
+  x.beginPath();x.arc(cx,cy,R,0,2*Math.PI);x.stroke();
+  x.fillStyle=css.getPropertyValue("--mut");x.font="10px sans-serif";x.textAlign="center";
+  for(let h=0;h<24;h+=6){const t=2*Math.PI*h/24-Math.PI/2;
+    x.fillText(h+"h",cx+(R+14)*Math.cos(t),cy+(R+14)*Math.sin(t)+3);}
+  const mx=Math.max(...amp)||1;
+  x.fillStyle=css.getPropertyValue("--acc2");
+  ang.forEach((a,i)=>{const t=a-Math.PI/2,r=R*(0.25+0.7*amp[i]/mx);
+    x.globalAlpha=.55;x.beginPath();x.arc(cx+r*Math.cos(t),cy+r*Math.sin(t),2.6,0,2*Math.PI);x.fill();});
+  x.globalAlpha=1;x.fillStyle=css.getPropertyValue("--fg");x.font="600 11px sans-serif";
+  x.fillText(title,cx,14);
+  x.fillStyle=css.getPropertyValue("--mut");x.font="9px sans-serif";
+  x.fillText("angle = relative phase · radius = amplitude",cx,S-4);
+  return c;
+}
+document.getElementById("demo").onclick=()=>{
+  const n=120, genes=["BMAL1","NPAS2","CRY1","PER1","PER2","PER3","NR1D1","NR1D2","DBP","TEF","HLF","CIART"];
+  const ph=[0.0,0.4,0.2,3.2,3.6,3.4,3.0,3.1,3.3,3.2,3.4,3.5];
+  const t=Array.from({length:n},()=>Math.random()*2*Math.PI);
+  const mk=(jit)=>{
+    let s="gene\t"+t.map((_,i)=>"S"+(i+1)).join("\t");
+    genes.forEach((g,k)=>{ s+="\n"+g+"\t"+t.map(v=>(5+Math.cos(v+jit-ph[k])+(Math.random()-0.5)*0.7).toFixed(3)).join("\t"); });
+    return s;
+  };
+  document.getElementById("t1").value=mk(0);
+  document.getElementById("t2").value=mk(0.9);
+  document.getElementById("st1").textContent="example loaded: two tissues, 120 individuals";
+};
+document.getElementById("run").onclick=()=>{
+  const out=document.getElementById("out"); out.innerHTML="";
+  const st=document.getElementById("st1"); st.textContent="working…";
+  setTimeout(()=>{
+   try{
+    const raw1=parse(document.getElementById("t1").value);
+    if(!raw1){st.textContent="could not parse the first matrix";return;}
+    const d1=keepClock(raw1);
+    if(d1.genes.length<6){st.textContent=`only ${d1.genes.length} clock genes recognised; at least 6 are needed`;return;}
+    const r1=analyse(d1);
+    let h=`<h2>Results</h2><div class="card"><p><strong>Tissue 1</strong> — ${d1.samples.length} samples, ${d1.genes.length} clock genes: ${esc(d1.genes.join(", "))}</p>`;
+    if(r1.chk.ok===null) h+=`<p class="bad">Validation not possible: ${esc(r1.chk.reason)}. Results below should not be interpreted as circadian.</p>`;
+    else h+=`<p>BMAL1–DBP separation <strong>${r1.chk.sep.toFixed(1)} h</strong> — `+
+      (r1.chk.ok?`<span class="ok">the recovered cycle is the clock</span>`:
+        `<span class="bad">this is not the clock</span>; the dominant cyclic axis of this dataset is something else, and the phases below should not be interpreted as circadian`)+`</p>`;
+    h+=`<p class="mut">Mean amplitude ${(r1.amp.reduce((a,b)=>a+b,0)/r1.amp.length).toFixed(2)}</p></div>`;
+    out.innerHTML=h;
+    out.appendChild(drawPhase(r1.ang,r1.amp,"Tissue 1"));
+    const raw2=parse(document.getElementById("t2").value);
+    if(raw2){
+      const d2=keepClock(raw2);
+      const shared=d1.samples.filter(s=>d2.samples.includes(s));
+      if(d2.genes.length<6){out.insertAdjacentHTML("beforeend",`<p class="bad">Second matrix: only ${d2.genes.length} clock genes recognised.</p>`);}
+      else if(shared.length<30){out.insertAdjacentHTML("beforeend",`<p class="bad">Only ${shared.length} shared samples; at least 30 are needed for a coupling estimate.</p>`);}
+      else{
+        const r2=analyse(d2);
+        out.appendChild(drawPhase(r2.ang,r2.amp,"Tissue 2"));
+        const i1=shared.map(s=>d1.samples.indexOf(s)), i2=shared.map(s=>d2.samples.indexOf(s));
+        const a1=i1.map(i=>r1.ang[i]), a2=i2.map(i=>r2.ang[i]);
+        const m1=i1.map(i=>r1.amp[i]), m2=i2.map(i=>r2.amp[i]);
+        const cp=permP(a1,a2,2000);
+        const rank=v=>{const s=v.map((x,i)=>[x,i]).sort((p,q)=>p[0]-q[0]);const r=new Array(v.length);s.forEach(([,i],k)=>r[i]=k);return r;};
+        const ra=rank(m1),rb=rank(m2),N=shared.length;
+        let sd=0;for(let i=0;i<N;i++)sd+=(ra[i]-rb[i])**2;
+        const rs=1-6*sd/(N*(N*N-1));
+        let v=`<div class="card"><p><strong>Coupling between the two tissues</strong> — ${N} shared individuals</p>
+        <div class="scroll"><table><tr><th>Quantity</th><th>|ρ|</th><th>P</th><th>Reading</th></tr>
+        <tr><td>Phase</td><td class="big">${cp.rho.toFixed(3)}</td><td>${cp.p.toFixed(4)}</td>
+            <td>${cp.p<0.05?"phases are coupled":"no detectable phase coupling"}</td></tr>
+        <tr><td>Amplitude</td><td class="big">${Math.abs(rs).toFixed(3)}</td><td class="mut">Spearman</td>
+            <td>${Math.abs(rs)>0.2?"amplitude is shared":"amplitude not clearly shared"}</td></tr>
+        </table></div>
+        <p class="mut">In our data muscle and adipose tissue shared amplitude (ρ = 0.410) but not
+        phase (0.061, P = 0.12). A result of that shape means the two organs run a rhythm of similar
+        strength without being aligned in time.</p></div>`;
+        out.insertAdjacentHTML("beforeend",v);
+      }
+    }
+    st.textContent="done";
+   }catch(e){ st.textContent="error: "+e.message; }
+  },30);
+};
+</script></body></html>
