@@ -53,5 +53,22 @@ k2,R2 = kap(rng.uniform(0,2*np.pi,2000))
 check("R = 1 no produce nan", np.isfinite(k1), f"kappa = {k1:.0f}")
 check("R = 0 no produce nan", np.isfinite(k2) and k2 < 1, f"kappa = {k2:.3f}")
 
+print("\n6. la plantilla de fase selecciona los mas ritmicos, no todos")
+from phase import select_template, order_anchored
+tpl = pd.DataFrame({"r2": np.linspace(0.9, 0.01, 500),
+                    "amp": np.linspace(1.2, 0.05, 500),
+                    "phase_h": rng.uniform(0, 24, 500)},
+                   index=[f"G{i:03d}" for i in range(495)] + ["LOC1", "LINC2", "C1orf3", "LOC4", "G999"])
+sel = select_template(tpl, 60)
+check("devuelve exactamente n genes", len(sel) == 60, f"{len(sel)}")
+check("ordenados por ritmicidad", sel[0] == "G000" and tpl.r2[sel].is_monotonic_decreasing)
+check("descarta identificadores sin anotar",
+      not any(str(g).startswith(("LOC", "LINC")) or "orf" in str(g).lower() for g in select_template(tpl, 500)))
+check("por defecto NO usa la plantilla completa", len(select_template(tpl)) == 60, "n por defecto = 60")
+# el anclado debe usar la seleccion, no los 500
+E = pd.DataFrame(rng.normal(size=(500, 120)), index=tpl.index)
+ang, used = order_anchored(E, tpl)
+check("order_anchored usa la seleccion", len(used) == 60, f"{len(used)} genes")
+
 print("\n" + ("TODO CORRECTO" if not F else f"FALLAN {len(F)}: {F}"))
 sys.exit(1 if F else 0)
