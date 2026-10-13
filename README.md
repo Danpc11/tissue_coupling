@@ -68,6 +68,11 @@ a template from a cohort with known sampling times fixes phase (0.32–0.47) but
 onto a waveform that is not the tissue's (0.07–0.38). `phase.py` provides both and the module header
 states which to use for what. Using one method for both quantities gets one of them wrong.
 
+The anchored template is the 60 most rhythmic annotated genes, which is the configuration behind the
+published figures (`T2D_N_TEMPLATE` changes it). The size is not an implementation detail: the
+estimate is stable between 0.32 and 0.47 for templates of 13 to 200 genes, but 13 leaves residual
+period ambiguity and the full multi-thousand-gene template does not reproduce the published values.
+
 A residual check, `double_angle`, detects whether period ambiguity survives: a free ordering of
 muscle and adipose tissue gives 0.221 on the double angle, the signature of an axial relationship,
 which falls to 0.056 once the period is anchored.

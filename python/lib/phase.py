@@ -113,13 +113,37 @@ def is_clock(E,ang,genes=None):
 # amplitud (0.07-0.38) y el libre desestabiliza la fase (0.21-0.62).
 # ---------------------------------------------------------------------------
 
-def order_anchored(E, template, genes=None, grid=721):
+def select_template(template, n=60, exclude_unannotated=True):
+    """Los n genes mas ritmicos de la plantilla, que es el conjunto que ancla la fase.
+
+    El tamano NO es un detalle de implementacion: la estimacion es estable entre 0.32 y 0.47 para
+    plantillas de 13 a 200 genes, con declive suave en las grandes al entrar ritmos debiles, y con
+    13 genes queda ambiguedad de periodo residual (estadistico de angulo doble 0.23 frente a 0.06
+    con 60). Usar la plantilla completa, de miles de genes, no reproduce las cifras publicadas.
+    Por defecto n = 60, el valor con el que se calcularon.
+
+    exclude_unannotated descarta identificadores LOC, LINC y ...orf, que son ritmicos en la cohorte
+    de referencia pero no transfieren de forma fiable entre plataformas.
+    """
+    idx = list(template.index)
+    if exclude_unannotated:
+        idx = [g for g in idx
+               if not str(g).startswith(("LOC", "LINC")) and "orf" not in str(g).lower()]
+    t = template.loc[idx].sort_values("r2", ascending=False)
+    return list(t.index[:n])
+
+
+def order_anchored(E, template, genes=None, n_template=60, grid=721):
     """Fase con el periodo anclado a 24 h.
 
-    template: DataFrame indexado por gen con columnas phase_h y amp, obtenido por cosinor en una
-              cohorte con horas de muestreo conocidas.
+    template:   DataFrame indexado por gen con columnas r2, phase_h y amp, obtenido por cosinor en
+                una cohorte con horas de muestreo conocidas (ver 02b_phase_template.py).
+    genes:      conjunto explicito a usar. Si es None se toman los n_template mas ritmicos
+                (ver select_template); NO la plantilla completa.
     """
-    g = [x for x in (genes or list(template.index)) if x in E.index and x in template.index]
+    if genes is None:
+        genes = select_template(template, n_template)
+    g = [x for x in genes if x in E.index and x in template.index]
     Z = E.loc[g]; Z = ((Z.T - Z.mean(1)) / (Z.std(1) + 1e-9)).T.values
     ph = template.phase_h[g].values * 2 * np.pi / 24
     amp = template.amp[g].values

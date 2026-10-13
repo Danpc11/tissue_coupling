@@ -34,9 +34,14 @@ import pandas as pd
 from scipy import stats
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../lib"))
-from phase import CLK, unsup, is_clock, coupling, order_anchored, amplitude, double_angle
+from phase import (CLK, unsup, is_clock, coupling, order_anchored, select_template,
+                   amplitude, double_angle)
 
 OUT = os.environ.get("T2D_OUT", "results")
+# Tamano de la plantilla que ancla la fase. 60 es el valor con el que se calcularon las cifras
+# publicadas; la estimacion es estable entre 13 y 200 genes (ESM Fig. 1D) pero NO con la plantilla
+# completa de miles de genes.
+N_TEMPLATE = int(os.environ.get("T2D_N_TEMPLATE", "60"))
 TISSUES = os.environ.get(
     "T2D_TISSUES",
     "muscle,adipose,liver,nerve_tibial,pancreas,blood,hypothalamus,cortex").split(",")
@@ -75,7 +80,11 @@ if __name__ == "__main__":
         print("por cosinor en una cohorte con horas conocidas. Sin ella la fase no puede anclarse")
         print("y se reporta con ordenamiento libre, sujeta a ambiguedad de periodo.")
 
-    print("Filtro: la antifase BMAL1-DBP debe quedar entre 8 y 16 h")
+    if template is not None:
+        sel = select_template(template, N_TEMPLATE)
+        print(f"Plantilla de fase: {len(sel)} genes (de {len(template)}), los mas ritmicos")
+        print(f"  {', '.join(sel[:10])}{' ...' if len(sel) > 10 else ''}")
+    print("\nFiltro: la antifase BMAL1-DBP debe quedar entre 8 y 16 h")
     E_, FREE, VAL = {}, {}, []
     for tis in TISSUES:
         E = load(tis)
@@ -103,7 +112,10 @@ if __name__ == "__main__":
     PH, AM = {}, {}
     for t in good:
         AM[t] = amplitude(E_[t], FREE[t][E_[t].columns].values)
-        PH[t] = order_anchored(E_[t], template)[0] if template is not None else FREE[t]
+        if template is not None:
+            PH[t] = order_anchored(E_[t], template, n_template=N_TEMPLATE)[0]
+        else:
+            PH[t] = FREE[t]
         PH[t].rename_axis("donor").to_frame("phase_rad").to_csv(f"{OUT}/phase_{t}.tsv", sep="\t")
 
     rng = np.random.default_rng(0)
