@@ -18,6 +18,7 @@ step () { printf '\n=== %s\n' "$1"; shift; "$@"; }
 step "00 download and prepare public data"   python python/analyses/00_prepare_data.py
 step "01 cross-tissue concordance"           python python/analyses/01_crosstissue_axis.py
 step "02 meta-analysis and validation"       python python/analyses/02_meta_and_validation.py
+step "02b phase template (known times)"      python python/analyses/02b_phase_template.py
 step "03 circadian phase and coupling"       python python/analyses/03_phase_coupling.py
 step "04 smoke test"                         python tests/smoke_test.py
 step "05 verify the package"                 python tests/verify_package.py "$T2D_OUT"

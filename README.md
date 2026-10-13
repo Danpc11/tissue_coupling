@@ -33,8 +33,11 @@ python/
   lib/gene_sets.py    single registry of every gene set, with sources and a synonym table
   lib/phase.py        circadian phase from a single sample, with its three controls
   lib/enrichment.py   set-level enrichment against matched null models
-  analyses/00..03     the four steps, in order
-  figures/            journal style and figure helpers
+  analyses/00..03     the five steps, in order; 02b fits the phase template from cohorts with
+                      known sampling times, which step 03 needs to anchor the period
+  figures/            journal style (journal.mplstyle) and helpers (paper_style.py); figures are
+                      built from the result tables, so they can be regenerated without rerunning
+                      the analysis
 tests/verify_package.py   coherence check over the whole result set
 ```
 
