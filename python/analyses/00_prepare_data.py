@@ -19,13 +19,27 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 RAW = os.environ.get("T2D_RAW", "data/raw")
 OUT = os.environ.get("T2D_OUT", "results")
 
+# Cohortes necesarias, agrupadas por el papel que cumplen. Las del primer grupo son
+# imprescindibles; sin las demas el orquestador omite los pasos correspondientes.
 GEO = {
-    "GSE95674":  "AAGMEx subcutaneous adipose, 256 samples, Illumina HumanHT-12 v4",
-    "GSE95675":  "AAGMEx skeletal muscle, 255 samples; 232 individuals have both tissues",
-    "GSE41168":  "28 women, paired muscle and adipose, Affymetrix U133 Plus 2.0",
+    # --- analisis principal: dos tejidos de la misma persona ---
+    "GSE95674":  "AAGMEx adipose, 256 samples, Illumina HumanHT-12 v4 (primary)",
+    "GSE95675":  "AAGMEx muscle, 255 samples; 232 individuals have both tissues (primary)",
+    "GSE41168":  "28 women, paired muscle and adipose, Affymetrix U133 Plus 2.0 (replication)",
+    # --- plantilla de fase: cohortes con hora de muestreo conocida ---
+    "GSE108539": "serial vastus lateralis biopsies every 4 h over 24 h, n = 10 (phase template)",
+    "GSE104674": "adipose tissue at four circadian times, n = 12 (phase reference)",
+    # --- validacion farmacologica ---
     "GSE148640": "hydrocortisone vs placebo in adipose tissue, within-person, n = 10",
-    "GSE108539": "serial vastus lateralis biopsies every 4 h over 24 h, n = 10",
-    "GSE104674": "adipose tissue at four circadian times, n = 12",
+    # --- definicion del nucleo de respuesta a la insulina ---
+    "GSE22309":  "paired muscle biopsies, hyperinsulinaemic clamp",
+    "GSE13070":  "paired muscle and adipose, clamp, Rd-defined groups",
+    # --- expresion diferencial clasica (Fig. 1) ---
+    "GSE182120": "muscle, NGT vs type 2 diabetes",
+    "GSE164416": "pancreatic islets, living donors",
+    "GSE50244":  "pancreatic islets, HbA1c",
+    "GSE25462":  "muscle, family history of type 2 diabetes",
+    "GSE159984": "muscle, cross-sectional",
 }
 GTEX = "https://gtexportal.org/home/datasets/   (gene TPMs and sample annotations, v11)"
 

@@ -136,3 +136,36 @@ if __name__ == "__main__":
         if hi > 0.12:
             print(f"AVISO: double_angle llega a {hi:.3f}; por encima de ~0.12 queda ambiguedad de")
             print("periodo y la fase de ese par no debe interpretarse.")
+
+    # --- 4. cuanta varianza de una puntuacion depende de la fase ------------------------------
+    # Separa el componente dependiente de fase (que NO se comparte entre tejidos) del nivel
+    # (que si se comparte). Se calcula con la fase ANCLADA, no con la libre.
+    spath = os.path.join(OUT, "axis_score_donors.tsv")
+    if os.path.exists(spath) and template is not None:
+        sc = pd.read_csv(spath, sep="\t", index_col=0).iloc[:, 0]
+        rows = []
+        for t in good:
+            don = [d for d in PH[t].index if d in sc.index]
+            if len(don) < 80:
+                continue
+            a = PH[t][don].values
+            y = sc[don].values
+            D = np.column_stack([np.ones(len(a)), np.cos(a), np.sin(a)])
+            b, *_ = np.linalg.lstsq(D, y, rcond=None)
+            r2 = 1 - ((y - D @ b) ** 2).sum() / ((y - y.mean()) ** 2).sum()
+            null = []
+            for _ in range(2000):
+                ap = a[rng.permutation(len(a))]
+                Dp = np.column_stack([np.ones(len(ap)), np.cos(ap), np.sin(ap)])
+                bp, *_ = np.linalg.lstsq(Dp, y, rcond=None)
+                null.append(1 - ((y - Dp @ bp) ** 2).sum() / ((y - y.mean()) ** 2).sum())
+            rows.append(dict(tissue=t, n=len(don), r2_phase_dependent=r2,
+                             amplitude=np.sqrt(b[1] ** 2 + b[2] ** 2),
+                             peak_phase_h=(np.arctan2(b[2], b[1]) * 24 / (2 * np.pi)) % 24,
+                             p_perm=(np.sum(np.array(null) >= r2) + 1) / 2001,
+                             null_mean_r2=float(np.mean(null))))
+        if rows:
+            v = pd.DataFrame(rows)
+            v.to_csv(f"{OUT}/axis_variance_phase.tsv", sep="\t", index=False)
+            print("\nVARIANZA DEL EJE DEPENDIENTE DE LA FASE (fase anclada)")
+            print(v.to_string(index=False, float_format=lambda x: f"{x:.4f}"))

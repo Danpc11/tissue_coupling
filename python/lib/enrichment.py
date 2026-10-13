@@ -1,3 +1,17 @@
+"""Enriquecimiento a nivel de conjunto contra modelos nulos.
+
+El estadistico de un conjunto es la media del valor por gen (correlacion con el eje, o estadistico
+de expresion diferencial). La significacion se obtiene por comparacion con conjuntos aleatorios del
+mismo tamano extraidos del universo medido, y la correccion de Benjamini-Hochberg se aplica dentro
+de cada coleccion por separado.
+
+Dos cautelas que importan:
+  - El universo nulo es el de genes MEDIDOS en esa matriz, no el genoma: usar un universo mas amplio
+    infla la significacion de cualquier conjunto de genes bien expresados.
+  - Con cohortes grandes y conjuntos de cientos de genes el nulo por tamano se vuelve muy estrecho y
+    casi todo alcanza significacion; para los conjuntos curados se usa ademas un nulo equiparado en
+    expresion y variabilidad (ver 01_crosstissue_axis.py).
+"""
 import numpy as np, pandas as pd
 def read_gmt(path, minn=8, maxn=500):
     S={}
