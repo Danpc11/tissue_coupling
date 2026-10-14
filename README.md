@@ -1,4 +1,4 @@
-# Insulin resistance and the strength of circadian coupling between human metabolic tissues
+# Circadian timing and amplitude define distinct relationships across human metabolic tissues
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 [![Tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)

@@ -1,7 +1,21 @@
 cff-version: 1.2.0
-title: "Insulin resistance and the strength of circadian coupling between human metabolic tissues"
-message: If you use this code, please cite the manuscript.
+title: "Circadian timing and amplitude define distinct relationships across human metabolic tissues"
+message: "If you use this software, please cite both the software and the accompanying manuscript."
 type: software
+version: 1.0.0
+date-released: 2026-10-14
+abstract: >-
+  Code to infer circadian phase and amplitude from single transcriptomic samples and to measure
+  coupling between two tissues of the same individual, separating the timing and the amplitude of
+  the rhythm. Includes the validation against a controlled laboratory protocol with recorded
+  sampling times, and the analysis of the response to metabolic perturbation.
+keywords:
+  - circadian
+  - inter-tissue coupling
+  - insulin resistance
+  - skeletal muscle
+  - adipose tissue
+  - transcriptomics
 authors:
   - family-names: Mejía-Arratia
     given-names: Yalith Estefania
@@ -23,8 +37,8 @@ authors:
     affiliation: Instituto Nacional de Medicina Genómica
   - family-names: Pérez-Calixto
     given-names: Daniel
-    affiliation: Facultad de Ciencias, Universidad Nacional Autónoma de México
-    email: daniel_perez@ciencias.unam.mx
+    affiliation: Instituto Nacional de Medicina Genómica
+    email: dperez@inmegen.gob.mx
 license: MIT
 repository-code: https://github.com/Danpc11/tissue_coupling
 url: https://github.com/Danpc11/tissue_coupling
