@@ -1,4 +1,4 @@
-# Human metabolic tissues are coupled in two separable ways
+# Insulin resistance and the strength of circadian coupling between human metabolic tissues
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 [![Tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
@@ -32,6 +32,15 @@ each is present.
 python/
   lib/gene_sets.py    single registry of every gene set, with sources and a synonym table
   lib/phase.py        circadian phase from a single sample, with its three controls
+  lib/within_person_coupling.py  coupling measured inside each individual, with genes rather
+                      than people as the unit of information
+  lib/coupling_stats.py  distribution of individual coupling: shape, group contrasts that test
+                      the whole distribution rather than its centre, measurement-error
+                      deconvolution, and power
+  analyses/04_perturbations.py  response of phase and amplitude to a circadian perturbation, an
+                      acute insulin clamp and sustained sensitisation
+  lib/chiral_backend.py  wrapper for CHIRAL (scRITMO), used to reproduce the estimate with an
+                      external published method
   lib/enrichment.py   set-level enrichment against matched null models
   analyses/00..03     the five steps, in order; 02b fits the phase template from cohorts with
                       known sampling times, which step 03 needs to anchor the period
@@ -72,6 +81,15 @@ The anchored template is the 60 most rhythmic annotated genes, which is the conf
 published figures (`T2D_N_TEMPLATE` changes it). The size is not an implementation detail: the
 estimate is stable between 0.32 and 0.47 for templates of 13 to 200 genes, but 13 leaves residual
 period ambiguity and the full multi-thousand-gene template does not reproduce the published values.
+
+**Coupling can be measured inside one person.** The usual statistic is the concentration of the
+phase difference across individuals, so its unit is the person and its power depends on n. An
+alternative uses the gene as the unit: fit the template to each tissue of one individual, keep the
+per-gene residuals, and ask whether the two organs share their distortion. In GTEx this gives a
+median of 0.486 against a cross-person null of 0.196, is stable between 212 and 4603 genes, has a
+split-half reliability of 0.738 across people, and shows no association with RNA integrity,
+ischaemic time or death circumstance. The contrast is against the cross-person null, never zero:
+two unrelated people share the same template, which alone produces the 0.196 background.
 
 A residual check, `double_angle`, detects whether period ambiguity survives: a free ordering of
 muscle and adipose tissue gives 0.221 on the double angle, the signature of an axial relationship,
@@ -130,3 +148,20 @@ cohort and did not replicate; it is retained there as a record of what was tried
 ## Licence
 
 See `LICENSE`.
+
+
+## What the perturbation analysis found
+
+Three perturbations move different components, which is the result the two-component decomposition
+was built to detect:
+
+| Perturbation | Phase | Amplitude |
+|---|---|---|
+| 10 h sleep delay (blood, n = 8) | unchanged | −19 %, in all subjects |
+| Insulin clamp (muscle, n = 68) | concentrates | unchanged |
+| Thiazolidinedione (both tissues) | unchanged | converges between groups |
+
+Two cautions carried in the code. Changes in amplitude are reported as absolute differences, never
+as ratios: with a small baseline the ratio explodes and correlates spuriously with the baseline
+value. And the fit-range filter is fixed by rule rather than by result, with the effect checked
+across ranges including no filter at all.

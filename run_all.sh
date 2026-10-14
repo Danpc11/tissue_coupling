@@ -20,6 +20,7 @@ step "01 cross-tissue concordance"           python python/analyses/01_crosstiss
 step "02 meta-analysis and validation"       python python/analyses/02_meta_and_validation.py
 step "02b phase template (known times)"      python python/analyses/02b_phase_template.py
 step "03 circadian phase and coupling"       python python/analyses/03_phase_coupling.py
+step "04 perturbation response"              python python/analyses/04_perturbations.py
 step "04 smoke test"                         python tests/smoke_test.py
 step "05 verify the package"                 python tests/verify_package.py "$T2D_OUT"
 
