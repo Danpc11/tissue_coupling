@@ -39,9 +39,28 @@ GEO = {
     "GSE164416": "pancreatic islets, living donors",
     "GSE50244":  "pancreatic islets, HbA1c",
     "GSE25462":  "muscle, family history of type 2 diabetes",
-    "GSE159984": "muscle, cross-sectional",
+    "GSE159984": "pancreatic islets, 27 T2D / 58 non-diabetic donors + 45 cultured preparations",
+    "GSE78721":  "adipose, limb, 68 type 2 diabetes vs 62 normal (Affymetrix PrimeView)",
+    "GSE26637":  "adipose, fasting and hyperinsulinaemia in the same 10 people",
+    # --- eje receptor-reloj: cohortes anadidas en v1.1 ---
+    "GSE66446":  "Cushing syndrome adipose, 5 vs 11",
+    "GSE17992":  "dexamethasone 4 days, muscle (n=10) and adipose (n=4), two-colour arrays",
+    "GSE129843": "muscle, six biopsies per person per condition, recorded times",
+    "GSE182117": "synchronised myotubes, 8 time points, 11 donors",
+    "GSE87761":  "adipose under constant routine, recorded times",
+    "GSE11868":  "3 h hyperinsulinaemic clamp, 6 lean subjects",
 }
-GTEX = "https://gtexportal.org/home/datasets/   (gene TPMs and sample annotations, v11)"
+GTEX = "https://gtexportal.org/home/datasets/   (gene reads and sample annotations, v11)"
+# Ficheros de anotacion que el analisis necesita ademas de las matrices:
+ANNOT = {
+    "GPL570_annot.txt":   "Affymetrix U133 Plus 2.0 annotation (GEO platform file); probe -> Entrez",
+    "GPL15207_annot.txt": "Affymetrix PrimeView annotation; probe -> Entrez",
+    "Human_GRCh38_p13_annot_tsv.gz": "NCBI gene annotation; Entrez -> current symbol and synonyms",
+    "dorothea_ABC.tsv":   "OmniPath DoRothEA A-C regulons with sign",
+    "msigdb/*.gmt":       "MSigDB v2026.2 collections H, C2, C5, C8 (symbols)",
+    "GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt": "RIN and ischaemic time per sample",
+    "GTEx_Analysis_v11_Annotations_SubjectPhenotypesDS.txt": "sex, age bracket, Hardy scale",
+}
 
 def report():
     print("Datos requeridos\n")
