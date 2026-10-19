@@ -1,16 +1,20 @@
 cff-version: 1.2.0
-title: "Circadian timing and amplitude define distinct relationships across human metabolic tissues"
+title: "Glucocorticoid tone, not insulin, sets circadian output in human metabolic tissues"
 message: "If you use this software, please cite both the software and the accompanying manuscript."
 type: software
-version: 1.0.0
-date-released: 2026-10-14
+version: 1.1.0
+date-released: 2026-10-19
 abstract: >-
-  Code to infer circadian phase and amplitude from single transcriptomic samples and to measure
-  coupling between two tissues of the same individual, separating the timing and the amplitude of
-  the rhythm. Includes the validation against a controlled laboratory protocol with recorded
-  sampling times, and the analysis of the response to metabolic perturbation.
+  Code to infer circadian phase and amplitude from single transcriptomic samples, to measure the
+  relationship between glucocorticoid signalling and clock output across six human cohorts and four
+  metabolic tissues, and to simulate a forced oscillator in which the effective forcing is the
+  product of the cortisol rhythm and receptor availability. Includes validation against time series
+  from the same individuals, the calibration of the hyperinsulinaemic clamp against time of day,
+  and the within-person perturbation analyses.
 keywords:
   - circadian
+  - glucocorticoid receptor
+  - entrainment
   - inter-tissue coupling
   - insulin resistance
   - skeletal muscle

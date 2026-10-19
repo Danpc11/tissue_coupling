@@ -1,4 +1,4 @@
-# Circadian timing and amplitude define distinct relationships across human metabolic tissues
+# Glucocorticoid tone, not insulin, sets circadian output in human metabolic tissues
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 [![Tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
@@ -6,22 +6,49 @@
 [![DOI](https://img.shields.io/badge/DOI-pending-lightgrey)](https://zenodo.org/)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-Analysis code for the manuscript *Human metabolic tissues are coupled in two separable ways: rhythm
-amplitude and rhythm phase*. Everything reported in the paper is produced
-by `run_all.sh` from public data.
+Analysis code for the manuscript *Glucocorticoid tone, not insulin, sets circadian output in human
+metabolic tissues*. Everything reported in the paper is produced by `run_all.sh` from public data.
 
 ## What the analysis asks
 
-Among the genes expressed in both skeletal muscle and subcutaneous adipose tissue, which ones place
-an individual consistently relative to others in **both** of their organs at once, and through which
-inputs? Cross-tissue concordance measures how systemic an input is: the genome is perfectly systemic,
-circulating signals partly so, local programmes not at all.
+The peripheral circadian clock is disrupted in diabetes, but which signal sets it? We infer
+circadian phase and amplitude from single transcriptomic samples across six cohorts and four
+metabolic tissues, validate the inference against time series from the same individuals, and ask
+what the clock follows.
+
+The answer is the glucocorticoid axis, not insulin. Three hours of hyperinsulinaemic clamp produce
+the same transcriptional change as three hours of morning; a physiological dose of hydrocortisone
+against placebo at the same time of day moves PER1 and PER3 in every participant. Across 13
+cohort-tissue estimates, the level of the glucocorticoid receptor predicts clock output
+(pooled rho 0.43), and the relationship is a property of the individual: the receptor in one tissue
+predicts the clock in another as well as its own.
+
+A forced-oscillator model ties the three clinical situations together. The effective forcing on the
+peripheral clock is the product of the amplitude of the cortisol rhythm and the availability of the
+receptor, so a flattened rhythm (obesity), sustained exposure (Cushing, hydrocortisone) and reduced
+receptor (adiposity) all lower the same product and produce the same signature.
 
 ## Reproducing the results
 
 ```bash
 python python/analyses/00_prepare_data.py     # lists what to download and from where
-bash run_all.sh                               # runs everything and verifies the output
+bash run_all.sh                               # runs everything, builds the figures, verifies
+```
+
+`run_all.sh` runs the analyses in order, then the forced-oscillator model (about five minutes; the
+sweep and the synthetic cohorts are cached), then the five manuscript figures, then the
+verification step. Four panels are left as labelled empty frames: the schematics are drawn by hand,
+because AI-generated images are not accepted by the publishers.
+
+## Layout
+
+```
+python/analyses/   00-08, numbered in the order run_all.sh runs them
+python/lib/        phase inference, gene sets, platform annotation, coupling statistics
+python/model/      forced Poincare oscillator and synthetic single-biopsy cohorts
+python/figures/    paper_figures.py builds F1-F5; the rest are diagnostics
+tests/             smoke test and package verification
+docs/              browser-based phase estimator
 ```
 
 GEO and GTEx require accepting their terms, so the data are not redistributed here and are not
