@@ -1,50 +1,40 @@
 # Changelog
 
-## v1.2.0 — cadena de reproducibilidad cerrada
+## v1.2.0 — the repository reproduces the paper
 
-### Corregido
-- **Faltaba el paso que ensambla `signatures_log2_common_genes.tsv`**, del que dependen los paneles
-  H e I de la Figura 3 y el párrafo final de la sección 3.4. `run_all.sh` fallaba en el paso de
-  figuras sobre un clon limpio. Añadido `python/analyses/23_build_signatures_table.py`, que
-  regenera tres de las cuatro columnas desde los datos públicos y **comprueba cada una contra la
-  referencia versionada**, abortando si alguna discrepa.
-- **Rutas absolutas** de un entorno de trabajo en `fig6_mecanismo.py`, sustituidas por rutas
-  relativas a `T2D_OUT`.
-- **Los paneles redefinían los conjuntos de genes en el sitio**, cada uno de forma distinta y
-  añadiendo BMAL1, que pertenece al oscilador central y no al brazo de salida. Ahora importan de
-  `gene_sets.py`, como el propio módulo instruye. Esto cambia tres cifras del manuscrito: la
-  correlación con tiazolidinediona pasa de −0,32 a −0,02, y los valores de Cushing e
-  hidrocortisona estaban intercambiados entre sí.
-- **Cadena de citas corrida** al eliminar una referencia sin llamado.
+The repository is now the code that produces the published results, and nothing else.
 
-### Añadido
-- `tests/verify_inputs.py`: comprueba que cada fichero que lee una figura lo produce el
-  repositorio, está versionado en `data/reference/` o es una descarga pública declarada. Conectado
-  a `run_all.sh`. Es el test que habría detectado el fallo anterior.
-- `data/reference/`: entradas versionadas, entre ellas el contraste resistente frente a sensible
-  de GSE13070, que no se regenera de forma consistente por el desbalance de 35 contra 6 y se
-  declara así en Métodos.
-- `AGENTS.md` y `python/audit_manuscript.py`: quince agentes de revisión con su criterio de
-  aprobado, cinco de ellos ejecutables.
-- Análisis nuevos: validación leave-one-out a dos niveles, metaanálisis de tres niveles,
-  sensibilidad por componentes principales, ruido del estimador por grupo, concordancia con CHIRAL,
-  panel ampliado de tejidos de GTEx.
+### Removed
+- Eleven exploratory scripts that do not feed the manuscript: the phase-error benchmark against
+  published estimators, the CHIRAL reproducibility check, the nine-tissue GTEx panel and its two
+  audits, a superseded noise check, a receptor-versus-targets comparison, and four figure scripts
+  from earlier versions of the paper. Those analyses informed decisions but their outputs are not
+  in the manuscript, and keeping them invited questions the paper does not answer.
+- The working log and the review checklists, which belong with the authors and not with the code.
 
-### Archivado
-- `python/figures/make_figures.py` pasa a `python/figures/_legacy/`: generaba las figuras del
-  envío anterior y leía ficheros que ya no produce nadie.
+### Fixed
+- **The README described a different paper.** Title, summary and the perturbation table came from
+  an earlier analysis. Rewritten to match the manuscript.
+- **The Zenodo badge showed "pending"** instead of doi:10.5281/zenodo.23379059.
+- **`run_all.sh` failed on a clean clone**: the step that assembles the signature table, which
+  three panels read, was missing. Added as step 15, grouped with the perturbations it belongs to.
+- **Absolute paths** from a working environment in one figure script.
+- **Gene sets were redefined inside two figure panels**, each differently, adding BMAL1, which
+  belongs to the core oscillator and not to the output arm. Both now import from
+  `python/lib/gene_sets.py`, as that module instructs.
+- **A `\uXXXX` escape inside an f-string expression**, which Python before 3.12 rejects and CI
+  runs on 3.11.
 
-## v1.1.0 — reencuadre mecanístico
-Ver la entrada anterior.
-# Changelog
+### Added
+- `tests/verify_inputs.py`: every input a figure reads must be produced by the pipeline, versioned
+  in `data/reference/`, or a declared public download. This is the check that would have caught the
+  missing step.
+- `tests/test_syntax.py`, as step 00, so a syntax error stops the run in the first second.
+- `docs/DATA.md`: what to download, and why each versioned input is versioned.
+- `requirements-lock.txt` with exact library versions.
+- Three-level meta-analysis, heterogeneity moderators, leave-one-out validation, principal-component
+  sensitivity, estimator noise by group, and phase concordance with CHIRAL.
 
-## v1.1.0 — reencuadre mecanistico
-
-El analisis pasa de describir el acoplamiento entre tejidos a identificar la senal que lo gobierna.
-
-### Anadido
-- `python/analyses/01b_fig1_signature_test.py` — expresion diferencial convencional con t moderada
-  estilo limma implementada en el propio script, y prueba de que no recupera la firma. Cierra el
-  hueco de reproducibilidad de la Fig. 1, que antes dependia de un paso manual.
-- `python/analyses/05_clamp_within_person.py` — clamp y tiazolidinediona dentro de la persona.
-- `python/analyses/06_meta_analysis.py` — metaanalisis de efectos aleatorios (DerSimonian-Laird
+### Changed
+- `run_all.sh` is grouped by the figure each block feeds, so a reader can find the code behind any
+  panel without reading the whole pipeline.

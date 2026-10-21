@@ -8,15 +8,13 @@ Yalith Estefania Mejía-Arratia^a^, Lidia Escutia-Guadarrama^b,c^, Mitzi Pérez-
 
 \* Corresponding author. Daniel Pérez-Calixto, Instituto Nacional de Medicina Genómica, Periférico Sur 4809, 14610 Mexico City, Mexico. E-mail: dperez@inmegen.gob.mx
 
-**Running title:** Glucocorticoid signalling and the human peripheral clock
-
 ---
 
 ## Highlights
 
 - Per-sample clock amplitude validated out of sample against cosinor in two human cohorts
 - Receptor level predicts clock output in 13 estimates from four metabolic tissues
-- Three hours of hyperinsulinaemic clamp reproduce three hours of morning
+- Hyperinsulinaemic clamp is indistinguishable from three hours of morning
 - Hydrocortisone and insulin move PER1 in opposite directions in every participant
 - A forced-oscillator model reproduces the signature with no fitted parameter
 
@@ -34,7 +32,7 @@ and related them to glucocorticoid signalling across individuals and under time-
 perturbations.
 
 **Results.** The peripheral clock follows glucocorticoid signalling. Across 13 cohort–tissue
-estimates from four tissues, NR3C1 expression predicts the output arm of the clock (pooled ρ = 0.45,
+estimates from four tissue types, NR3C1 expression predicts the output arm of the clock (pooled ρ = 0.45,
 95% CI 0.31–0.58), and the receptor of one tissue predicts the clock of another as well as its own.
 The acute insulin response is not separable from the passage of time: three hours of
 hyperinsulinaemic clamp reproduce the change of three hours of morning, whereas hydrocortisone
@@ -59,13 +57,13 @@ individuals, shift work and sleep
 restriction raise metabolic risk, and clock gene mutations in rodents produce insulin resistance[1–5]. What remains unknown is the signal that sets the peripheral clock in humans, and therefore
 what is broken when the clock is disrupted.
 
-Two candidates dominate. Insulin entrains peripheral oscillators in cultured cells and in rodent
+Two candidates have dominated the debate. Insulin entrains peripheral oscillators in cultured cells and in rodent
 tissue, and the proposal that feeding entrains the periphery through insulin is widely cited[6–8]. Glucocorticoids entrain peripheral clocks through glucocorticoid response elements in the
 promoters of PER1 and PER2, and the cortisol rhythm is the canonical systemic timing signal[9–12].
 The two hypotheses make opposite predictions about what happens to the clock in insulin resistance,
 and they have not been separated in human tissue.
 
-The obstacle is design[24,25]. Separating hormone from time of day requires a perturbation with a
+The obstacle is design[13,14]. Separating hormone from time of day requires a perturbation with a
 time-matched control, because any intervention that takes hours also moves the clock by those hours. Relating the clock to metabolic state requires a phenotype measured in the
 same people. Distinguishing a systemic signal from a local programme requires two tissues from
 the same person. No single human cohort has all three, and the cohorts that have one lack the
@@ -77,7 +75,7 @@ power; and perturbations with a time-matched control separate hormone from hour.
 
 Here we show that the peripheral clock of human metabolic tissues tracks glucocorticoid
 signalling. We develop and validate a single-sample estimator of circadian phase and amplitude, use
-it across four tissues and 2,900 individuals, and show that acute insulin is indistinguishable from
+it across four tissue types and 2,900 individuals, and show that acute insulin is indistinguishable from
 the passage of time while a physiological dose of hydrocortisone is not.
 We then show that insulin-resistant adipose tissue carries the transcriptional signature of
 cortisol exposure, and that a forced-oscillator model in which the effective forcing is the product
@@ -102,10 +100,9 @@ number and the role it plays in the analysis; two accessions are the two tissues
 (GSE95674 and GSE95675, AAGMEx), while GSE182117 and GSE182120 are separate studies despite
 adjacent accessions. Microarray series were annotated by Entrez identifier rather than by the
 symbol supplied with the platform, because platform annotations age and 8.3% of GPL570 probes with a
-single Entrez identifier carry a retired symbol[13] (Supplementary Fig. S3b,c and Supplementary Tables S14 and S15). RNA-seq series
-were used as raw counts. Expression was centred per sample before any score was computed, because
-without centring the median correlation of a randomly chosen gene with the clock-output score is
-0.44 rather than zero in RNA-seq (Supplementary Fig. S3a and Supplementary Table S13).
+single Entrez identifier carry a retired symbol[15] (Supplementary Fig. S3b,c and Supplementary Tables S14 and S15). RNA-seq series
+were used as raw counts. Expression was centred per sample before any score was computed: without centring, the median
+correlation of a random gene with the clock-output score is 0.44 rather than zero in RNA-seq (Supplementary Fig. S3a and Supplementary Table S13).
 
 ### 2.2 Gene sets
 
@@ -119,7 +116,7 @@ receptor. Glucocorticoid signalling was quantified as the mean z-score of FKBP5,
 KLF15, DDIT4, SESN1, GLUL, SGK1 and CEBPD, canonical direct targets of the receptor curated from
 the glucocorticoid signalling literature[9,10,12]. Both sets were fixed before any analysis
 of these cohorts (Supplementary Table S2). No usable glucocorticoid-response set exists in MSigDB
-for metabolic tissue[22]; a set derived empirically from the hydrocortisone perturbation
+for metabolic tissue[16]; a set derived empirically from the hydrocortisone perturbation
 failed to validate against Cushing syndrome and dexamethasone and was not used (Supplementary Fig. S6 and Supplementary Table S17).
 
 ### 2.3 Single-sample estimation of phase and amplitude
@@ -156,19 +153,17 @@ samples by more than 9 h (Supplementary Methods).
 
 Two variants were used as sensitivity analyses: an *anchored* one that fixes the period against an
 external template, which resolves phase but degrades amplitude, and the *free* one used throughout,
-which resolves amplitude but not period. A projection onto the full 800-gene template does not
-validate against cosinor and is shown only to demonstrate that the choice matters (Supplementary
-Fig. S2 and Supplementary Table S11).
+which resolves amplitude but not period (Supplementary Fig. S2 and Supplementary Table S11).
 
-*Validation.* Measured amplitude, the reference, was obtained by cosinor regression[41] of
+*Validation.* Measured amplitude, the reference, was obtained by cosinor regression[17] of
 each clock gene on recorded sampling time with a 24-h period, taking the modulus of the
 first-harmonic coefficients. Validation was leave-one-out at two levels: the retained sample was
 excluded from the cosinor fit of its own donor, and the whole donor was excluded from the ordering
 and from the template, so that nothing of the evaluated donor enters its own estimate
 (Supplementary Table S5).
 
-*Relation to published methods.* CHIRAL[36,37], CYCLOPS[38], ZeitZeiger[39] and
-TimeSignature[40] infer the circadian time of a single sample; none returns a per-sample amplitude,
+*Relation to published methods.* CHIRAL[18,19], CYCLOPS[20], ZeitZeiger[21] and
+TimeSignature[22] infer the circadian time of a single sample; none returns a per-sample amplitude,
 the quantity the analyses below require. Published phase inference was therefore used as a
 concordance control. Taking *R* = |mean<sub>i</sub> exp(i(φ<sub>muscle,i</sub> −
 φ<sub>adipose,i</sub>))|, the concentration of the muscle-to-adipose phase difference across
@@ -181,11 +176,11 @@ with the magnitude depending on the implementation (Supplementary Methods).
 *Differential expression.* Microarray cohorts were analysed with a moderated *t* statistic: the
 variance of each gene is shrunk towards a prior estimated from all genes, which stabilises the
 statistic when few samples are available, and the degrees of freedom are augmented
-accordingly[14]. RNA-seq cohorts were analysed with PyDESeq2[15] on raw counts,
+accordingly[23]. RNA-seq cohorts were analysed with PyDESeq2[24] on raw counts,
 fitting a negative binomial model with gene-wise dispersion shrinkage. *P* values were corrected by
-Benjamini–Hochberg[16] and reported as FDR. Within-person designs were analysed as the
-per-person difference with a Wilcoxon signed-rank test, reporting also the number of participants
-changing in each direction, which is what the figures show (Supplementary Tables S3 and S19).
+Benjamini–Hochberg[25] and reported as FDR. Within-person designs were analysed as the per-person
+difference with a Wilcoxon signed-rank test, reporting the number of participants changing in each
+direction (Supplementary Tables S3 and S19).
 
 The insulin-resistant against insulin-sensitive contrast of GSE13070 is unbalanced (35 against 6),
 so it is excluded from the differential expression of Fig. 1, where imbalance inflates the gene
@@ -205,7 +200,7 @@ partial correlation with receptor level, rather than against a list of significa
 significance threshold enters the enrichment (Supplementary Tables S4 and S12).
 
 *Transcription-factor activity.* Regulons were taken from DoRothEA confidence levels A to C, which
-are the interactions supported by curated literature, ChIP-seq and binding motifs[23]. The
+are the interactions supported by curated literature, ChIP-seq and binding motifs[26]. The
 activity of a factor in a sample is the mean z-score of its targets, each weighted by the sign of
 the interaction so that repressed targets contribute with the opposite sign. Clock genes were
 removed from every regulon before correlating activity with clock output, because leaving them in
@@ -228,14 +223,14 @@ where *n* is the number of individuals and *k* the number of covariates regresse
 out. Because several cohorts contribute more than one tissue from overlapping donors, the estimates
 are not independent: the primary estimate is from a three-level random-effects model fitted by
 restricted maximum likelihood, with estimates nested in cohort and two variance components (τ²
-between cohorts, σ² between estimates within cohort). DerSimonian–Laird[17] two-level
+between cohorts, σ² between estimates within cohort). DerSimonian–Laird[27] two-level
 estimates and cluster-robust variance with a small-sample correction are reported alongside it
 (Supplementary Table S6 and Supplementary Methods).
 
 ### 2.7 Forced-oscillator model
 
 Each cell was modelled as a Poincaré amplitude–phase oscillator driven by a 24-h timing signal
-(zeitgeber)[18–20]:
+(zeitgeber)[28–30]:
 
 d*r*/d*t* = λ*r*(*A* − *r*) + *FK* cos(θ<sub>z</sub> − φ)   (4)
 
@@ -246,7 +241,7 @@ drawn from a normal distribution of mean 24 h, λ the relaxation rate towards th
 the limit-cycle amplitude, θ<sub>z</sub> = 2π*t*/24 the phase of the zeitgeber, *F* the amplitude of
 the cortisol rhythm and *K* the availability of the receptor. The effective forcing is the product
 *F·K*. A tissue was modelled as a population of 40–150 such cells and the biopsy as the mean of the
-population at one instant. Parameters were taken from the literature[19,21] and none was
+population at one instant. Parameters were taken from the literature[29,31] and none was
 fitted to the data analysed here (Supplementary Table S20 and Supplementary Methods).
 
 ### 2.8 Code and data availability
@@ -278,7 +273,7 @@ what alters it.
 
 The signal that is missing is of a different kind. In the same cohorts, the level of the
 glucocorticoid receptor and the clock-output score correlate across individuals, reaching ρ = 0.54
-in GSE182120, a cohort with no differentially expressed gene at all (Fig. 1j). That relationship is a
+in GSE182120 (n = 49), a cohort with no differentially expressed gene at all (Fig. 1j). That relationship is a
 correlation between people, not a difference between groups, and a case–control design cannot
 detect it by construction.
 
@@ -305,13 +300,14 @@ in the following sections are therefore lower bounds.
 ### 3.3 Clock output tracks glucocorticoid receptor level across four tissues
 
 Having established that the clock can be measured per person (Fig. 1f,g), we asked what it follows.
-Across 13 cohort–tissue estimates from six cohorts and four tissues, NR3C1 expression, the level
-of the glucocorticoid receptor, predicted clock output (pooled ρ = 0.45, 95% CI 0.31–0.58 by three-level
+Across 13 cohort–tissue estimates from six cohorts and four tissue types (skeletal muscle,
+subcutaneous and visceral adipose tissue, pancreatic islets), NR3C1 expression predicted clock
+output (pooled ρ = 0.45, 95% CI 0.31–0.58 by three-level
 random effects; ρ = 0.43, 95% CI 0.29–0.55 by cluster-robust variance; Fig. 2a and Supplementary
 Table S6). The association was positive in every adipose-tissue estimate but heterogeneous in magnitude
 (ρ = 0.42, *I*² = 69%, six estimates), and strongest in pancreatic islets (ρ = 0.68, two
-estimates); twelve of the thirteen confidence intervals excluded zero, and heterogeneity across
-all thirteen was *I*² = 84% with τ² = 0.036 between cohorts and σ² = 0.011 within. The relationship is monotonic rather than driven by extremes:
+estimates); twelve of the thirteen confidence intervals excluded zero. Heterogeneity across
+all thirteen was *I*² = 84%, of which tissue accounts for 89% by meta-regression. The relationship is monotonic rather than driven by extremes:
 the median clock-output score rises across quintiles of receptor level in both islets (GSE159984)
 and GTEx visceral adipose tissue (Fig. 2b).
 
@@ -329,10 +325,10 @@ acute receptor targets are dominated by terminal cortisol. The coupling does not
 circulating cortisol, receptor level and clock output still correlate (ρ = 0.60, P = 1.6 × 10⁻⁵,
 n = 45; Fig. 2e).
 
-### 3.4 Hydrocortisone shifts clock gene expression; acute insulin does not
+### 3.4 Hydrocortisone shifts clock gene expression; the clamp reproduces the morning
 
 Correlation across individuals cannot distinguish the two candidate signals, so we turned to
-perturbations in which sampling time is controlled (Fig. 3a). A hyperinsulinaemic clamp in skeletal muscle lowered clock-output genes in 62 of 69 participants.
+perturbations in which sampling time is controlled (Fig. 3a). A hyperinsulinaemic clamp in skeletal muscle lowered clock-output genes in 61 of 68 participants.
 But the magnitude of that change is the magnitude of the morning: in three cohorts with recorded
 sampling times, NR1D1, DBP, CIART, PER1, PER3 and TEF fall by the same amount over a comparable
 interval without any insulin (Fig. 3b and Supplementary Table S7). The same holds in adipose tissue, where a paired clamp lowered the output arm in all ten
@@ -363,10 +359,9 @@ reversal (Fig. 3i).
 To test whether receptor level indexes glucocorticoid exposure rather than some other property of
 the tissue, we ranked all 34,020 genes by their partial correlation with receptor level in adipose tissue
 (AAGMEx, n = 232), adjusting for sex, age, adiposity and macrophage content. Curated collections
-were then tested against that ranking. Of 134 transcription factors with a
-curated regulon, FOXO3 was the one whose inferred activity best predicted clock output
-(ρ = 0.39), and the NF-κB family occupied the opposite extreme (NFKB1 ρ = −0.44; Fig. 4a and
-Supplementary Table S9); the FOXO3 regulon includes TXNIP and FBXO32 (Supplementary Fig. S4). The
+were then tested against that ranking. Of 134 transcription factors with a curated regulon, FOXO3 was the one whose inferred activity best
+predicted clock output (ρ = 0.39) and the NF-κB family occupied the opposite extreme (NFKB1
+ρ = −0.44; both n = 232; Fig. 4a and Supplementary Table S9); the FOXO3 regulon includes TXNIP and FBXO32 (Supplementary Fig. S4). The
 same ordering appears in the Hallmark collections of coordinately regulated processes, where
 interferon-γ response, TNFα signalling via
 NF-κB and the complement run against the axis, together with oxidative phosphorylation,
@@ -374,13 +369,13 @@ adipogenesis and glycolysis (Fig. 4b, and Reactome and Gene Ontology in Fig. 4f,
 
 Against phenotype ontology terms, the axis runs with truncal obesity and increased urinary cortisol
 and against type 2 diabetes in adipose tissue and muscle, and in the opposite direction in islets
-(Fig. 4c and Supplementary Table S10). The axis therefore tracks the clinical signature of
-glucocorticoid exposure and not that of metabolic disease, which is the distinction the next two
-results test. In the one cohort with insulin sensitivity measured in the same people[35], the clock-output score did
-not correlate with it (ρ = 0.01, 95% CI −0.28 to 0.30, *n* = 48 with an SI value from the frequently
-sampled intravenous glucose tolerance test), although it was graded by clinical status (median score
+(Fig. 4c and Supplementary Table S10). The axis therefore tracks the clinical signature of glucocorticoid exposure rather than that of
+metabolic disease. The next two results test that distinction. In the one cohort with insulin sensitivity measured in the same people[32], the clock-output score did
+not correlate with it (ρ = 0.01, 95% CI −0.28 to 0.30, *n* = 48 with an insulin sensitivity index
+from the frequently sampled intravenous glucose tolerance test), although it was graded by clinical status (median score
 +0.31 with no family history of diabetes, +0.09 and +0.11 with one and two affected parents, and
-−0.31 in diabetes). Within adipose tissue, adiposity separates the two arms of the axis: HSD11B1, the 11β-hydroxysteroid dehydrogenase type 1 that regenerates cortisol locally, rises with leptin (ρ = 0.66) while the receptor falls (ρ = −0.31), and
+−0.31 in diabetes). Within adipose tissue, adiposity separates the two arms of the axis: HSD11B1, the 11β-hydroxysteroid dehydrogenase type 1 that regenerates cortisol locally, rises
+with leptin (ρ = 0.66) while the receptor falls (ρ = −0.31; n = 232), and
 the receptor, not the enzyme, is what tracks clock output (Fig. 4d,e).
 
 ### 3.6 A forced-oscillator model reproduces the observed signature
@@ -433,14 +428,14 @@ clamp-measured resistance in unbalanced ones.
 The peripheral clock of human metabolic tissues tracks glucocorticoid signalling.
 The association holds across four tissues and six cohorts, survives adjustment for adiposity,
 cellular composition, ischaemic time and RNA integrity, and persists in cultured islets with no
-circulating hormone. The decisive comparison is within individuals and at a fixed hour of day:
+circulating hormone. The decisive comparison is within individuals and at a fixed hour of the day:
 PER1 rises in every participant under hydrocortisone and falls in every participant under insulin,
 in the same tissue. Three hours of clamp are indistinguishable from three hours of morning, so what
 the clamp literature has read as an effect of insulin on the clock is the passage of time.
 
 The mechanism that unifies the clinical observations is not the amount of hormone but the strength
-of the rhythmic signal. Obesity flattens the cortisol rhythm[31,32], Cushing syndrome and exogenous
-hydrocortisone impose sustained exposure[33,34], and adiposity lowers the receptor; all three lower the
+of the rhythmic signal. Obesity flattens the cortisol rhythm[33,34], Cushing syndrome and exogenous
+hydrocortisone impose sustained exposure[35,36], and adiposity lowers the receptor; all three lower the
 same product, and all three produce the same transcriptional signature. The model makes that
 statement quantitative, reproducing the direction of every signature gene and its magnitude to
 within 4% without fitted parameters, and it yields a testable prediction that the data already
@@ -456,19 +451,21 @@ signature estimates is the glucocorticoid signal a tissue actually receives, whi
 measure provides.
 
 This reframes the modest results of 11β-hydroxysteroid dehydrogenase type 1 inhibitors in type 2
-diabetes[26,27]. These compounds lower the local regeneration of cortisol, that is, the
-ligand[28,42,43]. Our data separate the two arms of that axis: within adipose tissue HSD11B1
+diabetes[37,38]. These compounds lower the local regeneration of cortisol, that is, the
+ligand[39,40,41]. Our data separate the two arms of that axis: within adipose tissue HSD11B1
 rises with adiposity while the receptor falls, and it is the receptor, not the enzyme, that tracks
 clock output (Fig. 4d,e). Where the limiting term is receptor availability, lowering the ligand
 cannot restore the rhythmic signal, which would account for the modest glycaemic effect of these
 compounds. The prediction is specific and testable in material that already exists: in trials of
-11β-HSD1 inhibition with banked adipose tissue[29,30], the response should be graded by the
+11β-HSD1 inhibition with banked adipose tissue[42,43], the response should be graded by the
 effective glucocorticoid signal of the tissue at baseline, estimated from receptor level together
 with the clock-output score, rather than by diagnostic category or by circulating cortisol. A null
 association between baseline receptor level and response would argue against the interpretation
 advanced here.
 
-Our analysis has four limitations. Phase and amplitude are inferred from expression rather than
+Our analysis has five limitations. NR3C1 expression is a proxy for receptor availability, and
+chronic glucocorticoid exposure also lowers that transcript, so these data do not separate a
+receptor that limits signalling from one suppressed by the exposure it reports. Phase and amplitude are inferred from expression rather than
 from longitudinal sampling in each donor, and per-sample amplitude is attenuated (ρ = 0.17 to 0.34
 against cosinor out of sample), so the associations reported here are lower bounds. The
 cross-sectional association in adipose tissue weakens when the leading principal components of the
@@ -510,37 +507,37 @@ access to the data used in this work.
 10\. Dickmeis T. Glucocorticoids and the circadian clock. J Endocrinol 2009;200:3–22.
 11\. Oster H, Challet E, Ott V, et al. The functional and clinical significance of the 24-hour rhythm of circulating glucocorticoids. Endocr Rev 2017;38:3–45.
 12\. So AY, Bernal TU, Pillsbury ML, Yamamoto KR, Feldman BJ. Glucocorticoid regulation of the circadian clock modulates glucose homeostasis. Proc Natl Acad Sci U S A 2009;106:17582–7.
-13\. Dai M, Wang P, Boyd AD, Kostov G, Athey B, Jones EG, et al. Evolving gene/transcript definitions significantly alter the interpretation of GeneChip data. Nucleic Acids Res 2005;33:e175. https://doi.org/10.1093/nar/gni179.
-14\. Smyth GK. Linear models and empirical Bayes methods for assessing differential expression in microarray experiments. Stat Appl Genet Mol Biol 2004;3:Article3.
-15\. Muzellec B, Teleńczuk M, Cabeli V, Andreux M. PyDESeq2: a python package for bulk RNA-seq differential expression analysis. Bioinformatics 2023;39:btad547.
-16\. Benjamini Y, Hochberg Y. Controlling the false discovery rate: a practical and powerful approach to multiple testing. J R Stat Soc B 1995;57:289–300.
-17\. DerSimonian R, Laird N. Meta-analysis in clinical trials. Control Clin Trials 1986;7:177–88.
-18\. Granada AE, Bordyugov G, Kramer A, Herzel H. Human chronotypes from a theoretical perspective. PLoS One 2013;8:e59464.
-19\. Abraham U, Granada AE, Westermark PO, Heine M, Kramer A, Herzel H. Coupling governs entrainment range of circadian clocks. Mol Syst Biol 2010;6:438.
-20\. Schmal C, Herzel H, Myung J. Clocks in the wild: entrainment to natural light. Front Physiol 2020;11:272.
-21\. Li Y, Androulakis IP. The SCN–HPA–periphery circadian timing system: mathematical modeling of clock synchronization and the effects of photoperiod on jetlag adaptation. J Biol Rhythms 2023;38:435–53.
-22\. Liberzon A, Birger C, Thorvaldsdóttir H, Ghandi M, Mesirov JP, Tamayo P. The Molecular Signatures Database hallmark gene set collection. Cell Syst 2015;1:417–25.
-23\. Garcia-Alonso L, Holland CH, Ibrahim MM, Turei D, Saez-Rodriguez J. Benchmark and integration of resources for the estimation of human transcription factor activities. Genome Res 2019;29:1363–75.
-24\. Hughes ME, Abruzzi KC, Allada R, et al. Guidelines for genome-scale analysis of biological rhythms. J Biol Rhythms 2017;32:380–93.
-25\. Ruben MD, Francey LJ, Guo Y, et al. A large-scale study reveals 24-h operational rhythms in hospital treatment. Proc Natl Acad Sci U S A 2019;116:20953–8.
-26\. Feig PU, Shah S, Hermanowski-Vosatka A, et al. Effects of an 11β-hydroxysteroid dehydrogenase type 1 inhibitor, MK-0916, in patients with type 2 diabetes mellitus and metabolic syndrome. Diabetes Obes Metab 2011;13:498–504.
-27\. Rosenstock J, Banarer S, Fonseca VA, et al. The 11-beta-hydroxysteroid dehydrogenase type 1 inhibitor INCB13739 improves hyperglycemia in patients with type 2 diabetes inadequately controlled by metformin monotherapy. Diabetes Care 2010;33:1516–22.
-28\. Morgan SA, McCabe EL, Gathercole LL, et al. 11β-HSD1 is the major regulator of the tissue-specific effects of circulating glucocorticoid excess. Proc Natl Acad Sci U S A 2014;111:E2482–91.
-29\. Othonos N, Pofi R, Arvaniti A, et al. 11β-HSD1 inhibition in men mitigates prednisolone-induced adverse effects in a proof-of-concept randomised double-blind placebo-controlled trial. Nat Commun 2023;14:1025.
-30\. Ajjan RA, Hensor EMA, Del Galdo F, et al. Oral 11β-HSD1 inhibitor AZD4017 improves wound healing and skin integrity in adults with type 2 diabetes mellitus: a pilot randomized controlled trial. Eur J Endocrinol 2022;186:441–55.
-31\. Björntorp P, Rosmond R. Obesity and cortisol. Nutrition 2000;16:924–36.
-32\. Incollingo Rodriguez AC, Epel ES, White ML, Standen EC, Seckl JR, Tomiyama AJ. Hypothalamic–pituitary–adrenal axis dysregulation and cortisol activity in obesity: a systematic review. Psychoneuroendocrinology 2015;62:301–18.
-33\. Pivonello R, Isidori AM, De Martino MC, Newell-Price J, Biller BMK, Colao A. Complications of Cushing's syndrome: state of the art. Lancet Diabetes Endocrinol 2016;4:611–29.
-34\. Hackett RA, Kivimäki M, Kumari M, Steptoe A. Diurnal cortisol patterns, future diabetes, and impaired glucose metabolism in the Whitehall II cohort study. J Clin Endocrinol Metab 2016;101:619–25.
-35\. Sharma NK, Sajuthi SP, Chou JW, et al. Tissue-specific and genetic regulation of insulin sensitivity-associated transcripts in African Americans. J Clin Endocrinol Metab 2016;101:1455–68.
-36\. Talamanca L, Gobet C, Naef F. Sex-dimorphic and age-dependent organization of 24-hour gene expression rhythms in humans. Science 2023;379:478–83.
-37\. Salati A, Gobet C, Naef F. scRITMO: inference of circadian phase from single-cell and bulk transcriptomes [preprint]. bioRxiv 2026. Available at github.com/AndreaSalati/scRITMO
-38\. Anafi RC, Francey LJ, Hogenesch JB, Kim J. CYCLOPS reveals human transcriptional rhythms in health and disease. Proc Natl Acad Sci U S A 2017;114:5312–7.
-39\. Hughey JJ, Hastie T, Butte AJ. ZeitZeiger: supervised learning for high-dimensional data from an oscillatory system. Nucleic Acids Res 2016;44:e80.
-40\. Braun R, Kath WL, Iwanaszko M, et al. Universal method for robust detection of circadian state from gene expression. Proc Natl Acad Sci U S A 2018;115:E9247–56.
-41\. Cornelissen G. Cosinor-based rhythmometry. Theor Biol Med Model 2014;11:16.
-42\. Masuzaki H, Paterson J, Shinyama H, et al. A transgenic model of visceral obesity and the metabolic syndrome. Science 2001;294:2166–70.
-43\. Lee RA, Harris CA, Wang JC. Glucocorticoid receptor and adipocyte biology. Nucl Receptor Res 2018;5:101373.
+13\. Hughes ME, Abruzzi KC, Allada R, et al. Guidelines for genome-scale analysis of biological rhythms. J Biol Rhythms 2017;32:380–93.
+14\. Ruben MD, Francey LJ, Guo Y, et al. A large-scale study reveals 24-h operational rhythms in hospital treatment. Proc Natl Acad Sci U S A 2019;116:20953–8.
+15\. Dai M, Wang P, Boyd AD, Kostov G, Athey B, Jones EG, et al. Evolving gene/transcript definitions significantly alter the interpretation of GeneChip data. Nucleic Acids Res 2005;33:e175. https://doi.org/10.1093/nar/gni179.
+16\. Liberzon A, Birger C, Thorvaldsdóttir H, Ghandi M, Mesirov JP, Tamayo P. The Molecular Signatures Database hallmark gene set collection. Cell Syst 2015;1:417–25.
+17\. Cornelissen G. Cosinor-based rhythmometry. Theor Biol Med Model 2014;11:16.
+18\. Talamanca L, Gobet C, Naef F. Sex-dimorphic and age-dependent organization of 24-hour gene expression rhythms in humans. Science 2023;379:478–83.
+19\. Salati A, Gobet C, Naef F. scRITMO: inference of circadian phase from single-cell and bulk transcriptomes [preprint]. bioRxiv 2026. Available at github.com/AndreaSalati/scRITMO
+20\. Anafi RC, Francey LJ, Hogenesch JB, Kim J. CYCLOPS reveals human transcriptional rhythms in health and disease. Proc Natl Acad Sci U S A 2017;114:5312–7.
+21\. Hughey JJ, Hastie T, Butte AJ. ZeitZeiger: supervised learning for high-dimensional data from an oscillatory system. Nucleic Acids Res 2016;44:e80.
+22\. Braun R, Kath WL, Iwanaszko M, et al. Universal method for robust detection of circadian state from gene expression. Proc Natl Acad Sci U S A 2018;115:E9247–56.
+23\. Smyth GK. Linear models and empirical Bayes methods for assessing differential expression in microarray experiments. Stat Appl Genet Mol Biol 2004;3:Article3.
+24\. Muzellec B, Teleńczuk M, Cabeli V, Andreux M. PyDESeq2: a python package for bulk RNA-seq differential expression analysis. Bioinformatics 2023;39:btad547.
+25\. Benjamini Y, Hochberg Y. Controlling the false discovery rate: a practical and powerful approach to multiple testing. J R Stat Soc B 1995;57:289–300.
+26\. Garcia-Alonso L, Holland CH, Ibrahim MM, Turei D, Saez-Rodriguez J. Benchmark and integration of resources for the estimation of human transcription factor activities. Genome Res 2019;29:1363–75.
+27\. DerSimonian R, Laird N. Meta-analysis in clinical trials. Control Clin Trials 1986;7:177–88.
+28\. Granada AE, Bordyugov G, Kramer A, Herzel H. Human chronotypes from a theoretical perspective. PLoS One 2013;8:e59464.
+29\. Abraham U, Granada AE, Westermark PO, Heine M, Kramer A, Herzel H. Coupling governs entrainment range of circadian clocks. Mol Syst Biol 2010;6:438.
+30\. Schmal C, Herzel H, Myung J. Clocks in the wild: entrainment to natural light. Front Physiol 2020;11:272.
+31\. Li Y, Androulakis IP. The SCN–HPA–periphery circadian timing system: mathematical modeling of clock synchronization and the effects of photoperiod on jetlag adaptation. J Biol Rhythms 2023;38:435–53.
+32\. Sharma NK, Sajuthi SP, Chou JW, et al. Tissue-specific and genetic regulation of insulin sensitivity-associated transcripts in African Americans. J Clin Endocrinol Metab 2016;101:1455–68.
+33\. Björntorp P, Rosmond R. Obesity and cortisol. Nutrition 2000;16:924–36.
+34\. Incollingo Rodriguez AC, Epel ES, White ML, Standen EC, Seckl JR, Tomiyama AJ. Hypothalamic–pituitary–adrenal axis dysregulation and cortisol activity in obesity: a systematic review. Psychoneuroendocrinology 2015;62:301–18.
+35\. Pivonello R, Isidori AM, De Martino MC, Newell-Price J, Biller BMK, Colao A. Complications of Cushing's syndrome: state of the art. Lancet Diabetes Endocrinol 2016;4:611–29.
+36\. Hackett RA, Kivimäki M, Kumari M, Steptoe A. Diurnal cortisol patterns, future diabetes, and impaired glucose metabolism in the Whitehall II cohort study. J Clin Endocrinol Metab 2016;101:619–25.
+37\. Feig PU, Shah S, Hermanowski-Vosatka A, et al. Effects of an 11β-hydroxysteroid dehydrogenase type 1 inhibitor, MK-0916, in patients with type 2 diabetes mellitus and metabolic syndrome. Diabetes Obes Metab 2011;13:498–504.
+38\. Rosenstock J, Banarer S, Fonseca VA, et al. The 11-beta-hydroxysteroid dehydrogenase type 1 inhibitor INCB13739 improves hyperglycemia in patients with type 2 diabetes inadequately controlled by metformin monotherapy. Diabetes Care 2010;33:1516–22.
+39\. Morgan SA, McCabe EL, Gathercole LL, et al. 11β-HSD1 is the major regulator of the tissue-specific effects of circulating glucocorticoid excess. Proc Natl Acad Sci U S A 2014;111:E2482–91.
+40\. Masuzaki H, Paterson J, Shinyama H, et al. A transgenic model of visceral obesity and the metabolic syndrome. Science 2001;294:2166–70.
+41\. Lee RA, Harris CA, Wang JC. Glucocorticoid receptor and adipocyte biology. Nucl Receptor Res 2018;5:101373.
+42\. Othonos N, Pofi R, Arvaniti A, et al. 11β-HSD1 inhibition in men mitigates prednisolone-induced adverse effects in a proof-of-concept randomised double-blind placebo-controlled trial. Nat Commun 2023;14:1025.
+43\. Ajjan RA, Hensor EMA, Del Galdo F, et al. Oral 11β-HSD1 inhibitor AZD4017 improves wound healing and skin integrity in adults with type 2 diabetes mellitus: a pilot randomized controlled trial. Eur J Endocrinol 2022;186:441–55.
 
 ## Declarations
 
@@ -571,22 +568,18 @@ details are listed in Supplementary Table S1.
 archived on Zenodo (https://doi.org/10.5281/zenodo.23379059). Analyses used Python 3.9.0;
 stochastic routines used NumPy default_rng with seed 0.
 
-**Use of artificial intelligence tools.** OpenAI tools assisted with language editing and Anthropic
-Claude assisted with code development and with the analyses reported here. All schematic
-illustrations were prepared by the authors; no AI-generated images are included. The authors
-reviewed the resulting text, code and figures and take full responsibility for the content of the
-manuscript.
+**Use of artificial intelligence tools.** AI-assisted tools were used for language editing and to
+support code development for the analyses reported here. All data visualisations are derived from
+the underlying data by the reproducible code deposited with this work. The authors reviewed all
+resulting text, code and figures and take full responsibility for the content of the manuscript.
 
 ## Abbreviations
 
-FDR, false discovery rate; GR, glucocorticoid receptor; HPA, hypothalamic–pituitary–adrenal;
-RIN, RNA integrity number; T2D, type 2 diabetes; TZD, thiazolidinedione.
+CI, confidence interval; FDR, false discovery rate; HPA, hypothalamic–pituitary–adrenal.
 
 ---
 
 ## Figures
-
----
 
 ![](figs/F1.png)
 
@@ -623,7 +616,7 @@ person. **E**, Cultured islet preparations (GSE159984; 45 samples); dashed line,
 
 ![](figs/F3.png)
 
-## Figure 3 | Hydrocortisone, but not acute insulin, shifts clock gene expression
+## Figure 3 | Hydrocortisone shifts clock gene expression; the clamp reproduces the morning
 
 **A**, Sampling scheme of the two perturbations. **B**, Change in clock gene expression after three
 hours of hyperinsulinaemic clamp (GSE13070 muscle) compared with the change over a morning interval
@@ -656,7 +649,7 @@ marked. **F**, **G**, Reactome and GO biological process in the receptor axis.
 
 ![](figs/F5.png)
 
-## Figure 5 | A forced oscillator model of glucocorticoid entrainment
+## Figure 5 | A forced-oscillator model of the glucocorticoid signal
 
 Poincaré amplitude–phase oscillators forced by a 24-h zeitgeber; effective forcing F·K is the
 product of the amplitude of the cortisol rhythm and receptor availability. Populations of 40–150
