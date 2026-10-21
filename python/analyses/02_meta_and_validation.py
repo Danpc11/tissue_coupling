@@ -45,15 +45,49 @@ def meta(files):
         rows.append(dict(set=s, r=r, lo=lo, hi=hi, tau2=tau2, I2=I2, Q=Q, k=k))
     return pd.DataFrame(rows), d
 
+def _hydrocortisone_arms(raw=RAW, ncol=20):
+    """Qué columna del fichero procesado es placebo y cuál hidrocortisona.
+
+    La matriz de serie declara el tratamiento de cada muestra. Se lee de ahí en lugar de asumir
+    que las columnas alternan placebo/tratamiento: si GEO reordena el fichero o alguien lo
+    reprocesa, asumir el orden invertiría el signo del resultado sin ningún aviso.
+    Si la matriz de serie no está, se vuelve al orden alternante y se avisa.
+    """
+    f = f"{raw}/GSE148640_series_matrix.txt.gz"
+    if not os.path.exists(f):
+        print("  (aviso) sin matriz de serie: se asume orden placebo/tratamiento alternante")
+        return list(range(0, ncol, 2)), list(range(1, ncol, 2))
+    import gzip
+    titles = None
+    with gzip.open(f, "rt", errors="ignore") as fh:
+        for line in fh:
+            if line.startswith("!Sample_characteristics_ch1") and "treatment:" in line:
+                titles = [x.strip('"').split(":", 1)[1].strip()
+                          for x in line.rstrip().split("\t")[1:]]
+                break
+    if titles is None or len(titles) != ncol:
+        print("  (aviso) no pude leer el tratamiento: se asume orden alternante")
+        return list(range(0, ncol, 2)), list(range(1, ncol, 2))
+    pla = [i for i, t in enumerate(titles) if t.lower().startswith("placebo")]
+    trt = [i for i, t in enumerate(titles) if not t.lower().startswith("placebo")]
+    print(f"  brazos leídos de la matriz de serie: {len(pla)} placebo, {len(trt)} hidrocortisona")
+    return pla, trt
+
+
 def hydrocortisone():
-    """GSE148640: hidrocortisona frente a placebo, intrasujeto, 10 pacientes. Puntuacion congelada."""
+    """GSE148640: hidrocortisona frente a placebo, intrasujeto, 10 pacientes. Puntuacion congelada.
+
+    La puntuación NO se reajusta aquí: los genes vienen definidos de las cohortes pareadas y este
+    experimento sólo los aplica. Reajustarla sobre estos datos haría la prueba circular.
+    """
     f = f"{RAW}/GSE148640_processed.txt.gz"
     if not os.path.exists(f): print("  (omitido) falta", f); return None
     d = pd.read_csv(f, sep="\t", skiprows=9, low_memory=False)
     d = d.rename(columns={d.columns[1]: "gene", d.columns[2]: "p", d.columns[3]: "FC"})
     d = d[d.gene.notna() & (d.gene != "---")]
     vals = d.iloc[:, 5:25].apply(pd.to_numeric, errors="coerce")
-    d["delta"] = vals.iloc[:, 1::2].mean(1) - vals.iloc[:, 0::2].mean(1)
+    pla, trt = _hydrocortisone_arms(ncol=vals.shape[1])
+    d["delta"] = vals.iloc[:, trt].mean(1) - vals.iloc[:, pla].mean(1)
     d = d.groupby("gene").delta.mean()
     rng = np.random.default_rng(0); rows = []
     for nm, gs in [("Glucocorticoid", GC), ("Insulin core", INS)]:

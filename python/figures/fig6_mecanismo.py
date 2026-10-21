@@ -2,7 +2,9 @@
 La version del manuscrito es paper_figures.py (F3 y F4).
 """
 import pandas as pd, numpy as np, sys, matplotlib
-matplotlib.use("Agg"); import matplotlib.pyplot as plt
+matplotlib.use("Agg"); import os
+OUT = os.environ.get('T2D_OUT','results')
+import matplotlib.pyplot as plt
 from scipy import stats
 sys.path.insert(0,"python/lib"); from gene_sets import SETS, resolve
 BLUE,ORANGE,GREEN,GREY,PURPLE="#1f77b4","#d95f02","#2a9d8f","#999999","#6a3d9a"
@@ -58,7 +60,7 @@ ax.set_yticks(range(len(H))); ax.set_yticklabels(H.lab,fontsize=7); ax.axvline(0
 ax.set(xlabel="z frente a conjuntos del mismo tamaño",title="c  El eje del receptor es antiinflamatorio y va\ncontra OXPHOS, adipogénesis y mTORC1")
 # --- d) TZD no repara la firma
 ax=fig.add_subplot(gs[1,0])
-sig=pd.read_csv("/mnt/user-data/outputs/new_datasets/signatures_log2_common_genes.tsv",sep="\t",index_col=0)
+sig=pd.read_csv(f"{OUT}/new/signatures_log2_common_genes.tsv",sep="\t",index_col=0)
 genes=["PER3","DBP","HLF","TEF","CIART","NR1D1","NR1D2","PER2","BMAL1"]
 cols={"IR adiposo":"IR adipose (GSE13070, 35 vs 6)","Cushing":"Cushing adipose (GSE66446)","hidrocortisona":"hydrocortisone adipose (GSE148640)","TZD 3 meses":"TZD 3mo adipose (GSE13070)"}
 Tm=sig.loc[[g for g in genes if g in sig.index],list(cols.values())]; Tm.columns=list(cols.keys())
@@ -71,7 +73,7 @@ ax.set(ylabel="log2",title=f"d  La firma del adiposo resistente es la del cortis
 ax.legend(fontsize=7,frameon=False)
 # --- e) clamp = mañana
 ax=fig.add_subplot(gs[1,1])
-C=pd.read_csv("/mnt/user-data/outputs/new_datasets/time_calibration_vs_clamp.tsv",sep="\t",index_col=0)
+C=pd.read_csv(f"{OUT}/new/time_calibration_vs_clamp.tsv",sep="\t",index_col=0)
 gl=["NR1D1","DBP","CIART","PER1","PER3","TEF"]
 x=np.arange(len(gl)); w=.2
 for k,(c,col) in enumerate(zip(C.columns,[GREY,GREEN,"#999955",ORANGE])):

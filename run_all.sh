@@ -35,10 +35,13 @@ step "09 entrainment tongue sweep"           python python/model/make_tongue.py
 step "10 synthetic single-biopsy cohorts"    python python/model/make_fig7_data.py
 
 # --- figuras
-step "11 paper figures F1-F5"                python python/figures/paper_figures.py
+step "11 assemble the signature table"      python python/analyses/23_build_signatures_table.py
+step "12 HPO enrichment by tissue"          python python/analyses/09_hpo_by_tissue.py
+step "13 paper figures F1-F5"                python python/figures/paper_figures.py
 
 # --- verificacion
-step "12 smoke test"                         python tests/smoke_test.py
-step "13 verify the package"                 python tests/verify_package.py "$T2D_OUT"
+step "14 inputs have a producer"             python tests/verify_inputs.py
+step "15 smoke test"                         python tests/smoke_test.py
+step "16 verify the package"                 python tests/verify_package.py "$T2D_OUT"
 
 printf '\nDone. Results in %s, figures in %s/figs\n' "$T2D_OUT" "$T2D_OUT"

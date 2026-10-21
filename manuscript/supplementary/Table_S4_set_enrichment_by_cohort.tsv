@@ -1,0 +1,21 @@
+cohorte	tejido	conjunto	n_genes	z
+GSE25462 · músculo	músculo	Clock output	9	-5.919271433929678
+GSE25462 · músculo	músculo	Glucocorticoid	9	-0.9983473131850239
+GSE25462 · músculo	músculo	Insulin core	6	1.070694187802364
+GSE25462 · músculo	músculo	Oxidative	10	-2.9347605930757776
+GSE25462 · músculo	músculo	Core oscillator	5	1.2146912364974134
+GSE26637 · adiposo	adiposo	Clock output	9	-2.391624298615172
+GSE26637 · adiposo	adiposo	Glucocorticoid	9	0.1828468221010367
+GSE26637 · adiposo	adiposo	Insulin core	6	-0.8480160342805052
+GSE26637 · adiposo	adiposo	Oxidative	10	-0.7233792627157902
+GSE26637 · adiposo	adiposo	Core oscillator	5	-0.5671954958906074
+GSE78721 · adiposo	adiposo	Clock output	9	2.050934061231784
+GSE78721 · adiposo	adiposo	Glucocorticoid	9	3.31730002511802
+GSE78721 · adiposo	adiposo	Insulin core	6	0.7251448727740218
+GSE78721 · adiposo	adiposo	Oxidative	10	2.1177274585928063
+GSE78721 · adiposo	adiposo	Core oscillator	5	-0.0578402840634109
+GSE182120 · músculo	músculo	Clock output	9	-0.8373105255406258
+GSE182120 · músculo	músculo	Glucocorticoid	9	1.596407974281549
+GSE182120 · músculo	músculo	Insulin core	6	1.8810657991277304
+GSE182120 · músculo	músculo	Oxidative	10	-7.273947124928185
+GSE182120 · músculo	músculo	Core oscillator	5	0.5823584858432792

@@ -1,0 +1,9 @@
+gene_set	n_genes	genes	source
+Genetic	3	GSTM1; GSTT1; ERAP2	Genes silenced by common structural variants: whole-gene deletions of GSTM1 and GSTT1, and the haplotype silencing ERAP2 (Andres et al., PLoS Genet 2010, doi:10.1371/journal.pgen.1001157). Pre-specified as the primary genetic set.
+Sex	13	XIST; RPS4Y1; RPS4Y2; USP9Y; UTY; KDM5D; EIF1AY; ZFY; DDX3Y; TXLNGY; NLGN4Y; TMSB4Y; PRKY	Y-chromosome genes and XIST. Included because chromosomal sex is identical in every tissue of a person, so these genes set the ceiling of cross-tissue concordance. They also serve as the sample-pairing control (see qc_sex_pairing).
+HLA	9	HLA-A; HLA-B; HLA-C; HLA-DRB1; HLA-DQA1; HLA-DQB1; HLA-DPA1; HLA-DRB4; HLA-DRB5	HLA genes whose expression depends on haplotype, including haplotype-dependent gene presence (DRB4, DRB5). Kept separate from the deletion set: merging the two raises between-cohort heterogeneity from I2 = 0% to 89%.
+Clock output	9	DBP; PER1; PER2; PER3; NR1D1; NR1D2; CIART; TEF; HLF	Output arm of the circadian oscillator; PAR-bZIP factors and Rev-erb targets.
+Core oscillator	5	ARNTL; CLOCK; CRY1; CRY2; NPAS2	Core transcriptional-translational feedback loop.
+Glucocorticoid	9	FKBP5; TSC22D3; ZBTB16; KLF15; DDIT4; SESN1; GLUL; SGK1; CEBPD	Canonical glucocorticoid-receptor target genes.
+Insulin core	6	TXNIP; PDK4; HK2; IRS2; ANGPTL4; RRAD	Genes with the most consistent response to insulin in paired clamp biopsies.
+Oxidative	10	PPARGC1A; NDUFA4; NDUFB8; SDHB; UQCRC1; COX5A; ATP5F1A; CYCS; ESRRA; TFAM	PGC-1alpha-associated oxidative phosphorylation programme (Mootha 2003, Patti 2003).
