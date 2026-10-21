@@ -93,10 +93,8 @@ preprocessing decisions, is given in Supplementary Methods.
 
 ### 2.1 Cohorts and preprocessing
 
-Nineteen public transcriptomic series and GTEx v11 were used, covering skeletal muscle,
-subcutaneous and visceral adipose tissue, pancreatic islets and cultured myotubes from 2,900
-individuals. Supplementary Table S1 lists for each series the accession, tissue, platform, sample
-number and the role it plays in the analysis; two accessions are the two tissues of a single study
+Nineteen public transcriptomic series and GTEx v11 were used; Supplementary Table S1 lists the
+accession, tissue, platform, sample number and role of each. two accessions are the two tissues of a single study
 (GSE95674 and GSE95675, AAGMEx), while GSE182117 and GSE182120 are separate studies despite
 adjacent accessions. Microarray series were annotated by Entrez identifier rather than by the
 symbol supplied with the platform, because platform annotations age and 8.3% of GPL570 probes with a
@@ -143,9 +141,8 @@ direction of its own phase,
 *A*<sub>i</sub> = Σ<sub>g</sub> *z*<sub>ig</sub> (*a*<sub>g</sub> cos φ<sub>i</sub> + *b*<sub>g</sub> sin φ<sub>i</sub>) / √*G*   (1)
 
 where *G* is the number of clock genes measured and the normalisation by √*G* makes amplitudes
-comparable between platforms with different gene coverage. A sample whose clock genes sit near their cohort mean has an
-amplitude near zero whatever its phase. Because the projection is taken at the sample's own phase,
-amplitude is independent of phase by construction.
+comparable between platforms with different gene coverage. Because the projection is taken at the sample's own phase, amplitude is independent of phase by
+construction.
 
 Phase is assigned by the signed, not the absolute, projection. With a single harmonic the absolute
 value cannot distinguish phase from antiphase, and on real data that rule reassigns 34 to 36% of
@@ -156,18 +153,15 @@ external template, which resolves phase but degrades amplitude, and the *free* o
 which resolves amplitude but not period (Supplementary Fig. S2 and Supplementary Table S11).
 
 *Validation.* Measured amplitude, the reference, was obtained by cosinor regression[17] of
-each clock gene on recorded sampling time with a 24-h period, taking the modulus of the
-first-harmonic coefficients. Validation was leave-one-out at two levels: the retained sample was
-excluded from the cosinor fit of its own donor, and the whole donor was excluded from the ordering
-and from the template, so that nothing of the evaluated donor enters its own estimate
+each clock gene on recorded sampling time with a 24-h period, taking the modulus of the first-harmonic coefficients. Validation was leave-one-out at two levels: the retained sample was
+excluded from the cosinor fit of its own donor, and the whole donor from the ordering and the template
 (Supplementary Table S5).
 
 *Relation to published methods.* CHIRAL[18,19], CYCLOPS[20], ZeitZeiger[21] and
 TimeSignature[22] infer the circadian time of a single sample; none returns a per-sample amplitude,
-the quantity the analyses below require. Published phase inference was therefore used as a
-concordance control. Taking *R* = |mean<sub>i</sub> exp(i(φ<sub>muscle,i</sub> −
-φ<sub>adipose,i</sub>))|, the concentration of the muscle-to-adipose phase difference across
-donors, our estimator and CHIRAL both detect the coupling in the two cohorts with paired tissues
+the quantity the analyses below require. Published phase inference was therefore used as a concordance control. Taking *R* = |mean<sub>i</sub> exp(i(φ<sub>muscle,i</sub> −
+φ<sub>adipose,i</sub>))|, the concentration of the muscle-to-adipose phase difference across donors, our estimator and
+CHIRAL both detect the coupling in the two cohorts with paired tissues
 (*R* = 0.19 and 0.15 in AAGMEx, 232 donors; 0.46 and 0.29 in GTEx, 647 donors; all *P* ≤ 0.007),
 with the magnitude depending on the implementation (Supplementary Methods).
 
@@ -195,9 +189,8 @@ where *m*<sub>obs</sub> is the mean statistic of the genes
 in the set and *m*<sub>null</sub> and *s*<sub>null</sub> are the mean and standard deviation of the
 same quantity across 2,000 sets of equal size drawn at random from the genes measured in that
 cohort. Sampling from the measured universe rather than from a reference list keeps the null free of
-platform coverage. Collections were tested against a continuous ranking of all genes by their
-partial correlation with receptor level, rather than against a list of significant genes, so no
-significance threshold enters the enrichment (Supplementary Tables S4 and S12).
+platform coverage. Collections were tested against a continuous ranking of all genes by their partial correlation
+with receptor level, so no significance threshold enters the enrichment (Supplementary Tables S4 and S12).
 
 *Transcription-factor activity.* Regulons were taken from DoRothEA confidence levels A to C, which
 are the interactions supported by curated literature, ChIP-seq and binding motifs[26]. The
@@ -289,9 +282,14 @@ its donor at ρ = 0.28 in control and ρ = 0.34 in high-glucose conditions (P = 
 retained samples); averaging the eight independent out-of-sample inferences of each donor raised the
 agreement to ρ = 0.97 and 0.94 (Fig. 1f and Supplementary Table S5). In skeletal muscle *in vivo* (GSE129843), with six biopsies per person and condition,
 single-sample agreement was ρ = 0.17 (P = 0.067, 117 retained samples) and donor-averaged agreement
-ρ = 0.82 (P = 1.1 × 10⁻⁵, 20 series; Fig. 1g). Phase transferred between tissues: a template built
-in muscle predicted the recorded sampling time of adipose tissue under constant routine (GSE87761)
-to within 1.7 h (Supplementary Fig. S2 and Supplementary Table S5).
+ρ = 0.82 (P = 1.1 × 10⁻⁵, 20 series; Fig. 1g). A template built in muscle predicted the recorded sampling
+time of adipose tissue under constant routine (GSE87761) to within 1.7 h (Supplementary Fig. S2 and
+Supplementary Table S5).
+
+Inferred amplitude also reproduces an externally published effect: in a controlled 10-h delay of
+the habitual sleep period (GSE107537)[42], it fell in all eight participants, by a median of 29%
+(P = 0.008; Fig. 1k), while phase moved by 0.6 h — the published finding for that cohort is dampened rhythms
+at a phase that follows habitual bedtime rather than the shifted schedule.
 
 The cohorts analysed below contribute one sample per person, so the single-sample figure is the one
 that applies to them. Per-person amplitude is an attenuated measure, and the correlations reported
@@ -457,7 +455,7 @@ rises with adiposity while the receptor falls, and it is the receptor, not the e
 clock output (Fig. 4d,e). Where the limiting term is receptor availability, lowering the ligand
 cannot restore the rhythmic signal, which would account for the modest glycaemic effect of these
 compounds. The prediction is specific and testable in material that already exists: in trials of
-11β-HSD1 inhibition with banked adipose tissue[42,43], the response should be graded by the
+11β-HSD1 inhibition with banked adipose tissue[43,44], the response should be graded by the
 effective glucocorticoid signal of the tissue at baseline, estimated from receptor level together
 with the clock-output score, rather than by diagnostic category or by circulating cortisol. A null
 association between baseline receptor level and response would argue against the interpretation
@@ -536,8 +534,9 @@ access to the data used in this work.
 39\. Morgan SA, McCabe EL, Gathercole LL, et al. 11β-HSD1 is the major regulator of the tissue-specific effects of circulating glucocorticoid excess. Proc Natl Acad Sci U S A 2014;111:E2482–91.
 40\. Masuzaki H, Paterson J, Shinyama H, et al. A transgenic model of visceral obesity and the metabolic syndrome. Science 2001;294:2166–70.
 41\. Lee RA, Harris CA, Wang JC. Glucocorticoid receptor and adipocyte biology. Nucl Receptor Res 2018;5:101373.
-42\. Othonos N, Pofi R, Arvaniti A, et al. 11β-HSD1 inhibition in men mitigates prednisolone-induced adverse effects in a proof-of-concept randomised double-blind placebo-controlled trial. Nat Commun 2023;14:1025.
-43\. Ajjan RA, Hensor EMA, Del Galdo F, et al. Oral 11β-HSD1 inhibitor AZD4017 improves wound healing and skin integrity in adults with type 2 diabetes mellitus: a pilot randomized controlled trial. Eur J Endocrinol 2022;186:441–55.
+42\. Kervezee L, Cuesta M, Cermakian N, Boivin DB. Simulated night shift work induces circadian misalignment of the human peripheral blood mononuclear cell transcriptome. Proc Natl Acad Sci U S A 2018;115:5540-5. https://doi.org/10.1073/pnas.1720719115.
+43\. Othonos N, Pofi R, Arvaniti A, et al. 11β-HSD1 inhibition in men mitigates prednisolone-induced adverse effects in a proof-of-concept randomised double-blind placebo-controlled trial. Nat Commun 2023;14:1025.
+44\. Ajjan RA, Hensor EMA, Del Galdo F, et al. Oral 11β-HSD1 inhibitor AZD4017 improves wound healing and skin integrity in adults with type 2 diabetes mellitus: a pilot randomized controlled trial. Eur J Endocrinol 2022;186:441–55.
 
 ## Declarations
 
@@ -596,7 +595,9 @@ amplitude. **F**, Inferred against cosinor-measured amplitude in synchronised hu
 time-restricted feeding). **H**, Clock-output score per person, control (squares) against case
 (circles); bars, medians; *P*, Mann–Whitney. **I**, Distribution of uncorrected *P* across all genes
 in three cohorts. **J**, Spearman correlation between NR3C1 and the clock-output score across
-individuals of the same cohorts; bars, 95% CI; marker size, *n*. Dashed lines in **F**, **G** are least-squares fits. Expression is centred per sample throughout.
+individuals of the same cohorts; bars, 95% CI; marker size, *n*. **K**, Cosinor amplitude of the clock-output genes in each
+participant before and after a controlled 10-h delay of the habitual sleep period (GSE107537); one
+line per participant. Dashed lines in **F**, **G** are least-squares fits. Expression is centred per sample throughout.
 
 ![](figs/F2.png)
 

@@ -9,6 +9,11 @@ GSE11868, GSE13070, GSE17992, GSE25462, GSE26637, GSE41168, GSE66446, GSE78721, 
 GSE95674, GSE95675, GSE104674, GSE107537, GSE108539, GSE129843, GSE148640, GSE159984, GSE182117,
 GSE182120.
 
+GSE107537 is the external control for the estimator: a controlled 10-h delay of the habitual sleep
+period with recorded sampling times, whose published result is dampened amplitude at a preserved
+phase. Its platform annotation (GPL24324) is needed to resolve transcript cluster identifiers to
+gene symbols.
+
 GSE95674 and GSE95675 are the two tissues of one study (AAGMEx). GSE182117 and GSE182120 are
 separate studies despite adjacent accessions.
 
