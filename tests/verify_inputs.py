@@ -34,7 +34,7 @@ def main():
     produced_by_prepare = lambda b: b.endswith(".pkl") and (b.startswith(("GTEx_", "GSE", "AAGMEx")))
     # descargas publicas que lista 00_prepare_data.py y el usuario coloca en data/raw
     external = lambda b: ("GRCh38" in b or b.startswith("GTEx_Analysis") or b.endswith(".gct")
-                          or b.startswith("GSE") and "raw_counts" in b or b in {".gct"})
+                          or b.startswith("GSE") and "raw_counts" in b or b in {".gct", "dorothea_ABC.tsv"})
     missing = {b: v for b, v in reads.items()
                if b not in writes and b not in versioned and b not in raw
                and not produced_by_prepare(b) and not external(b)}

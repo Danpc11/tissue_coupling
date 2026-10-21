@@ -1,194 +1,63 @@
-# Glucocorticoid tone, not insulin, sets circadian output in human metabolic tissues
+# Glucocorticoid signalling tracks circadian output across human metabolic tissues
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
-[![Tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
-[![Browser tool](https://img.shields.io/badge/Phase%20estimator-live-4285F4?logo=googlechrome&logoColor=white)](https://danpc11.github.io/tissue_coupling/)
-[![DOI](https://img.shields.io/badge/DOI-pending-lightgrey)](https://zenodo.org/)
-![License](https://img.shields.io/badge/License-MIT-green)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23379059.svg)](https://doi.org/10.5281/zenodo.23379059)
+[![tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Analysis code for the manuscript *Glucocorticoid tone, not insulin, sets circadian output in human
-metabolic tissues*. Everything reported in the paper is produced by `run_all.sh` from public data.
+Code and data for the manuscript. Everything in the paper is produced by `run_all.sh` from
+public data.
 
-## What the analysis asks
+## What the paper shows
 
-The peripheral circadian clock is disrupted in diabetes, but which signal sets it? We infer
-circadian phase and amplitude from single transcriptomic samples across six cohorts and four
-metabolic tissues, validate the inference against time series from the same individuals, and ask
-what the clock follows.
-
-The answer is the glucocorticoid axis, not insulin. Three hours of hyperinsulinaemic clamp produce
-the same transcriptional change as three hours of morning; a physiological dose of hydrocortisone
-against placebo at the same time of day moves PER1 and PER3 in every participant. Across 13
-cohort-tissue estimates, the level of the glucocorticoid receptor predicts clock output
-(pooled rho 0.43), and the relationship is a property of the individual: the receptor in one tissue
-predicts the clock in another as well as its own.
-
-A forced-oscillator model ties the three clinical situations together. The effective forcing on the
-peripheral clock is the product of the amplitude of the cortisol rhythm and the availability of the
-receptor, so a flattened rhythm (obesity), sustained exposure (Cushing, hydrocortisone) and reduced
-receptor (adiposity) all lower the same product and produce the same signature.
+The circadian clock of peripheral tissues is disrupted in obesity and type 2 diabetes, but the
+signal that sets it in humans is unknown. Across 13 cohort–tissue estimates from four tissue
+types, the level of the glucocorticoid receptor (NR3C1) predicts the output arm of the clock
+(pooled ρ = 0.45, 95% CI 0.31–0.58). Three hours of hyperinsulinaemic clamp reproduce the
+transcriptional change of three hours of morning, whereas hydrocortisone against placebo at the
+same hour of day moves PER1 in every participant, in the direction opposite to insulin. A
+forced-oscillator model in which the effective forcing is the product of the cortisol rhythm and
+receptor availability reproduces the signature with no fitted parameter.
 
 ## Reproducing the results
 
 ```bash
-python python/analyses/00_prepare_data.py     # lists what to download and from where
-bash run_all.sh                               # runs everything, builds the figures, verifies
+pip install -r requirements.txt        # or requirements-lock.txt for exact versions
+# place the public downloads listed in docs/DATA.md under data/raw/
+bash run_all.sh
 ```
 
-`run_all.sh` runs the analyses in order, then the forced-oscillator model (about five minutes; the
-sweep and the synthetic cohorts are cached), then the five manuscript figures, then the
-verification step. Four panels are left as labelled empty frames: the schematics are drawn by hand,
-because AI-generated images are not accepted by the publishers.
+`run_all.sh` runs 29 steps in order, grouped by the figure they feed, and ends with three checks:
+that every input a figure reads is produced by the pipeline or versioned in `data/reference/`,
+a smoke test, and a verification of the output package. Figures land in `results/figs` and tables
+in `results/new`.
+
+Analyses use Python 3.9 or later; stochastic routines use NumPy `default_rng` with seed 0.
+Continuous integration runs on 3.11.
 
 ## Layout
 
-```
-python/analyses/   00-08, numbered in the order run_all.sh runs them
-python/lib/        phase inference, gene sets, platform annotation, coupling statistics
-python/model/      forced Poincare oscillator and synthetic single-biopsy cohorts
-python/figures/    paper_figures.py builds F1-F5; the rest are diagnostics
-tests/             smoke test and package verification
-docs/              browser-based phase estimator
-```
+| path | contents |
+|---|---|
+| `python/analyses/` | the analysis steps, numbered in execution order |
+| `python/model/` | the forced-oscillator model and the data it generates |
+| `python/figures/` | the five main figures and the seven supplementary figures |
+| `python/lib/gene_sets.py` | the single definition of every gene set used anywhere |
+| `data/reference/` | inputs that are not regenerated here, and why (`docs/DATA.md`) |
+| `tests/` | syntax, dependency chain, smoke test, package verification |
+| `manuscript/` | the manuscript and its supplementary information |
 
-GEO and GTEx require accepting their terms, so the data are not redistributed here and are not
-downloaded automatically. `00_prepare_data.py` prints exactly which files are needed and whether
-each is present.
+## Two conventions worth knowing before reading the code
 
-```
-python/
-  lib/gene_sets.py    single registry of every gene set, with sources and a synonym table
-  lib/phase.py        circadian phase from a single sample, with its three controls
-  lib/within_person_coupling.py  coupling measured inside each individual, with genes rather
-                      than people as the unit of information
-  lib/coupling_stats.py  distribution of individual coupling: shape, group contrasts that test
-                      the whole distribution rather than its centre, measurement-error
-                      deconvolution, and power
-  analyses/04_perturbations.py  response of phase and amplitude to a circadian perturbation, an
-                      acute insulin clamp and sustained sensitisation
-  lib/chiral_backend.py  wrapper for CHIRAL (scRITMO), used to reproduce the estimate with an
-                      external published method
-  lib/enrichment.py   set-level enrichment against matched null models
-  analyses/00..03     the five steps, in order; 02b fits the phase template from cohorts with
-                      known sampling times, which step 03 needs to anchor the period
-  figures/            journal style (journal.mplstyle) and helpers (paper_style.py); figures are
-                      built from the result tables, so they can be regenerated without rerunning
-                      the analysis
-tests/verify_package.py   coherence check over the whole result set
-```
+**Gene sets live in one place.** `python/lib/gene_sets.py` is the only definition; scripts and
+supplementary tables import from it and never redefine a list in place. The clock-output set is
+the output arm and excludes the core negative-feedback components, which are scored separately.
 
-## Three design decisions worth knowing before you read the code
-
-**Gene sets live in one place.** `python/lib/gene_sets.py` is imported by every script and by the
-supplementary tables, so code and tables cannot diverge. It carries a synonym table because
-deposited matrices keep the annotation of their platform: four genes were wrongly declared absent
-until we resolved current HGNC symbols against a 2010 array, which moved the sex component from
-0.559 to 0.590.
-
-**Two null models, both reported.** Random sets matched for size, and random sets additionally
-matched on expression level and variability. They disagree for the glucocorticoid and insulin sets,
-and we report both rather than the favourable one. Highly expressed and variable genes are better
-measured and therefore correlate better between tissues; the matched null removes that advantage and
-some real signal with it.
-
-**Phase is a pseudo-quantification.** The ordering defines phase only up to rotation and reflection,
-so absolute hours are not interpretable and values are not comparable between cohorts with different
-sampling windows. All comparisons use rotation-invariant statistics, and two orderings are aligned
-before being compared — omitting that step inflates the error estimate fivefold and makes it exceed
-the signal.
-
-**Phase and amplitude need different procedures.** Free ordering fits the waveform to the data, so
-the projection basis is the tissue's own and amplitude is well estimated (stable at 0.30–0.37 across
-template sizes), but phase is left subject to period ambiguity (0.21–0.62). Anchoring the period to
-a template from a cohort with known sampling times fixes phase (0.32–0.47) but projects amplitude
-onto a waveform that is not the tissue's (0.07–0.38). `phase.py` provides both and the module header
-states which to use for what. Using one method for both quantities gets one of them wrong.
-
-The anchored template is the 60 most rhythmic annotated genes, which is the configuration behind the
-published figures (`T2D_N_TEMPLATE` changes it). The size is not an implementation detail: the
-estimate is stable between 0.32 and 0.47 for templates of 13 to 200 genes, but 13 leaves residual
-period ambiguity and the full multi-thousand-gene template does not reproduce the published values.
-
-**Coupling can be measured inside one person.** The usual statistic is the concentration of the
-phase difference across individuals, so its unit is the person and its power depends on n. An
-alternative uses the gene as the unit: fit the template to each tissue of one individual, keep the
-per-gene residuals, and ask whether the two organs share their distortion. In GTEx this gives a
-median of 0.486 against a cross-person null of 0.196, is stable between 212 and 4603 genes, has a
-split-half reliability of 0.738 across people, and shows no association with RNA integrity,
-ischaemic time or death circumstance. The contrast is against the cross-person null, never zero:
-two unrelated people share the same template, which alone produces the 0.196 background.
-
-A residual check, `double_angle`, detects whether period ambiguity survives: a free ordering of
-muscle and adipose tissue gives 0.221 on the double angle, the signature of an axial relationship,
-which falls to 0.056 once the period is anchored.
-
-## The verification step is not optional
-
-`tests/verify_package.py` checks that every result file declares its cohort and platform, that
-identifiers match that platform, that declared set sizes match the registry, that the pooled
-meta-analysis reproduces from the per-cohort exports, that Benjamini–Hochberg values are correct and
-monotone, and that all files come from one run. It exists because these checks caught real errors:
-
-- a supplementary table drawn from the wrong cohort (Affymetrix probes labelled as the Illumina cohort)
-- a cross-tissue prediction inflated by the same genes appearing on both sides (R² 0.14 → 0.47)
-- four genes wrongly declared absent through symbol drift
-- an apparent treatment effect that random non-rhythmic gene sets reproduced (P = 0.408)
-- a phase-coupling estimate of 0.061 that was an artefact of period ambiguity; with the period
-  anchored the same pair gives 0.327
-
-A fifth check lives in `phase.is_clock`: the recovered cycle must reproduce the canonical BMAL1–DBP
-antiphase. Blood, hypothalamus and cerebral cortex fail it. Without that filter blood would have been
-reported as the best-coupled tissue, which is the opposite of what it is.
-
-## Browser tool
-
-`docs/` holds a static page, served by GitHub Pages at
-https://danpc11.github.io/tissue_coupling/, that runs the phase estimator on a pasted expression
-matrix. It is a JavaScript port of `python/lib/phase.py`, so the computation happens entirely in the
-browser and no data is uploaded — which matters if you want to try it on a clinical cohort of your
-own. Paste one matrix for phase and amplitude per individual; paste a second tissue from the same
-people for the coupling estimate.
-
-The page carries the same validation and the same two-method split as the library: phase with the
-period anchored, amplitude with free ordering, the BMAL1–DBP check, and the double-angle statistic
-that flags residual period ambiguity. It says plainly when the recovered cycle is not the clock,
-rather than returning phases that look like results. It also states, where a reader will see it, that absolute clock time is not recoverable and
-that values are not comparable between datasets with different sampling windows.
-
-To enable it: repository Settings → Pages → Source: *Deploy from a branch*, branch `main`,
-folder `/docs`.
-
-`docs/.nojekyll` is required and must not be deleted. Without it GitHub Pages runs the files
-through Jekyll, which loads its default theme, tries to generate `assets/css/style.scss` and fails
-with `No such file or directory @ dir_chdir0`. The page is plain HTML and needs no build step.
-
-## Relation to the earlier repository
-
-This repository supersedes `Danpc11/t2d_landscape`, which contains the earlier analysis of
-directional coherence in the muscle response to insulin. That hypothesis depended entirely on one
-cohort and did not replicate; it is retained there as a record of what was tried and withdrawn.
+**Expression is centred per sample for scores, and not for group differences.** Centring removes
+a common component that otherwise inflates every correlation in RNA-seq (the median correlation of
+a random gene with the clock-output score is 0.44 rather than zero without it). The signature table
+compares differences between groups and is built without centring. Mixing the two conventions
+changes results.
 
 ## Citation
 
-[Manuscript reference and archived DOI to be added on acceptance.]
-
-## Licence
-
-See `LICENSE`.
-
-
-## What the perturbation analysis found
-
-Three perturbations move different components, which is the result the two-component decomposition
-was built to detect:
-
-| Perturbation | Phase | Amplitude |
-|---|---|---|
-| 10 h sleep delay (blood, n = 8) | unchanged | −19 %, in all subjects |
-| Insulin clamp (muscle, n = 68) | concentrates | unchanged |
-| Thiazolidinedione (both tissues) | unchanged | converges between groups |
-
-Two cautions carried in the code. Changes in amplitude are reported as absolute differences, never
-as ratios: with a small baseline the ratio explodes and correlates spuriously with the baseline
-value. And the fit-range filter is fixed by rule rather than by result, with the effect checked
-across ranges including no filter at all.
+See `CITATION.cff`. The archived release is doi:10.5281/zenodo.23379059.

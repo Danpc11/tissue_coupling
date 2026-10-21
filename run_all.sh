@@ -1,48 +1,65 @@
 #!/usr/bin/env bash
-# Reproduce todos los numeros del articulo, en orden, desde datos publicos.
+# Reproduce every result and figure of
+#   "Glucocorticoid signalling tracks circadian output across human metabolic tissues"
+# from public data. Steps run in order; each writes what the next one reads.
 #
 #   bash run_all.sh
 #
-# Variables: T2D_RAW (datos crudos, por defecto data/raw)
-#            T2D_OUT (resultados, por defecto results)
-#            T2D_BOOT, T2D_PERM (remuestreos; bajarlos acelera a costa de precision)
-#
-# El paso de verificacion NO es opcional: verify_package comprueba que los resultados son
-# coherentes entre si y proceden de una sola corrida. Un paquete que no lo pase no se reporta.
+# Expects the public downloads listed in docs/DATA.md under data/raw/, and the GTEx v11
+# annotation files for the GTEx steps. Everything else is produced here or versioned in
+# data/reference/ (see docs/DATA.md for why).
 set -euo pipefail
 export T2D_RAW="${T2D_RAW:-data/raw}"
 export T2D_OUT="${T2D_OUT:-results}"
-mkdir -p "$T2D_OUT" "$T2D_OUT/new" "$T2D_OUT/figs"
+export T2D_REF="${T2D_REF:-data/reference}"
+mkdir -p "$T2D_OUT/new" "$T2D_OUT/figs"
 step () { printf '\n=== %s\n' "$1"; shift; "$@"; }
 
-# --- datos y analisis base
-step "00 every script compiles"             python tests/test_syntax.py
-step "01 download and prepare public data"   python python/analyses/00_prepare_data.py
-step "02 cross-tissue concordance"           python python/analyses/01_crosstissue_axis.py
-step "01b conventional differential expression (Fig. 1)" python python/analyses/01b_fig1_signature_test.py
-step "03 meta-analysis and validation"       python python/analyses/02_meta_and_validation.py
-step "02b phase template (known times)"      python python/analyses/02b_phase_template.py
-step "04 circadian phase and coupling"       python python/analyses/03_phase_coupling.py
-step "05 perturbation response"              python python/analyses/04_perturbations.py
-step "06 within-person clamp and TZD"        python python/analyses/05_clamp_within_person.py
+step "00 every script compiles"                python tests/test_syntax.py
 
-# --- eje receptor-reloj (v1.1)
-step "07 random-effects meta-analysis"       python python/analyses/06_meta_analysis.py
-step "08 TF activity (DoRothEA A-C)"         python python/analyses/07_tf_activity.py
-step "09 GTEx adjusted for ischaemia and RIN" python python/analyses/08_gtex_adjusted.py
+# --- data ------------------------------------------------------------------------------
+step "01 prepare the public series"            python python/analyses/00_prepare_data.py
 
-# --- modelo de oscilador forzado (lento: ~5 min, cachea)
-step "10 entrainment tongue sweep"           python python/model/make_tongue.py
-step "11 synthetic single-biopsy cohorts"    python python/model/make_fig7_data.py
+# --- the estimator and its validation (Fig. 1) -------------------------------------------
+step "02 phase and amplitude template"         python python/analyses/02b_phase_template.py
+step "03 case-control analysis, Fig. 1b-d"     python python/analyses/01b_fig1_signature_test.py
+step "04 leave-one-out, myotubes"              python python/analyses/11_loo_validation_myotubes.py
+step "05 leave-one-out, muscle in vivo"        python python/analyses/12_loo_validation_invivo.py
+step "06 phase concordance with CHIRAL"        python python/analyses/17_chiral_concordance.py
 
-# --- figuras
-step "12 assemble the signature table"      python python/analyses/23_build_signatures_table.py
-step "13 HPO enrichment by tissue"          python python/analyses/09_hpo_by_tissue.py
-step "14 paper figures F1-F5"                python python/figures/paper_figures.py
+# --- the receptor-clock axis (Fig. 2) -----------------------------------------------------
+step "07 cross-tissue axis"                    python python/analyses/01_crosstissue_axis.py
+step "08 GTEx adjusted for ischaemia and RIN"  python python/analyses/08_gtex_adjusted.py
+step "09 meta-analysis, two-level"             python python/analyses/06_meta_analysis.py
+step "10 meta-analysis, three-level"           python python/analyses/13_meta_three_level.py
+step "11 heterogeneity moderators"             python python/analyses/25_meta_moderators.py
+step "12 sensitivity to principal components"  python python/analyses/22_pc_sensitivity_core.py
 
-# --- verificacion
-step "15 inputs have a producer"             python tests/verify_inputs.py
-step "16 smoke test"                         python tests/smoke_test.py
-step "17 verify the package"                 python tests/verify_package.py "$T2D_OUT"
+# --- perturbations (Fig. 3) ----------------------------------------------------------------
+step "13 within-person clamp and TZD"          python python/analyses/05_clamp_within_person.py
+step "14 hydrocortisone, dexamethasone, Cushing" python python/analyses/04_perturbations.py
+step "15 assemble the signature table"         python python/analyses/23_build_signatures_table.py
 
-printf '\nDone. Results in %s, figures in %s/figs\n' "$T2D_OUT" "$T2D_OUT"
+# --- transcriptional context (Fig. 4) --------------------------------------------------------
+step "16 transcription-factor activity"        python python/analyses/07_tf_activity.py
+step "17 phenotype ontology by tissue"         python python/analyses/09_hpo_by_tissue.py
+
+# --- the model and its prediction (Fig. 5) -----------------------------------------------------
+step "18 entrainment tongue"                   python python/model/make_tongue.py
+step "19 synthetic single-biopsy cohorts"      python python/model/make_fig7_data.py
+step "20 amplitude dispersion"                 python python/analyses/10_amplitude_dispersion.py
+step "21 estimator noise by group"             python python/analyses/15_dispersion_noise_by_group.py
+
+# --- figures ------------------------------------------------------------------------------------
+step "22 Figures 1, 3 and 4"                   python python/figures/paper_figures.py
+step "23 Figure 2"                             python python/figures/fig3_eje.py
+step "24 Figure 5"                             python python/figures/fig7_modelo.py
+step "25 Supplementary Figures S1-S3, S5-S7"   python python/figures/supplementary_figures.py
+step "26 Supplementary Figure S4"              python python/figures/ed4_gc_architecture.py
+
+# --- checks ---------------------------------------------------------------------------------------
+step "27 every figure input has a producer"    python tests/verify_inputs.py
+step "28 smoke test"                           python tests/smoke_test.py
+step "29 verify the package"                   python tests/verify_package.py "$T2D_OUT"
+
+printf '\nDone. Figures in %s/figs, tables in %s/new.\n' "$T2D_OUT" "$T2D_OUT"
