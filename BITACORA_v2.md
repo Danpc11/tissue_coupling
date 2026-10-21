@@ -2682,3 +2682,39 @@ revisión externa.**
 paso que ensambla la tabla con los cuatro procedimientos documentados arriba, conectarlo en
 `run_all.sh` antes del paso de figuras, extender `verify_package.py` para que compruebe la
 existencia de cada entrada de cada figura, y rearchivar en Zenodo.
+
+---
+
+## 66. CICLO DE AGENTES SOBRE EL REPOSITORIO: PUNTO 1 CERRADO
+
+**66.1 Agente 11 (código).** Escrito `23_build_signatures_table.py`, el paso que faltaba. Regenera
+tres de las cuatro columnas desde los datos públicos con los procedimientos documentados en §65 y
+arrastra el resto de la referencia versionada. Conectado en `run_all.sh` como paso 11, antes de las
+figuras.
+
+**66.2 Agente 12 (auditor).** Tres hallazgos resueltos:
+- Las rutas absolutas de `fig6_mecanismo.py`, sustituidas por `T2D_OUT`.
+- `make_figures.py` archivado en `_legacy/`: generaba las figuras del envío anterior y leía cuatro
+  ficheros que ya no produce nadie.
+- Escrito `tests/verify_inputs.py`, que comprueba que **cada fichero que lee una figura lo produce
+  el repositorio, está versionado o es una descarga pública declarada**. Pasa de 62 entradas sin
+  productor a **cero**. Es el test que habría detectado el fallo original.
+
+**66.3 Agente 13 (coherencia código-manuscrito).** El script **verifica cada columna regenerada
+contra la referencia y aborta si discrepa**: TZD r = 1,0000, Cushing r = 1,0000, hidrocortisona
+r = 0,9833. Las cuatro cifras del manuscrito se reproducen: ρ 0,71 con hidrocortisona, 0,55 con
+Cushing, −0,02 con TZD, pendiente +0,004 y 4,4 % de fracción recuperada.
+
+**66.4 Agente 14 (consistencia).** Declarado en el manuscrito lo que el código hace: Métodos 2.4
+explica por qué el contraste 35 contra 6 se excluye de la Fig. 1 y se usa solo para definir un
+perfil, y Métodos 2.8 dice que esa columna es entrada versionada y que un test comprueba la cadena.
+**Se retira así la afirmación de que todo se regenera con un script, que era falsa.**
+
+**66.5 Agente 15 (revisor final).** Figuras regeneradas, smoke test correcto, los cinco agentes
+mecánicos sin hallazgos, cuerpo en 4.996 palabras tras los recortes que exigieron los dos párrafos
+nuevos. Paquete `tissue_coupling-v1.2.0.zip`.
+
+**66.6 Lo que el paquete NO resuelve y hay que decir al rearchivar:** la columna del contraste
+desbalanceado no se regenera; va versionada y declarada. Y el DOI de Zenodo del manuscrito apunta
+a la versión anterior: **hay que rearchivar y actualizar el DOI en Métodos 2.8 y en Code
+availability antes de enviar.**
