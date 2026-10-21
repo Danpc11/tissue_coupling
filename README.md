@@ -1,4 +1,4 @@
-# Glucocorticoid tone, not insulin, sets circadian output in human metabolic tissues
+# Glucocorticoid signalling tracks circadian output across human metabolic tissues
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 [![Tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
