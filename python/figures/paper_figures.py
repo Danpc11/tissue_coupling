@@ -195,7 +195,7 @@ def fig1():
         ax.plot([lo.iloc[i], hi.iloc[i]], [i, i], color=c, lw=1.4)
         ax.scatter(r.rho, i, s=18 + r.n / 4, color=c, zorder=3)
     ax.axvline(0, color="k", lw=.8); ax.set_yticks(range(len(s2)))
-    ax.set_yticklabels([f"{r.cohorte} · {r.tejido.replace('m\u00fasculo','muscle').replace('adiposo','adipose')}  (n = {int(r.n)})"
+    ax.set_yticklabels([f"{r.cohorte} · {r.tejido.replace('músculo','muscle').replace('adiposo','adipose')}  (n = {int(r.n)})"
                         for _, r in s2.iterrows()], fontsize=6.5)
     ax.set_xlabel("\u03c1  receptor ~ clock output"); ax.set_xlim(-.05, .8); ax.set_ylim(-.6, len(s2) - .4)
     src(ax, "NR3C1 vs clock-output score, across individuals; 95% CI")
