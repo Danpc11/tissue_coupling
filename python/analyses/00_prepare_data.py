@@ -29,15 +29,13 @@ GEO = {
     # --- plantilla de fase: cohortes con hora de muestreo conocida ---
     "GSE108539": "serial vastus lateralis biopsies every 4 h over 24 h, n = 10 (phase template)",
     "GSE104674": "adipose tissue at four circadian times, n = 12 (phase reference)",
+    "GSE107537":  "10 h sleep delay under controlled laboratory conditions, blood (external control for the estimator)",
     # --- validacion farmacologica ---
     "GSE148640": "hydrocortisone vs placebo in adipose tissue, within-person, n = 10",
     # --- definicion del nucleo de respuesta a la insulina ---
-    "GSE22309":  "paired muscle biopsies, hyperinsulinaemic clamp",
     "GSE13070":  "paired muscle and adipose, clamp, Rd-defined groups",
     # --- expresion diferencial clasica (Fig. 1) ---
     "GSE182120": "muscle, NGT vs type 2 diabetes",
-    "GSE164416": "pancreatic islets, living donors",
-    "GSE50244":  "pancreatic islets, HbA1c",
     "GSE25462":  "muscle, family history of type 2 diabetes",
     "GSE159984": "pancreatic islets, 27 T2D / 58 non-diabetic donors + 45 cultured preparations",
     "GSE78721":  "adipose, limb, 68 type 2 diabetes vs 62 normal (Affymetrix PrimeView)",
@@ -66,19 +64,24 @@ ANNOT = {
 }
 
 def report():
+    missing = 0
     print("Datos requeridos\n")
     print("GEO (https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=<accession>):")
     for a, d in GEO.items():
         p = os.path.join(RAW, f"{a}_series_matrix.txt.gz")
-        print(f"  [{'presente' if os.path.exists(p) else 'FALTA   '}] {a}  {d}")
+        ok = os.path.exists(p); missing += 0 if ok else 1
+        print(f"  [{'presente' if ok else 'FALTA   '}] {a}  {d}")
     print(f"\nGTEx: {GTEX}")
     for f in ("GTEx_Analysis_v11_Annotations_SubjectPhenotypesDS.txt",
               "GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt"):
         p = os.path.join(RAW, f)
-        print(f"  [{'presente' if os.path.exists(p) else 'FALTA   '}] {f}")
+        ok = os.path.exists(p); missing += 0 if ok else 1
+        print(f"  [{'presente' if ok else 'FALTA   '}] {f}")
     print("\nLos ficheros que falten deben descargarse manualmente: GEO y GTEx requieren")
     print("aceptar sus terminos, de modo que este script no los descarga por ti.")
+    return missing
 
 if __name__ == "__main__":
     os.makedirs(RAW, exist_ok=True); os.makedirs(OUT, exist_ok=True)
-    report()
+    if report():
+        raise SystemExit(1)
