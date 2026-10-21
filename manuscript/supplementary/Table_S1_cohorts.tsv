@@ -1,0 +1,21 @@
+Accession	Description	Tissue	Platform	Samples	Role in the analysis
+GSE95674	AAGMEx adipose	adipose	Illumina HumanHT-12 v4	256.0	paired tissues, large n
+GSE95675	AAGMEx muscle	muscle	Illumina HumanHT-12 v4	255.0	paired tissues, large n
+GSE41168	Paired muscle and adipose, 28 women	muscle; adipose	Affymetrix U133 Plus 2.0	56.0	paired tissues, replication
+GSE13070	Clamp and thiazolidinedione	muscle; adipose	Affymetrix U133 Plus 2.0	274.0	within-person perturbation
+GSE26637	Fasting and hyperinsulinaemia, same 10 people	adipose	Affymetrix U133 Plus 2.0	20.0	within-person clamp
+GSE11868	3 h clamp, 6 lean men	muscle	two-colour array	12.0	clamp duration
+GSE148640	Hydrocortisone vs placebo, both biopsies at 07:00	adipose	Affymetrix HuGene 2.0	20.0	time-matched perturbation
+GSE17992	Dexamethasone, 4 days	muscle; adipose	Agilent two-colour	28.0	sustained glucocorticoid
+GSE66446	Cushing syndrome	adipose	RNA-seq	16.0	endogenous glucocorticoid excess
+GSE25462	Family history of type 2 diabetes	muscle	Affymetrix U133 Plus 2.0	50.0	disease contrast; SI available
+GSE182120	Type 2 diabetes vs NGT	muscle	Affymetrix HTA 2.0	49.0	disease contrast; clamp M value
+GSE78721	Type 2 diabetes vs normal	adipose (limb)	Affymetrix PrimeView	130.0	disease contrast, large n
+GSE159984	Pancreatic islets, donors and cultures	islets	RNA-seq	130.0	third tissue; cultured controls
+GSE108539	Serial biopsies every 4 h over 24 h	muscle	array	60.0	recorded sampling times
+GSE107537	Controlled sleep delay	muscle	array		recorded sampling times
+GSE104674	Adipose at four circadian times	adipose	array	48.0	recorded sampling times
+GSE87761	Constant routine, 7 men	adipose	Agilent GPL15331	35.0	recorded sampling times
+GSE129843	6 biopsies per person and condition	muscle	RNA-seq	132.0	measured amplitude
+GSE182117	Synchronised myotubes, 8 time points	myotubes	RNA-seq	176.0	measured amplitude
+GTEx v11	Multi-tissue post-mortem	adipose sc; adipose visceral; muscle	RNA-seq	2119.0	large n, several tissues per donor

@@ -5,11 +5,13 @@ genes del reloj se excluyen de cada regulon antes de correlacionar con la salida
 si no el resultado es circular.
 Salidas: results/new/AAGMEx_TF_activity_vs_clock.tsv, NR3C1_activity_vs_mRNA.tsv
 """
+import os
 import pandas as pd, numpy as np, sys, gzip, warnings
 warnings.filterwarnings("ignore")
 from scipy import stats
 sys.path.insert(0,"python/lib"); from gene_sets import SETS, resolve
-d=pd.read_csv("data/raw/dorothea_ABC.tsv",sep="\t",low_memory=False,usecols=["source_genesymbol","target_genesymbol","is_stimulation","is_inhibition","dorothea_level"])
+RAW=os.environ.get("T2D_RAW","data/raw")
+d=pd.read_csv(f"{RAW}/dorothea_ABC.tsv",sep="\t",low_memory=False,usecols=["source_genesymbol","target_genesymbol","is_stimulation","is_inhibition","dorothea_level"])
 d["mor"]=np.where(d.is_stimulation&~d.is_inhibition,1,np.where(d.is_inhibition&~d.is_stimulation,-1,0))
 d=d[d.mor!=0].drop_duplicates(["source_genesymbol","target_genesymbol"])
 CL=set(SETS["Clock output"]["genes"])|set(SETS["Core oscillator"]["genes"])|{"PER1","PER2","PER3","CIART","ARNTL","BMAL1"}

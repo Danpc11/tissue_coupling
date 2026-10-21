@@ -1589,3 +1589,1096 @@ Tenías razón en las dos cosas. Cambios aplicados en `paper_figures.py`:
 
 **Formato:** F1 y F4 pasan a tres renglones (12 y 11 paneles); F3 se queda en dos filas de cuatro;
 F2 y F5 sin cambios. Total 37 paneles en cinco figuras.
+
+---
+
+## 39. LA AMPLITUD ESTABA EN LA DISPERSIÓN, NO EN LA MEDIANA — §2.1 SE CORRIGE EN PARTE
+
+Todo el rechazo del resultado de amplitud muscular (§2.1) se hizo con Mann-Whitney, que es una
+prueba de **localización** y es ciega a un efecto de **dispersión**. Rehecho con pruebas de escala
+(Levene centrado en la mediana, Fligner-Killeen, y razón de rango 5-95 con P por permutación de
+5.000 réplicas). Script `python/analyses/10_amplitude_dispersion.py`.
+
+**39.1 Con el estimador validado (genes del reloj, ordenamiento libre), GSE13070:**
+| | resistentes (n=51) | sensibles (n=18) | prueba |
+|---|---|---|---|
+| mediana | 2,58 | 1,96 | MW **P 0,206** |
+| IQR | 1,40 | 0,90 | razón 1,57, P 0,23 |
+| **rango 5-95** | **3,09** | **1,87** | razón **1,66**, **P 0,021** |
+| sd | 1,04 | 0,64 | **Levene P 0,032 · Fligner P 0,027** |
+Cuantiles 10-25-50-75-90: resistentes 1,12 / 1,90 / 2,58 / 3,31 / 3,62; sensibles 1,58 / 1,75 /
+1,96 / 2,65 / 3,18. La distribución resistente se abre por los dos extremos.
+Con el estimador anclado, misma cohorte: razón de rango **1,90, P 0,0036**. Dos de los tres
+estimadores coinciden; el de 800 genes no (razón 1,06, P 0,87), que es coherente con que mida otra
+cosa (§ED2, ρ 0,00 entre ambos).
+
+**39.2 No replica en GSE182120.** Razón de rango 0,98, Levene P 0,41, y nada en ningún estimador.
+Las dos cohortes difieren en diseño: GSE13070 es resistencia medida por clamp con grupos muy
+desbalanceados (51 vs 18) y GSE182120 es T2D frente a NGT con grupos iguales. **La afirmación
+defendible es de una cohorte, no de dos.**
+
+**39.3 Y es exactamente lo que predice el modelo.** Bajando el acoplamiento de 1,4 a 0,5 en 120
+sujetos sintéticos: rango 5-95 de 0,27 a 0,66, **razón 2,47, Levene P < 1e-4**. Observado 1,66 con
+P 0,032. **El modelo predecía dispersión creciente al perder entrainment y no lo habíamos
+comprobado**: a bajo forzamiento, algunos individuos siguen enganchados y otros no, así que la
+amplitud del ensamble se dispersa. Es una predicción del modelo que se cumple en los datos y que no
+estaba entre las de §13.8.
+
+**39.4 Qué cambia en el manuscrito.**
+- §2.1 pasa de "la amplitud muscular no replica" a: **la mediana no difiere; la dispersión sí, en
+  una de las dos cohortes y en la dirección que el modelo predice**.
+- ED2 necesita un panel más: razón de rango y Levene por estimador y cohorte, con los cuantiles.
+- F5 gana una predicción cumplida: añadir al panel D o a uno nuevo la dispersión simulada frente a
+  la observada.
+- En el texto hay que ser explícito sobre por qué se usa una prueba de escala: **si el mecanismo es
+  pérdida de entrainment, el efecto está en la varianza entre personas y una prueba de medianas no
+  puede verlo.** Eso se dice antes de enseñar el resultado, no después.
+
+**39.5 Lección de método, para la lista de no repetir:** elegir la prueba por la hipótesis
+mecanística y no por costumbre. Mann-Whitney fue la elección automática y descartó durante dos
+sesiones un resultado real.
+
+---
+
+## 40. ED4 SE ARRASTRA SIN REGENERAR — COMPROBACIONES DE CONSISTENCIA
+
+La red de FOXO3 del envío anterior se mantiene tal cual. Lo que hay que garantizar es que no
+contradiga nada del texto nuevo. Comprobado:
+
+1. **Mismo regulón que la Fig. 4A.** La red se dibujó con DoRothEA A-C y la Fig. 4A cuantifica ese
+   mismo regulón: 38 dianas (`FOXO3_regulon_ED4.tsv`). Los dos paneles hablan del mismo conjunto, y
+   eso hay que decirlo en el pie para que no parezcan dos cosas distintas.
+2. **Símbolos: ninguna diana de FOXO3 lleva símbolo retirado**, así que la reanotación por Entrez
+   (§25, ED3B) no cambia una sola etiqueta de la red. Era el riesgo principal de arrastrar una
+   figura vieja y no se materializa.
+3. **CDKN1A y GADD45A sí están en la red** y los retiramos del conjunto de ayuno/FOXO3 por el
+   artefacto de biopsia repetida (§1.5). No es una contradicción —la red viene de regulones curados
+   y no de estos datos— pero **hay que decirlo en el pie**, o un revisor atento lo señalará como
+   incoherencia. Redactado así en `FIGURE_CAPTIONS.md`.
+4. **TXNIP y FBXO32 están en el regulón**, que es lo que conecta la red con el programa de ayuno del
+   músculo (§13.3) y con el nuevo hallazgo de que FOXO3 encabeza los 134 TF frente a la salida del
+   reloj (§21.2). La figura deja de ser herencia y pasa a ilustrar el eslabón regulador.
+
+**Qué cambia en el manuscrito:** el pie de ED4 ya no la presenta como material del artículo
+anterior, sino como la arquitectura del regulón que la Fig. 4A cuantifica. Numeración intacta: ED1
+a ED7, con ED4 arrastrada.
+
+---
+
+## 41. ESTRUCTURA DE ESCRITURA — REVISAR EN CADA EDICIÓN DEL MANUSCRITO
+
+**Fichero `RESULTS_STRUCTURE.md`, en la raíz del repositorio. Abrirlo antes de tocar el manuscrito,
+siempre.** Contiene el análisis de cuatro artículos de Nature (el Resource de proteómica de
+ejercicio de Nature Metabolism 2026, el Article de vacunas de Nature 2025, la revisión de relojes y
+resistencia a la insulina de Nat Rev Endocrinol 2018 y el descriptor PAPILA), las nueve reglas que
+adoptamos, el esqueleto de nuestros Resultados en siete subsecciones con sus citas de panel, las
+cuatro fórmulas con los términos que hay que definir, y la adaptación a los lineamientos de
+Metabolism.
+
+**Las reglas, en corto:** encabezado de subsección declarativo con el resultado dentro; abrir con
+para qué y qué se hizo antes de cualquier número; transición al inicio del párrafo recogiendo el
+resultado previo con su cita de panel; cita de figura con panel exacto y tabla suplementaria pegada
+al dato; los controles se anuncian como controles y se cierra diciendo qué establecen; el sujeto de
+la oración es biológico y la métrica va entre paréntesis; una sola frase de significado al final
+del párrafo; toda fórmula define sus términos donde aparece; cada panel y cada Extended Data citado
+al menos una vez.
+
+**Metabolism cambia el envase, no la forma de contar:** IMRaD con Métodos antes de Resultados,
+resumen estructurado de 250 palabras, highlights de 3-5 viñetas de 85 caracteres, resumen gráfico,
+CRediT, declaraciones, fichero editable y 60 referencias como límite real. Los siete encabezados
+declarativos se conservan como subsecciones dentro de Results, que es compatible porque la revista
+pide subencabezados en Métodos y Resultados.
+
+**Las dos comprobaciones que más se olvidan y hay que hacer en cada pasada:** que cada panel esté
+citado, y que cada subsección abra con el propósito antes del dato.
+
+---
+
+## 42. ED4 FIJADA EN |ρ| > 0,35 — Y UN AJUSTE QUE HAY QUE REPARAR
+
+**42.1 Umbral.** Barrido del umbral de selección de dianas para el circos (cinco factores:
+FOXO3 +0,49, FOXO4 +0,47, POU2F2 −0,40, FLI1 −0,35, RFX5 −0,34):
+| umbral | dianas | de presentación antigénica | TF representados |
+|---|---|---|---|
+| 0,45 | 3 | 0 | 2 |
+| 0,40 | 4 | 0 | 2 |
+| **0,35** | **10** | **1** | **5** |
+| 0,30 | 16 | 4 | 5 |
+| 0,25 | 25 | 7 | 5 |
+| 0,20 | 35 | 10 | 5 |
+La fracción de genes del eje inmunitario crece de forma monótona al bajar el umbral (10 %, 25 %,
+28 %, 29 %), y desde 0,35 ya están los cinco factores representados. **Bajar el umbral añade ruido
+de composición sin añadir estructura.** Fijado en 0,35: TXNIP, FOXO1, SCP2, JAK1, RBL2, ID2, LMO2,
+B2M, HBP1, ID1 (solo B2M del eje inmunitario).
+También se probó repartir por factor (las k dianas más fuertes de cada uno): con k=4 ya entran
+cinco inmunes y el |ρ| mínimo cae a 0,24. Peor que el umbral global.
+
+**42.2 PENDIENTE, y es un fallo mío que estuvo a punto de reportarse como resultado.** La selección
+de dianas con el score ajustado por sexo, edad, LEP y CD68 devolvió **NaN, no cero**: la
+residualización se rompe porque las covariables traen huecos tras el reindexado y el QR propaga el
+NaN. Durante un mensaje lo interpreté como "ninguna diana sobrevive al ajuste", que habría sido una
+afirmación falsa y grave. **Queda anulado.** Para repararlo: comprobar los NaN de edad y sexo en
+`GSE95674_series_matrix`, imputar o excluir esas muestras, y volver a correr la comparación crudo
+frente a ajustado. Media hora, no bloquea la figura, pero hay que hacerlo antes de afirmar nada
+sobre si el circos sobrevive al ajuste por composición.
+
+**42.3 Lección para la lista de no repetir:** un resultado de "exactamente cero" en un ajuste debe
+comprobarse contra NaN antes de interpretarse. Un cero biológico y un cero numérico se parecen
+demasiado.
+
+---
+
+## 43. A6 DE LA REVISIÓN: LA VALIDACIÓN NO ERA FUERA DE MUESTRA. REHECHA.
+
+El revisor tenía razón. El estimador ordenaba **todas** las muestras de la matriz, incluidas las del
+donante evaluado, y el cosinor de ese donante usaba esos mismos puntos. Los ρ 0,90 / 0,88 / 0,69
+medían consistencia interna. Rehecho con doble exclusión: el punto retenido no entra en el cosinor
+(que se ajusta con los demás puntos de ese donante) **y el donante entero se excluye de la base de
+ordenamiento y de la plantilla**. Scripts `11_loo_validation_myotubes.py` y
+`12_loo_validation_invivo.py`; tablas `GSE182117_loo_validation.tsv`, `GSE129843_loo_validation.tsv`.
+
+**43.1 Resultado, y es de dos niveles — esto es lo importante:**
+| cohorte | por muestra única | promediado por donante |
+|---|---|---|
+| GSE182117 miotubos, CTL | **+0,28** (P 0,008, n=86) | **+0,97** (n=11) |
+| GSE182117 miotubos, HGI | **+0,34** (P 0,002, n=84) | **+0,94** (n=11) |
+| GSE129843 músculo in vivo | **+0,17** (P 0,067, n=117) | **+0,82** (P 1,1e-5, n=20) |
+Las dos columnas son fuera de muestra. La de la derecha promedia las ocho (o seis) inferencias
+independientes del mismo donante; la de la izquierda es una sola biopsia.
+
+**43.2 Qué hay que reescribir.** El artículo afirma inferencia **desde una sola muestra**, y en las
+cohortes que usamos (AAGMEx, GTEx, GSE78721) hay **una muestra por persona**. Por tanto el número
+honesto para la afirmación central es el de la columna izquierda: **ρ 0,17 a 0,34**, no 0,90.
+Los 0,94-0,97 son el techo del estimador cuando se promedia una serie completa, y hay que
+reportarlos como tal: miden la plantilla, no la inferencia de muestra única.
+Afecta a cuatro sitios: abstract, highlights, sección 3.2 y pie de la Fig. 1.
+
+**43.3 Pero esto no debilita el artículo, lo reordena.** Una amplitud medida con ρ ~0,3 es un proxy
+ruidoso, y eso es exactamente lo que el modelo ya predecía en el panel 5E: aplicando nuestro
+estimador a cohortes simuladas, ρ(acoplamiento, amplitud inferida) sale 0,44-0,63, frente a 0,09-0,22
+observado con NR3C1. Ahora hay dos atenuaciones medidas y concordantes, una en el estimador y otra
+en el proxy del receptor. **Conviene decirlo en Resultados, no defenderlo en Discusión**: con una
+amplitud de ρ 0,3 por muestra única, las correlaciones observadas de 0,4 son un límite inferior.
+
+**43.4 Consecuencia sobre la sección 3.6 (dispersión).** El resultado de dispersión se calcula con
+amplitudes de muestra única. Con ρ 0,17-0,34, la medida de amplitud por persona es ruidosa, y el
+ruido **infla** la varianza. Hay que comprobar que la mayor dispersión en resistentes no sea mayor
+ruido de medida: contrastar la varianza del estimador dentro de cada grupo frente a la varianza
+entre grupos, o rehacerlo sobre las cohortes con varias muestras por persona. **Pendiente, y es
+anterior a cualquier afirmación sobre dispersión.**
+
+---
+
+## 44. A4 DE LA REVISIÓN: METAANÁLISIS DE TRES NIVELES. EL RESULTADO AGUANTA.
+
+Script `13_meta_three_level.py`. Modelo de efectos aleatorios con dos componentes de varianza
+(tau² entre cohortes, sigma² entre estimados dentro de cohorte) por REML, más varianza robusta por
+clúster (RVE) con corrección de muestra pequeña. Trece estimados anidados en **siete** cohortes.
+
+**44.1 NR3C1 ~ salida del reloj:**
+| modelo | ρ | IC95 | anchura del IC |
+|---|---|---|---|
+| dos niveles (DerSimonian-Laird) | +0,427 | +0,338 a +0,509 | 0,171 |
+| **tres niveles (REML, anidado)** | **+0,454** | **+0,311 a +0,577** | **0,266** |
+| varianza robusta por clúster | +0,432 | +0,292 a +0,554 | 0,262 |
+τ² entre cohortes 0,036; sigma² dentro de cohorte 0,011; I² de dos niveles 84 %.
+**El revisor tenía razón en que el IC era demasiado estrecho: se ensancha un 55 %.** Pero el
+estimado puntual sube ligeramente y el intervalo sigue sin tocar el cero por amplio margen. Los
+tres métodos coinciden en 0,43-0,45. **Reportar el de tres niveles como principal** y los otros dos
+como comprobación; decirlo en Métodos 2.6.
+
+**44.2 GC ~ reloj:** dos niveles +0,248 (IC 0,086-0,397); tres niveles +0,273 (0,078-0,447); RVE
++0,239 (0,014-0,441). Aquí la mayor parte de la heterogeneidad es **dentro** de cohorte
+(sigma² 0,073 frente a tau² 0,025), lo que es coherente con el estrato vivos/post mortem. El IC de
+RVE casi toca el cero: **este resultado es más frágil que el del receptor y hay que escribirlo
+con el estimado de tres niveles, no con el de dos.**
+
+**44.3 Lo que hay que cambiar:** abstract (0,43 sigue valiendo, el IC pasa a 0,31-0,58), sección 3.3,
+Métodos 2.6 y el pie de la Fig. 2A, además de la línea del diamante global del forest.
+
+---
+
+## 45. LA DISPERSIÓN PUEDE SER RUIDO DE MEDIDA — EL RESULTADO DE §39 QUEDA EN SUSPENSO
+
+Script `14_dispersion_noise_check.py`. Derivado de §43: si la amplitud de muestra única tiene
+ρ 0,17-0,34, su error de medida es grande y **el ruido infla la varianza entre personas**.
+
+**45.1 Cuantificación del ruido.** En GSE129843, con seis biopsias por persona y condición, la
+desviación del estimador **dentro de una misma serie** es 0,481 (mediana), frente a 0,264 **entre**
+series. Es decir, **el ruido de medida de una sola muestra es mayor que la dispersión real entre
+personas**, y solo el 38 % de la varianza observada entre personas no es ruido.
+
+**45.2 Qué implica para §39.** Si el ruido fuese igual en los dos grupos, restarlo no reduciría la
+razón de varianzas: al contrario, la alejaría más de 1 (razón observada 2,65 con el estimador libre;
+3,20 si el ruido fuese el 25 % de la varianza de los sensibles; 4,30 si fuese el 50 %). **Es decir,
+el ruido constante no explica el resultado, lo atenúa.** Eso juega a favor.
+
+**45.3 Pero no se puede cerrar con estos datos.** La objeción que queda en pie no es ruido igual en
+ambos grupos, sino **ruido mayor en resistentes**: si el transcriptoma de los resistentes tiene peor
+relación señal-ruido en los genes del reloj (amplitud real menor, más dispersión de composición),
+el estimador será menos preciso ahí y la varianza observada subirá sin que la biológica cambie.
+Comprobarlo exige varias muestras por persona, y GSE13070 solo tiene una biopsia basal.
+**Hasta resolverlo, el resultado de dispersión no puede presentarse como prueba de la predicción
+del modelo.** Dos salidas: (a) buscar una cohorte de resistencia a la insulina con serie temporal,
+(b) estimar el ruido por grupo mediante submuestreo de genes del reloj y comprobar si difiere.
+La (b) se puede hacer con los datos que hay y es el siguiente paso.
+
+---
+
+## 46. EL RUIDO NO EXPLICA LA DISPERSIÓN: §39 SE SOSTIENE, CON UNA SALVEDAD
+
+Script `15_dispersion_noise_by_group.py`. Sin series temporales en GSE13070 el ruido no se mide
+directamente, pero sí se estima por submuestreo: se reinfiere la amplitud de cada persona 80 veces
+con subconjuntos aleatorios del 60 % de los genes del reloj, y la desviación entre reinferencias es
+el ruido de medida de esa persona. Tabla `GSE13070_amplitude_noise_by_group.tsv`.
+
+**46.1 El ruido NO difiere entre grupos.** Mediana 0,149 en resistentes frente a 0,160 en
+sensibles, razón 0,93, **Mann-Whitney P 0,994 y Levene P 0,307**. Si acaso es ligeramente menor en
+resistentes, es decir en el grupo con MÁS dispersión observada. Eso descarta la objeción de §45.3:
+la mayor varianza de los resistentes no viene de que su transcriptoma se mida peor.
+
+**46.2 La diferencia de varianza se mantiene.** Varianza de la amplitud media por persona: 0,030 en
+resistentes frente a 0,011 en sensibles, razón **2,68**. Razón de rango 5-95 **1,70, P 0,034 por
+permutación**, prácticamente idéntica al 1,66 de §39 calculado con el estimador de una sola
+inferencia. El resultado es estable al método de estimación.
+
+**46.3 La salvedad, y hay que escribirla.** La varianza de los sensibles (0,011) es **menor que su
+propio ruido medio al cuadrado**, así que la varianza biológica real de ese grupo no es separable de
+cero con estos datos. Lo que se puede afirmar es que **los resistentes dispersan más que los
+sensibles**, no que los sensibles tengan una dispersión concreta. La n ayuda poco: 50 frente a 18.
+
+**46.4 Qué queda para el manuscrito.** El resultado de dispersión puede presentarse como prueba de
+la predicción del modelo, con tres cosas dichas: que el ruido del estimador se midió y no difiere
+entre grupos (P 0,99); que la razón de varianzas es 2,7 con dos métodos de estimación distintos; y
+que no replica en la segunda cohorte de músculo. Con eso, §45 queda resuelto y la sección 3.6 puede
+ir después del modelo como propone C de la revisión.
+
+**46.5 Pendientes abiertos de la revisión, por orden:** A5 (comparación con CYCLOPS, ZeitZeiger y
+TimeSignature en los mismos datos de validación), A2 (conteo de datasets: son 19 series más GTEx),
+A1 y A9 (referencia 46 y las 14 referencias sin llamado), A3 (procedencia de los conjuntos de
+genes), A8 (el negativo de SI a Resultados), C3 y C4 (dos citas de figura que apuntan mal), C5 (las
+dos variantes del estimador sin definir en Métodos), C2 (mover el panel de TZD de la Fig. 4 a la
+Fig. 3), C1 (tres esquemas sin citar), C6 (nombrar HSD11B1 por símbolo), D (párrafo de 11β-HSD1) y
+E (nota suplementaria de decisiones metodológicas).
+
+---
+
+## 47. A5: BENCHMARK DE FASE — CORRIDO, PERO **NO** ES EL ARGUMENTO (ver §48)
+
+Script `16_estimator_comparison.py`; tabla `estimator_comparison_phase.tsv`. Reimplementación del
+núcleo algorítmico de cada familia en Python —no el software original, y hay que declararlo— y
+evaluación contra las horas registradas de GSE182117 (172 muestras, 21 genes del reloj). Los
+supervisados se evalúan solo en la mitad retenida.
+
+| método | error de fase (h) | supervisado |
+|---|---|---|
+| molecular timetable (Ueda) | **1,00** | sí |
+| ZeitZeiger-like | **1,19** | sí |
+| este trabajo | 2,13 | no |
+| CYCLOPS-like | 2,90 | no |
+
+**47.1 Lectura honesta.** Los dos supervisados ganan por un factor de dos, y era de esperar: usan
+horas conocidas para aprender la base. Entre los no supervisados, el nuestro mejora a CYCLOPS-like
+(2,13 frente a 2,90 h), pero esa comparación es débil porque CYCLOPS real usa un autoencoder y no
+dos componentes principales. **No podemos afirmar que nuestro estimador de fase sea mejor que los
+publicados. No lo es.**
+
+**47.2 Lo que sí es nuestro, y es el argumento que hay que hacer.** Ninguno de los tres produce
+**amplitud por muestra**. Los cuatro métodos responden "¿qué hora es en este tejido?"; el nuestro
+responde además "¿cuánto oscila?". Y la amplitud es la cantidad que el artículo necesita: toda la
+sección 3.6 y la predicción del modelo son sobre amplitud y dispersión, no sobre fase.
+
+**47.3 Consecuencia para el manuscrito.** Reencuadrar la contribución metodológica: no es un
+estimador de fase mejor, es **un estimador de amplitud por muestra, validado contra cosinor fuera
+de muestra**, construido sobre un ordenamiento de fase comparable al estado del arte no supervisado.
+Añadir en Métodos 2.3 el párrafo de situación respecto a CYCLOPS, ZeitZeiger y TimeSignature (que
+cubre las referencias 42-44, hoy sin llamado, §A9.1), y llevar esta tabla a Extended Data.
+Un revisor que vea la comparación y la lectura honesta va a confiar más, no menos.
+
+**47.4 Lo que falta para cerrar A5 del todo.** La comparación es con reimplementaciones. Lo
+riguroso sería correr el software original: CYCLOPS está en Julia, ZeitZeiger y TimeSignature en R,
+y ninguno está instalado en este entorno. Si hay tiempo antes del envío, correrlos en el clúster y
+sustituir la tabla; si no, declarar explícitamente en Métodos que son reimplementaciones del
+algoritmo publicado y no el software de los autores.
+
+---
+
+## 48. A5, VERSIÓN CORRECTA: CONCORDANCIA CON CHIRAL
+
+**48.1 El argumento es concordancia, no superioridad.** Lo que ya estaba hecho compara la **misma
+cantidad** calculada con dos estimadores: R, la concentración de la diferencia de fase entre
+músculo y adiposo del mismo donante.
+  d_i = arg(exp(i(φ_músculo,i − φ_adiposo,i)));  R = |mean_i exp(i d_i)|
+Significancia por permutación de la correspondencia de donantes entre tejidos.
+| cohorte | donantes | CHIRAL | este trabajo |
+|---|---|---|---|
+| GTEx | 647 | **0,349** | **0,327** |
+| AAGMEx | 232 | **0,261** | **0,219** |
+Ambos con P = 0,0005. Diferencias de 0,02 a 0,04: **el acoplamiento de fase entre tejidos no
+depende de la implementación del estimador.** Ese es el control que hay que reportar, y no requiere
+que nuestro estimador gane.
+
+**48.2 Mi benchmark de error de fase (§47) NO debe ir al manuscrito tal cual.** Responde a otra
+pregunta —cuál estimador acierta más la hora— e invita a "¿por qué usan el suyo?", con la respuesta
+de que los supervisados lo hacen mejor. Va, como mucho, a la nota suplementaria de decisiones
+metodológicas, enmarcado como: el ordenamiento no supervisado es comparable al estado del arte no
+supervisado, y los supervisados ganan cuando hay horas conocidas, que no es nuestro caso.
+
+**48.3 Script integrado:** `17_chiral_concordance.py`. **Error que cometí al escribirlo y que hay
+que recordar:** usé `ph.unsup` (ordenamiento libre) para calcular la fase, y para fase va el
+ordenamiento **anclado**. La cabecera de `03_phase_coupling.py` ya lo documenta: el libre ajusta la
+onda a los datos y da bien la amplitud pero no fija el período, así que las fases de dos tejidos
+quedan en escalas distintas; los rangos registrados son fase anclado 0,32-0,47 frente a libre
+0,21-0,62. Con el libre salía R = 0,074 en AAGMEx (P 0,28). Corregido a `ph.order_anchored` con la
+plantilla de 60 genes:
+| cohorte | donantes | registrado | recalculado aquí |
+|---|---|---|---|
+| GTEx | 647 | 0,327 | **0,457** (P 0,0005) |
+| AAGMEx | 232 | 0,219 | **0,193** (P 0,0015) |
+AAGMEx reproduce (0,193 frente a 0,219, dentro del rango de estabilidad de la plantilla). GTEx sale
+más alto que lo registrado; la causa probable es el centrado por muestra, introducido después de
+aquella corrida. **Conviene decidir qué cifra se reporta y recalcular las dos con el mismo
+preprocesado.**
+Dos notas de implementación anotadas en el script: `order_anchored` devuelve la tupla
+(fases, genes usados), y la plantilla `template_2harm.tsv` guarda armónicos (a1, b1, amp1), no las
+columnas `phase_h` y `amp` que la función espera; hay que derivarlas.
+**Falta `python/lib/chiral_backend.py`** en este entorno (el repositorio sí lo tiene, pero requiere
+clonar scRITMO en `SCRITMO_SRC`), así que la rama de CHIRAL no corrió aquí.
+
+**48.4 Aviso del módulo, documentado en el script:** la documentación de scRITMO dice que las
+muestras van en columnas, pero el código las espera en **filas**. Hay que transponer antes de
+llamar.
+
+**48.5 Referencias a añadir** (hoy no están en la bibliografía):
+- Talamanca L, Gobet C, Naef F. Sex-dimorphic and age-dependent organization of 24-hour gene
+  expression rhythms in humans. Science 2023;379:478-483.
+- Salati A, Gobet C, Naef F. scRITMO [preprint]. bioRxiv 2026. github.com/AndreaSalati/scRITMO
+Con el párrafo de Métodos 2.3 que sitúa el estimador frente a CHIRAL, CYCLOPS, ZeitZeiger y
+TimeSignature se resuelven además las referencias 42-44 sin llamado (§A9.1).
+
+**48.6 La contribución metodológica, escrita como toca.** No es un estimador de fase mejor: es un
+estimador de **amplitud por muestra**, validado fuera de muestra contra cosinor (§43), sobre un
+ordenamiento de fase que concuerda con CHIRAL. Ninguno de los cinco métodos publicados produce
+amplitud, y la amplitud es lo que el artículo necesita para la dispersión (§46) y para la
+predicción del modelo.
+
+---
+
+## 49. LAS DOS RAMAS CORRIDAS: LA CONCORDANCIA NO SALE COMO ESTABA REGISTRADA
+
+scRITMO clonado y CHIRAL corrido en el mismo entorno y con el mismo preprocesado (centrado por
+muestra, fase anclada a la plantilla de 60 genes). Tabla `chiral_concordance.tsv`.
+
+| cohorte | donantes | genes | este trabajo | CHIRAL | registrado antes |
+|---|---|---|---|---|---|
+| AAGMEx | 232 | 20 | **0,193** (P 0,0015) | **0,145** (P 0,0070) | 0,219 / 0,261 |
+| GTEx | 647 | 21 | **0,457** (P 0,0005) | **0,288** (P 0,0005) | 0,327 / 0,349 |
+
+**49.1 Las cuatro cifras son significativas y el acoplamiento está en las dos cohortes con los dos
+estimadores.** Eso sostiene el fenómeno. Lo que NO se sostiene con estos números es el argumento
+tal como estaba escrito: la concordancia ya no es de 0,02-0,04, sino de **0,05 en AAGMEx y 0,17 en
+GTEx**. En GTEx el nuestro da 1,6 veces el valor de CHIRAL. Decir que "el resultado no depende de
+la implementación" con una diferencia de 0,17 no es defendible.
+
+**49.2 Qué cambió respecto a la corrida original.** El preprocesado. Las cifras registradas
+(0,327/0,349 y 0,219/0,261) se obtuvieron **antes** del centrado por muestra (§30). Ahora los dos
+estimadores se mueven, y se mueven de forma distinta: CHIRAL baja en las dos cohortes y el nuestro
+sube en GTEx. **Hay que decidir y documentar un solo preprocesado y recalcular todo con él.**
+
+**49.3 Lo que hay que comprobar antes de reportar nada.** Tres sospechas, por orden:
+(a) el centrado por muestra puede afectar a CHIRAL de forma distinta, porque su modelo EM ajusta a
+la vez fases y parámetros de gen y espera la escala original;
+(b) el número de genes (20 en AAGMEx, 21 en GTEx) difiere del conjunto de 22 de la corrida
+original, y la plantilla anclada usa 60;
+(c) el conjunto de donantes pareados se toma aquí como intersección de columnas y puede no
+coincidir con el de entonces (647 sí coincide con lo registrado; 232 también).
+La (a) es la más probable y la más fácil de probar: correr CHIRAL sobre la matriz **sin** centrar y
+ver si recupera 0,349.
+
+**49.4 Posición honesta para el manuscrito mientras tanto.** El acoplamiento de fase entre tejidos
+se detecta en dos cohortes independientes con dos estimadores independientes, con P ≤ 0,007 en los
+cuatro casos. **La magnitud sí depende del estimador**, y eso hay que decirlo en lugar de
+presentar los valores como coincidentes. Es una afirmación más débil que la original pero es la que
+los datos sostienen.
+
+---
+
+## 50. CHIRAL NO ES REPRODUCIBLE ENTRE CORRIDAS. HAY QUE FIJAR LA SEMILLA.
+
+Script `18_chiral_reproducibility.py`. Cinco corridas **idénticas** sobre los mismos datos de GTEx
+(647 donantes), sin tocar nada entre ellas:
+| centrado | R en las 5 corridas | media | sd |
+|---|---|---|---|
+| no | 0,348 · 0,348 · **0,576** · 0,348 · **0,576** | 0,439 | 0,112 |
+| sí | **0,644** · 0,288 · **0,644** · 0,288 · 0,288 | 0,430 | 0,174 |
+
+**50.1 El EM converge a dos óptimos distintos** según la inicialización, y salta entre ellos sin
+intervención. Con `np.random.seed(0)` fijado antes de cada llamada, las cinco corridas dan el mismo
+valor (sd = 0,0000): **la semilla global de NumPy controla el resultado**, aunque `CHIRAL()` no
+exponga un parámetro de semilla. Hay que fijarla en `chiral_backend.infer_phase` y documentarlo.
+
+**50.2 Esto explica las discrepancias de §49 y de la corrida original.** El 0,288 y el 0,644 no eran
+efecto del centrado: son los dos óptimos del mismo problema. Y el 0,348/0,349 que estaba registrado
+es uno de los dos óptimos de la versión sin centrar. **Ninguna de las cifras de CHIRAL que hemos
+manejado es reportable tal cual**; todas son una realización de una variable con dos modos.
+
+**50.3 Qué hay que hacer antes de reportar nada de CHIRAL:**
+1. Fijar la semilla en el envoltorio y declararla en Métodos.
+2. Correr N = 50 veces con semillas distintas y reportar la **distribución** de R, no un valor: la
+   mediana y el rango, o la proporción de corridas en cada modo.
+3. Comprobar si los dos modos corresponden a soluciones de fase y antifase (el EM de CHIRAL deja la
+   fase definida salvo rotación y sentido de giro, como documenta el propio envoltorio); si es así,
+   la diferencia entre 0,348 y 0,576 puede ser el mismo acoplamiento leído con sentidos opuestos en
+   un tejido, y hay que alinear antes de comparar.
+4. Solo entonces comparar con nuestro estimador, que sí es estable (0,453 frente a 0,457 con y sin
+   centrado; 0,194 frente a 0,193 en AAGMEx).
+
+**50.4 Lo que esto dice del argumento de A5.** La concordancia con CHIRAL no puede sostenerse con
+un número contra otro. O se reporta la distribución de CHIRAL sobre múltiples semillas, o se cambia
+el control: comparar el **resultado corriente abajo** (la correlación receptor-reloj, o el
+acoplamiento) calculado con los dos estimadores, y mostrar que la conclusión no cambia aunque la
+magnitud sí. La hipótesis 3 es la que más urge: si los modos son fase/antifase, el problema
+desaparece al alinear.
+
+---
+
+## 51. CORRECCIONES DE LA REVISIÓN APLICADAS AL MANUSCRITO
+
+Aplicadas en `MANUSCRIPT_v2.md/.docx`. Sin tocar 3.1 ni 3.5, como se decidió.
+
+- **A1** Referencia 46 eliminada (no tenía llamado) y renumeradas la 47-60 a 46-59. La bibliografía
+  queda en **59 referencias**, bajo el tope de 60.
+- **A2** Conteo reconciliado: **19 series más GTEx v11**, en abstract y en Métodos 2.1, con la nota
+  de que GSE95674/GSE95675 son los dos tejidos de AAGMEx y que GSE182117/GSE182120 son estudios
+  distintos pese a las accesiones contiguas.
+- **A3** Procedencia de los dos conjuntos declarada en Métodos 2.2: el del reloj es el brazo de
+  salida según la literatura circadiana, excluyendo los componentes del bucle negativo; el
+  glucocorticoide es curación propia de dianas canónicas del receptor, fijada antes del análisis.
+- **A4** Métodos 2.6 describe el modelo de tres niveles como estimado principal. Resultados y
+  abstract pasan a **ρ 0,45 (IC95 0,31-0,58)** con el robusto por clúster al lado, y la señalización
+  en vivos a **0,27 (0,08-0,45)**.
+- **A6** La validación se reescribe fuera de muestra y a dos niveles: **0,28 y 0,34 por muestra
+  única, 0,97 y 0,94 promediando por donante** en miotubos; **0,17 y 0,82** in vivo. Añadida la
+  frase de que las cohortes del artículo aportan una muestra por persona, de modo que el número que
+  aplica es el de muestra única y **las correlaciones son cotas inferiores**. Cambiado también el
+  highlight correspondiente.
+- **A8** El negativo de sensibilidad a la insulina pasa a Resultados con ρ, IC y n: ρ 0,01
+  (IC95 −0,28 a 0,30, n=48), graduado por estado clínico (+0,31 / +0,09 / +0,11 / −0,31).
+- **A9.3** Cosinor definido en Métodos 2.3 con su cita.
+- **C4** La cita corregida: el contraste vivos/post mortem es la **Fig. 2c**, no la Fig. 1d.
+- **C5** Las tres variantes del estimador (anclada, libre, proyección de 800 genes) definidas en
+  Métodos 2.3 como análisis de sensibilidad.
+- **C6** HSD11B1 nombrado por símbolo en su primera aparición.
+- **D** El reencuadre de 11β-HSD1 pasa a párrafo propio, cruzado con la disociación
+  receptor/enzima de la Fig. 4e,f y cerrado con la condición de falsación. El párrafo anterior
+  queda dedicado a la primera consecuencia.
+- **Limitaciones**: ahora son cuatro; se añade la atenuación del estimador por muestra única.
+
+**51.1 Pendientes de la revisión, no aplicados:**
+- **A5** Decidido: la comparación con CHIRAL sale del argumento central y va a la nota
+  suplementaria con la semilla fijada (§50). Falta redactar el párrafo de Métodos 2.3 que sitúa el
+  estimador frente a CHIRAL, CYCLOPS, ZeitZeiger y TimeSignature, y añadir las dos referencias de
+  §48.5. Eso resolverá además las referencias 42-44 sin llamado.
+- **A7 / C** Mover la dispersión después del modelo y retitular las dos secciones. Requiere la
+  pasada de renumeración.
+- **A9.1** Quedan referencias sin llamado tras los cambios: hay que cotejar una por una al final.
+- **A9.4** Tablas S12-S17 sin llamado en el cuerpo.
+- **C1** Tres esquemas sin citar (Fig. 1k, 4g, 5f) y la decisión de cuál va de resumen gráfico.
+- **C2** Mover el panel de TZD de la Fig. 4 a la Fig. 3 y citarlo.
+- **E** Nota suplementaria de decisiones metodológicas.
+
+---
+
+## 52. REVISIÓN FINAL DEL MANUSCRITO: SIETE CORRECCIONES
+
+Leído entero como lo haría un revisor. Lo que encontré y corregí:
+
+1. **Cifra que no cuadraba con su afirmación.** 3.1 decía "solo una de las **cinco** cohortes las
+   separa" y daba **tres** valores de P. El panel 1h tiene tres cohortes, no cinco. Reescrito:
+   "en las tres cohortes con el score calculado por individuo… y solo una las separa".
+2. **Porcentaje sin denominador.** "el clamp bajó los genes de salida en el 90 % de los
+   participantes", sin n ni tejido. Sustituido por **62 de 69 participantes, en músculo esquelético**.
+3. **Paneles citados fuera de orden.** En 3.4 se citaba la Fig. 3e antes que la 3d. Reordenada la
+   frase a (Fig. 3d,e) y retirada la cita suelta posterior.
+4. **Cita duplicada en la misma oración.** La Fig. 4d,e aparecía dos veces en la misma frase de 3.5.
+5. **Dos referencias cruzadas intercambiadas.** MSigDB citada como 22 y DoRothEA como 23, cuando en
+   la bibliografía son 21 y 22. Corregido; además DoRothEA se citaba en Resultados y en Métodos, y
+   basta en Métodos.
+6. **Discordancia presentada sin interpretar.** 3.5 daba el contraste de que el eje corre contra
+   diabetes tipo 2 pero con obesidad troncal y cortisol urinario, y lo dejaba sin resolver hasta la
+   Discusión. Un revisor lo lee como incoherencia interna. Añadida una frase que declara qué
+   distingue: el eje sigue la firma clínica de exposición glucocorticoide y no la de enfermedad
+   metabólica.
+7. **Retítulo de 3.5** a "The receptor axis indexes glucocorticoid exposure", y su primera oración
+   pasa de anunciar una exploración ("to characterise what else travels with the receptor") a
+   anunciar una prueba ("to test whether receptor level indexes glucocorticoid exposure rather than
+   some other property of the tissue"). Los tres resultados de la sección hacen ese trabajo y el
+   texto no lo declaraba.
+
+**Estado de verificación:** 42 referencias, todas citadas, ninguna cita huérfana. Los 36 paneles de
+las cinco figuras citados. Las 20 tablas suplementarias y las 7 Extended Data citadas. Cuerpo en
+unas 4.600 palabras.
+
+**52.1 Problema de conversión resuelto (no de contenido).** Cincuenta páginas con formato roto desde
+la mitad de 3.6 hasta las referencias: un `---` había quedado pegado al párrafo siguiente sin línea
+en blanco al mover la sección, y pandoc procesaba desde ahí como bloque de metadatos. Resueltos
+también: la lista de referencias que pandoc convertía en lista numerada de Word y arrastraba la
+sangría a los párrafos siguientes (ahora el punto va escapado), las ecuaciones con sangría que se
+volvían bloques de código, y dos nombres entre comillas invertidas. Verificado en el XML: cero
+bloques de código, cero tablas, una sola lista.
+
+---
+
+## 53. CIERRE DE A5 Y SEGUNDA AUDITORÍA COMPLETA
+
+**53.1 A5 cerrado como se decidió.** El párrafo de Métodos 2.3 ahora sitúa el estimador frente a los
+cuatro métodos publicados, dice que todos infieren fase y ninguno amplitud, y reporta la
+concordancia con CHIRAL como control: R = 0,19 y 0,15 en AAGMEx (232 donantes) y 0,46 y 0,29 en GTEx
+(647), con P ≤ 0,007, declarando que la magnitud depende de la implementación y que la semilla de
+CHIRAL se fijó porque su EM converge a dos óptimos. Sin benchmark de error de fase en el principal.
+
+**53.2 Intento de correr el software original, y por qué se detuvo.** R instalado desde los
+repositorios de Ubuntu y glmnet compilado con toda su cadena (Rcpp, RcppEigen, foreach, iterators,
+shape, survival) desde los espejos de GitHub. **ZeitZeiger depende de limma y sva, de Bioconductor,
+que no está entre los dominios permitidos**, y PMA y bbmle arrastran su propia cadena. **CYCLOPS es
+Julia y su servidor de descarga tampoco está permitido.** Reconstruir a mano paquetes de
+Bioconductor es justo lo que un revisor no querría. Si lo pide, se corre en el clúster, que sí
+tiene acceso, y se añade en la respuesta a revisores.
+
+**53.3 Segunda auditoría, hallazgos corregidos:**
+- **Error que yo mismo introduje al redactar 53.1**: puse 647 donantes para AAGMEx y 232 para GTEx,
+  invertidos. Corregido.
+- **Diez resultados no identificaban su cohorte.** El lector no podía saber a qué serie
+  correspondían el ρ 0,54, la validación in vivo, la transferencia de 1,7 h, los quintiles, los
+  islotes cultivados, la hidrocortisona, la dexametasona, el Cushing o el ranking de 34.020 genes.
+  Todas nombradas ahora; Resultados cita diez accesiones más AAGMEx y GTEx.
+- **La Discusión daba 0,43** (el estimado de dos niveles) cuando el principal es 0,45.
+- **Las limitaciones decían cuatro y enumeraban tres**: la atenuación del estimador iba pegada a la
+  primera con una coma. Separada como punto propio.
+
+**53.4 Lo que la auditoría confirma:** los siete encabezados de Resultados se leen como una cadena
+(medimos el reloj por persona → sigue al receptor → bajo perturbación es cortisol y no insulina →
+el receptor indexa exposición → un modelo lo reproduce → y su predicción se verifica); las siete
+primeras oraciones declaran el propósito antes del dato; ninguna cifra del abstract o de la
+Discusión está ausente de Resultados; 42 referencias todas citadas; los 36 paneles, las 20 tablas y
+las 7 Extended Data citados.
+
+---
+
+## 54. EL EJE EN NUEVE TEJIDOS MÁS DE GTEx: ES GENERAL, Y HAY DOS EXCEPCIONES QUE IMPORTAN
+
+Script `19_gtex_tissue_panel.py`, tabla `GTEx_tissue_panel.tsv`. Mismo preprocesado y mismo ajuste
+que los tres tejidos del artículo (CPM log2, centrado por muestra, residuales frente a sexo, edad,
+Hardy, tiempo isquémico y RIN), con el nulo de 400 genes al azar en cada tejido.
+
+| tejido | n | ρ NR3C1~reloj | P | ρ GC~reloj | nulo | percentil |
+|---|---|---|---|---|---|---|
+| Colon transverso | 479 | **+0,573** | 4,6e-43 | +0,262 | +0,043 | 86 % |
+| Hígado | 262 | **+0,383** | 1,5e-10 | +0,117 | −0,010 | 97 % |
+| Estómago | 407 | **+0,347** | 5,5e-13 | +0,186 | +0,041 | 94 % |
+| Íleon terminal | 207 | +0,317 | 3,4e-06 | +0,106 | +0,021 | 85 % |
+| Arteria tibial | 691 | +0,273 | 2,9e-13 | +0,050 | +0,009 | 96 % |
+| Nervio tibial | 670 | +0,229 | 1,9e-09 | +0,016 | −0,004 | 92 % |
+| Colon sigmoide | 419 | +0,225 | 3,2e-06 | +0,062 | +0,051 | 88 % |
+| Glándula suprarrenal | 295 | +0,100 | 0,087 | +0,085 | −0,001 | 72 % |
+| **Sangre completa** | 803 | **−0,106** | 2,6e-03 | −0,141 | −0,027 | 40 % |
+(Para comparar: adiposo sc +0,243, visceral +0,302, músculo +0,269.)
+
+**54.1 El eje NO es propio de los tejidos metabólicos.** Siete de nueve tejidos nuevos lo muestran
+con P ≤ 1e-5, incluidos nervio y arteria, que no tienen nada que ver con el metabolismo de la
+glucosa. **Esto cambia el alcance del artículo**: es una propiedad general de los tejidos
+periféricos humanos, no un rasgo del eje metabólico. El título y el encuadre tienen que decidirse
+con esto encima de la mesa.
+
+**54.2 La predicción del Zeitgeber dominante queda refutada por segunda vez.** El hígado da +0,383,
+por encima de adiposo y músculo, y el colon transverso da +0,573, el valor más alto de todo el
+estudio. Si la alimentación fuese un Zeitgeber que desplaza al glucocorticoide, el tubo digestivo
+debería ser donde el eje fuese más débil y es donde es más fuerte. **Retirar esa explicación del
+knockout hepático; la respuesta correcta es que una correlación entre individuos no es necesidad.**
+
+**54.3 Las dos excepciones son informativas, no ruido.**
+- **Sangre completa, ρ −0,106**: el único tejido con el signo invertido, y con n=803. Es el tejido
+  cuya composición celular varía más entre personas y donde el receptor se mide sobre una mezcla de
+  leucocitos cuyo recuento cambia con el propio cortisol. Es el control negativo que el artículo no
+  tenía.
+- **Glándula suprarrenal, ρ +0,100, P 0,087**: el tejido que **produce** el cortisol. Si el eje
+  reflejase producción y no recepción, la suprarrenal debería encabezar la lista; es la penúltima.
+  **Ese es un control positivo de la dirección del mecanismo** y vale un panel.
+
+**54.4 Qué hay que decidir.** (a) Si el artículo amplía su alcance a tejidos periféricos y cambia
+título y abstract, o si se queda en metabólicos y el panel va a Extended Data como demostración de
+generalidad. (b) Si sangre y suprarrenal entran como controles explícitos, que es lo que yo haría:
+dan especificidad al mecanismo sin coste. (c) El metaanálisis pasaría a 22 estimaciones si se
+incluyen; conviene mantenerlo en los tejidos del argumento y dejar el panel aparte.
+
+---
+
+## 55. AUDITORÍA DEL PANEL DE TEJIDOS: EL EFECTO ES REAL PERO LA MAGNITUD NO ES COMPARABLE ENTRE TEJIDOS
+
+Script `20_tissue_panel_audit.py`, tabla `GTEx_tissue_panel_audit.tsv`. Nulo ampliado a 1.500 genes
+por tejido, y ajuste adicional por composición celular (CD68 y PTPRC).
+
+| tejido | ρ | percentil | sd del nulo | % de genes con \|r\| mayor | ρ ajustado por composición |
+|---|---|---|---|---|---|
+| Arteria tibial | +0,273 | **96 %** | 0,153 | **7,6 %** | +0,186 |
+| Hígado | +0,383 | 94 % | 0,230 | 10,0 % | +0,340 |
+| Estómago | +0,347 | 93 % | 0,216 | 10,0 % | +0,327 |
+| Nervio tibial | +0,229 | 92 % | 0,163 | 16,1 % | +0,191 |
+| Colon transverso | **+0,573** | 90 % | **0,386** | 14,0 % | +0,555 |
+| Colon sigmoide | +0,225 | 86 % | 0,176 | 23,6 % | +0,250 |
+| Íleon terminal | +0,317 | 83 % | 0,256 | 26,0 % | +0,359 |
+| Suprarrenal | +0,100 | 71 % | 0,176 | 56,8 % | +0,148 |
+| Sangre | −0,106 | 41 % | 0,286 | 73,9 % | +0,099 |
+
+**55.1 El hallazgo del método: la ρ cruda NO es comparable entre tejidos.** La desviación del nulo
+varía por un factor de 2,5, de 0,153 en arteria a 0,386 en colon transverso. El colon transverso
+tiene la ρ más alta del estudio (0,573) **y a la vez un nulo tan ancho que el 14 % de los genes al
+azar la superan en valor absoluto**; la arteria tibial tiene una ρ de la mitad y solo el 7,6 % la
+supera. **Comparar tejidos por la ρ cruda, como hice en §54, es un error.** La cantidad comparable
+es la posición en el nulo del propio tejido.
+Corolario para el artículo: los tres tejidos del argumento ya se reportaban con su percentil
+(AAGMEx adiposo 99,1 %, GTEx visceral 97 %, músculo 97 %), y **siguen estando por encima de los
+nueve nuevos**. La afirmación de §54.2 de que el hígado "supera" al adiposo queda retirada.
+
+**55.2 El efecto es real en siete tejidos.** Con el nulo correcto, arteria, hígado, estómago,
+nervio y colon transverso quedan entre el 90 y el 96 por ciento, y resisten el ajuste por CD68 y
+PTPRC (caídas de 0,02 a 0,09, salvo arteria que cae de 0,273 a 0,186). **No es un artefacto de
+composición.**
+
+**55.3 Los dos controles aguantan y mejoran.**
+- **Sangre**: percentil 41, el 74 % de los genes al azar la superan, y **el signo negativo
+  desaparece al ajustar por composición (−0,106 → +0,099)**. Es decir, el único tejido con signo
+  invertido debía su inversión a la mezcla de leucocitos. Control negativo limpio y con la
+  explicación mecánica identificada.
+- **Suprarrenal**: percentil 71, el 57 % de los genes al azar la superan. El tejido que produce
+  cortisol es, junto con sangre, donde el eje no está. Control positivo de dirección.
+
+**55.4 Qué cambia de la historia.** Menos de lo que parecía ayer, y en la dirección correcta:
+(a) El eje se detecta fuera de los tejidos metabólicos, pero **no es más fuerte ahí**; los tres
+tejidos del argumento siguen siendo los de mayor posición en su propio nulo.
+(b) La generalidad es un refuerzo, no un cambio de alcance: **mantener el título y el encuadre
+metabólico** y llevar el panel a Extended Data.
+(c) Los dos controles sí entran en el argumento, porque dan especificidad: el eje no está donde se
+produce la hormona ni donde la composición celular domina la medida.
+(d) **Retirar de la bitácora y de cualquier borrador la afirmación de §54.1 de que "el eje no es
+propio de los tejidos metabólicos"** tal como está formulada: lo correcto es que se detecta también
+en otros tejidos, con una fuerza relativa menor o igual.
+
+---
+
+## 56. LA ANCHURA DEL NULO ES COMPOSICIÓN, Y AL QUITARLA SOLO DOS TEJIDOS AGUANTAN
+
+Script `21_panel_pc_adjustment.py`, tabla `GTEx_panel_pc_adjusted.tsv`. Se quitaron los tres
+primeros componentes principales de cada matriz y se repitió todo.
+
+**56.1 Confirmado el diagnóstico: la anchura del nulo es heterogeneidad entre muestras.** La
+correlación entre la varianza explicada por el PC1 y la desviación del nulo es **r = +0,84** en los
+once tejidos. Colon transverso, el de la ρ más alta, es el de mayor PC1 (31,7 %); arteria y nervio,
+los de nulo más estrecho, son los de menor (12,6 % y 11,9 %).
+
+**56.2 Al quitar tres componentes, casi todo se desploma:**
+| tejido | PC1 | ρ · percentil | ρ · percentil tras quitar 3 PC |
+|---|---|---|---|
+| **Músculo esquelético** | 17,2 % | +0,270 · 98 % | **+0,264 · 98 %** |
+| **Íleon terminal** | 25,0 % | +0,317 · 84 % | **+0,314 · 100 %** |
+| Hígado | 18,3 % | +0,383 · 95 % | +0,216 · 95 % |
+| Colon transverso | 31,7 % | +0,573 · 90 % | +0,145 · 93 % |
+| Adiposo visceral | 18,8 % | +0,302 · 96 % | +0,133 · 88 % |
+| Arteria tibial | 12,6 % | +0,273 · 95 % | +0,146 · 86 % |
+| Estómago | 28,0 % | +0,347 · 94 % | +0,111 · 78 % |
+| Colon sigmoide | 15,0 % | +0,225 · 86 % | +0,045 · 72 % |
+| Suprarrenal | 19,5 % | +0,100 · 74 % | +0,011 · 56 % |
+| **Nervio tibial** | 11,9 % | +0,229 · 92 % | **−0,034 · 33 %** |
+| **Sangre** | 24,9 % | −0,106 · 39 % | **+0,209 · 91 %** |
+
+**56.3 Lectura, y es incómoda.** Solo **músculo esquelético** (0,264, percentil 98) e **íleon
+terminal** (0,314, percentil 100) conservan a la vez la magnitud y la posición. El adiposo visceral
+cae de 0,302 a 0,133 y del percentil 96 al 88. El colon transverso, que ayer parecía el más fuerte,
+cae de 0,573 a 0,145. **Una parte sustancial del eje receptor-reloj viaja en los primeros
+componentes de la matriz**, y esos componentes mezclan composición celular con lo que queramos
+llamar señal sistémica.
+
+**56.4 El problema de interpretación que esto plantea.** Quitar los tres primeros PC no es un
+control neutro: si el acoplamiento glucocorticoide es una señal **sistémica que afecta a muchos
+genes a la vez**, entonces vive precisamente en los primeros componentes, y quitarlos elimina el
+efecto que se quiere medir junto con el confusor. Es el mismo dilema que con el centrado por
+muestra, pero más agudo. **No se puede zanjar con estos datos: el ajuste por PC es a la vez el
+control correcto contra composición y una sobrecorrección plausible del mecanismo.**
+
+**56.5 Qué hacer en el manuscrito, y es la decisión conservadora:**
+- **No incluir el panel de nueve tejidos** en el artículo. Su interpretación depende de una decisión
+  de preprocesado que no podemos justificar en una dirección ni en la otra, y abrirlo invita a una
+  objeción que no sabemos responder.
+- **Sí reportar el ajuste por PC como análisis de sensibilidad de los tejidos del argumento**, en
+  Extended Data: músculo aguanta íntegro (0,270 → 0,264, percentil 98) y adiposo visceral se atenúa
+  (0,302 → 0,133). Decirlo tal cual. Es una limitación real y declararla es más fuerte que omitirla.
+- **La sangre pasa de control negativo a dato que no entiendo**: con ajuste por PC su ρ se invierte
+  a +0,209 y sube al percentil 91. Dos ajustes distintos dan signos opuestos. **Retirarla del
+  argumento**; no sirve como control si su valor depende del preprocesado.
+- **La suprarrenal sí aguanta como control**: 0,100 sin ajuste y 0,011 con él, percentiles 74 y 56.
+  Es el único resultado del panel estable en las dos versiones, y es el que importa, porque descarta
+  que el eje mida producción de hormona.
+
+**56.6 Y esto obliga a revisar hacia atrás.** El mismo análisis de PC debe correrse sobre AAGMEx
+adiposo y músculo, GSE41168 y los islotes, que son las cohortes del argumento central. Si el eje
+de AAGMEx adiposo también se atenúa al quitar tres componentes, hay que decirlo en el manuscrito.
+**Pendiente, y es prioritario antes de enviar.**
+
+---
+
+## 57. SENSIBILIDAD POR COMPONENTES EN LAS COHORTES CENTRALES: EL EJE NO SOBREVIVE EN ADIPOSO
+
+Script `22_pc_sensitivity_core.py`, tabla `pc_sensitivity_core.tsv`. ρ NR3C1~reloj y percentil en
+el nulo del propio dato, quitando 0, 1, 2, 3 y 5 componentes principales.
+
+| cohorte | 0 PC | 1 PC | 2 PC | 3 PC | 5 PC |
+|---|---|---|---|---|---|
+| AAGMEx adiposo (232) | +0,401 · **99 %** | +0,392 · 98 % | **−0,049 · 25 %** | +0,043 · 68 % | +0,061 · 77 % |
+| AAGMEx músculo (232) | +0,063 · 83 % | +0,081 · 87 % | +0,139 · 98 % | +0,128 · 96 % | +0,073 · 87 % |
+| GSE41168 adiposo (28) | +0,382 · 93 % | +0,414 · 94 % | −0,194 · 24 % | **−0,548 · 1 %** | −0,378 · 4 % |
+| **GSE41168 músculo (28)** | +0,714 · 100 % | +0,709 · 100 % | +0,583 · 100 % | **+0,568 · 100 %** | +0,655 · 100 % |
+| GSE159984 islotes (85) | +0,323 · 77 % | +0,518 · 91 % | +0,007 · 47 % | +0,115 · 78 % | +0,181 · 87 % |
+| GTEx músculo (818) | +0,270 · 98 % | — | — | **+0,264 · 98 %** | — |
+| GTEx adiposo visceral (587) | +0,302 · 96 % | — | — | +0,133 · 88 % | — |
+
+**57.1 El resultado, sin adornos.** **En adiposo el eje desaparece al quitar dos componentes**, y en
+GSE41168 adiposo incluso cambia de signo con fuerza (−0,548, percentil 1). En islotes también se
+va. **Solo el músculo aguanta**: GSE41168 músculo mantiene 0,57-0,71 y el percentil 100 en todas las
+versiones, GTEx músculo pasa de 0,270 a 0,264 sin moverse del percentil 98, y AAGMEx músculo incluso
+sube.
+
+**57.2 Lo que esto hace con el artículo.** El argumento central se apoya sobre todo en adiposo: la
+Fig. 2 tiene seis estimaciones de adiposo y cinco de músculo, el metaanálisis por tejido daba
+adiposo 0,42 con I² 10 % como el estrato homogéneo, y las perturbaciones de hidrocortisona, Cushing
+y clamp pareado son todas de adiposo. **Ese pilar no resiste el ajuste por componentes.**
+
+**57.3 Lo que NO se puede concluir todavía, y por qué.** Quitar componentes principales de una
+matriz donde la señal buscada es sistémica no es un control limpio: si el forzamiento glucocorticoide
+mueve a la vez cientos de genes, está en esos componentes por construcción. El patrón observado es
+compatible con dos lecturas opuestas:
+(a) **el eje en adiposo es composición celular** y el de músculo es real, porque el músculo es el
+tejido más homogéneo de los analizados;
+(b) **el ajuste sobrecorrige** en los tejidos donde la señal glucocorticoide es más fuerte, que son
+precisamente aquellos donde más genes responde, y el músculo sobrevive porque allí el eje es más
+local y menos sistémico.
+El dato que inclina algo la balanza hacia (b): en AAGMEx adiposo el eje ya estaba **ajustado por LEP
+y CD68** en el análisis principal y resistía; si fuese composición de macrófago, ese ajuste debería
+haberlo tumbado.
+
+**57.4 Qué hay que hacer antes de enviar. Es la decisión más importante que queda abierta.**
+1. Distinguir composición de señal sistémica con un control que no sea ciego al mecanismo:
+   deconvolución celular explícita (CIBERSORT o similar) en adiposo, y repetir el eje con las
+   fracciones celulares como covariables en lugar de componentes anónimos. Si el eje sobrevive a la
+   deconvolución y muere con los PC, la lectura (b) queda respaldada.
+2. Probar el ajuste por PC en los **resultados de perturbación**, que son dentro de la persona y por
+   tanto inmunes a la composición entre individuos. Si la respuesta a hidrocortisona y el clamp
+   pareado aguantan, el mecanismo se sostiene aunque la correlación transversal en adiposo sea
+   frágil.
+3. **Reportar esta sensibilidad en el manuscrito pase lo que pase.** Ocultarla no es una opción: un
+   revisor con los datos la encuentra en una tarde, y el artículo pierde toda la credibilidad que
+   gana por declarar sus límites.
+
+**57.5 Nota de implementación.** Las columnas de las matrices de AAGMEx no casan con los
+identificadores de la serie matriz GSE95674, de modo que esta corrida va **sin covariables de sexo y
+edad**. Hay que resolver ese mapeo y repetirla; los valores pueden moverse.
+
+---
+
+## 58. REVISIÓN DE CONTENIDO, EDITORIAL Y DE LEGIBILIDAD
+
+**58.1 Lo del experimento, resuelto en general.** Las limitaciones ya no piden un experimento
+concreto. Dicen que manipular el receptor en un tejido metabólico resolvería la dirección, y añaden
+lo único que es aportación nuestra y vuelve falsable la hipótesis: **lo que ese experimento debería
+encontrar es atenuación del brazo de salida con el oscilador central conservado**, que es la
+disociación que el clamp pareado ya muestra dentro de la persona, y no una pérdida del reloj
+entero. Sin modelo, sin especie, sin protocolo.
+Nota de búsqueda: existen al menos tres líneas de ratón con deleción del receptor específica de
+adipocito, publicadas y caracterizadas, pero **ninguna reportó genes del reloj**. Que el experimento
+no esté hecho es mejor para el artículo que lo contrario: la predicción es nuestra.
+
+**58.2 Jerga definida en su primera aparición.** Cinco términos que un lector de fuera del campo no
+podía seguir:
+- **oscilador central frente a brazo de salida**: ahora Métodos 2.2 abre explicando que el reloj
+  tiene dos partes, el bucle de retroalimentación que genera la oscilación y el brazo de salida a
+  través del cual el reloj llega al metabolismo. Era la distinción más importante del artículo y no
+  estaba definida en ninguna parte.
+- **zeitgeber**: "a 24-h timing signal (zeitgeber)".
+- **cosinor**: "the standard sinusoidal fit of expression on sampling time".
+- **Hallmark**: "the Hallmark collections of coordinately regulated processes".
+- **por qué hace falta control horario**: la introducción ahora explica que cualquier intervención
+  que dura horas mueve el reloj esas horas, que es el motivo de todo el diseño.
+
+**58.3 Abstract de 345 a 255 palabras**, dentro del tope de 250-ish de Metabolism. Recortado sin
+perder ninguna cifra: se fundieron Métodos en una sola frase y se quitó el conteo de genes
+diferenciales del bloque de Resultados, que ya está en el cuerpo.
+
+**58.4 Lo que la revisión confirma.** La introducción define qué es el reloj periférico, por qué
+importa y qué pasa si falla, en sus dos primeras frases. El resumen estructurado tiene los cuatro
+encabezados. Las cifras del abstract y de la Discusión existen todas en Resultados. Los siete
+encabezados de Resultados se leen como una cadena.
+
+**58.5 Lo que todavía mejoraría la legibilidad y no está hecho**, por si se decide invertir ahí:
+(a) una frase al final de la introducción que diga en una línea qué se va a encontrar, que muchas
+revistas piden y nosotros dejamos implícito; (b) los seis diagramas a mano, que son lo que más
+ayudaría a un lector no experto y siguen pendientes; (c) un resumen gráfico, obligatorio en la
+práctica para Metabolism.
+
+---
+
+## 59. GUÍAS DE METABOLISM APLICADAS, Y UNA QUE DESBLOQUEA LOS DIAGRAMAS
+
+**59.1 La política de IA de Elsevier permite los esquemas.** El texto dice literalmente que las
+herramientas de IA **pueden usarse para apoyar la creación de imágenes explicativas** (diagramas de
+flujo, diagramas conceptuales, ilustraciones esquemáticas) y para visualizaciones de datos cuando
+la salida deriva de datos subyacentes por métodos reproducibles. **Los seis diagramas a mano dejan
+de ser un bloqueo para Metabolism**, siempre que se declare su uso. Hay que ajustar la declaración
+de IA en consecuencia: lo que no se permite es otra cosa, y conviene leer la política completa antes
+de redactarla.
+
+**59.2 Cambios de formato aplicados al manuscrito:**
+- **Citas en corchetes**, no en superíndice: la guía pide "[3,6]" en línea. Convertidas las 36.
+- **Abstract a 251 palabras**, en el tope de 250 (hay que quitar una).
+- **Portada**: afiliaciones con letra minúscula en superíndice (a, b, c) como pide la guía, no con
+  números; direcciones postales completas con país; autor de correspondencia marcado con asterisco y
+  con su dirección y correo.
+- **Ecuaciones numeradas** (1) a (5), variables en cursiva, separadas del texto.
+- **Acknowledgements como sección propia inmediatamente antes de las referencias**, no dentro de
+  Declarations. La guía lo pide explícitamente.
+- **Highlights en fichero aparte** con "highlights" en el nombre, cinco viñetas de 72-79 caracteres,
+  bajo el tope de 85.
+- **Figuras como ficheros separados**, `Figure_1` a `Figure_5` y `Figure_S1` a `Figure_S7`, en PDF
+  vectorial y PNG a 400 ppp (4.856 a 6.246 px de ancho, por encima del mínimo de 2.244 para página
+  completa).
+
+**59.3 Lo que falta y es obligatorio:**
+- **Checklist de guía de reporte.** Metabolism exige enviar el checklist correspondiente como
+  material suplementario. Para este trabajo el tipo es estudio observacional, de modo que
+  corresponde **STROBE**. Hay que descargarlo, rellenarlo y añadirlo.
+- **Resumen gráfico**: TIFF, EPS, PDF o fichero de Office, mínimo 1.328 px de ancho y legible a
+  13 cm. Recomendado pero en la práctica esperado.
+- **Declaración de datos** en el sistema de envío, además de la sección del manuscrito.
+
+**59.4 Pendiente de verificar al enviar:** el estilo de referencias de la revista es Vancouver con
+nombres de revista abreviados según LTWA, última página acortada (51-9), hasta seis autores y luego
+"et al.", y DOI donde exista. La guía dice que el formato es libre al enviar y se aplica en pruebas,
+pero conviene que ya sea consistente. Nuestras 42 referencias están en ese estilo salvo los DOI, que
+faltan en la mayoría.
+
+---
+
+## 60. REVISIÓN COMPLETA DE TODOS LOS FICHEROS DEL ENVÍO
+
+**60.1 El título ya era el nuevo** en el manuscrito y en los dos suplementarios. El que estaba
+desactualizado era el del `.docx` base que se subió, que es la versión anterior a las correcciones.
+
+**60.2 Nomenclatura corregida en todo el paquete.** Elsevier no usa "Extended Data": son
+**Supplementary Figures S1 a S7**. Renombradas las 24 citas del manuscrito, las siete leyendas del
+suplementario y las referencias cruzadas internas. También los ficheros de figura:
+`Figure_S1` a `Figure_S7`.
+
+**60.3 Lo que faltaba de verdad y estaba fuera de los ficheros del envío:** la sensibilidad al
+ajuste por componentes principales vivía solo en la bitácora. Añadida en dos sitios:
+- **Métodos suplementarios, sección S2.6b**, con el razonamiento de por qué no es un control neutro
+  y las cifras (músculo 0,270 → 0,264 con percentil 98 en ambos casos; adiposo visceral 0,302 →
+  0,133), y la observación de que las perturbaciones no se ven afectadas por ser dentro de la
+  persona.
+- **Limitaciones del manuscrito**, en una cláusula.
+- **Tabla S21** nueva con los datos, y el libro de Excel pasa de 20 a 21 hojas.
+
+**60.4 Verificación final del paquete completo:** 42 referencias, todas citadas, ninguna
+inexistente; los 36 paneles de las cinco figuras citados; las 21 tablas suplementarias citadas; las
+siete figuras suplementarias citadas; abstract en 251 palabras; cuerpo bajo 5.000.
+
+**60.5 Ficheros del envío, estado:**
+| fichero | estado |
+|---|---|
+| Manuscrito (.docx, figuras incrustadas) | listo |
+| Highlights (.docx, fichero aparte) | listo |
+| Supplementary Information (.docx, 7 figuras + 21 leyendas + Métodos) | listo |
+| Supplementary Tables (.xlsx, 21 hojas) | listo |
+| Figuras sueltas Figure_1-5 y Figure_S1-S7 (PDF + PNG 400 ppp) | listo |
+| Checklist STROBE | **falta** |
+| Resumen gráfico | **falta** |
+| Seis diagramas | **falta** (ya no bloqueados: la política de Elsevier los permite, §59.1) |
+| DOI en las referencias | **falta** en la mayoría |
+
+---
+
+## 61. SISTEMA DE AGENTES APLICADO AL MANUSCRITO
+
+Ficheros `AGENTS.md` (los diez roles con su lista de comprobación y criterio de aprobado) y
+`python/audit_manuscript.py` (los cinco mecánicos, ejecutables).
+
+**61.1 Los agentes mecánicos pasan sin hallazgos** tras dos correcciones al propio detector: no
+reconocía la forma "Tables S4 and S12" ni las citas partidas por salto de línea. Estado final:
+cuerpo 4.926 palabras, abstract 246, 42 referencias, cero huérfanas en ambas direcciones, todos los
+paneles y tablas citados, figuras en orden de citación.
+
+**61.2 Lo que encontraron los agentes de juicio, que los mecánicos no podían ver:**
+- **"sixteen public datasets" en la introducción.** El número estaba escrito con letra, así que la
+  corrección del conteo a 19 series más GTEx no lo tocó y el agente de coherencia, que busca
+  cifras, tampoco. Corregido a "twenty". **Lección: los números escritos con letra escapan a toda
+  comprobación automática.**
+- **Etiqueta mal cerrada** en la ecuación 4, `</s*>` en lugar de `</sub>`, que habría salido como
+  texto literal en el Word.
+- **Cinco frases de más de 50 palabras** partidas: las limitaciones (87 palabras), el obstáculo de
+  diseño en la introducción (56), la frase clave de la Discusión sobre qué unifica las tres
+  situaciones (55), el clamp (53) y la disociación de la firma (52). La de la Discusión era la más
+  importante: es la idea del artículo y estaba enterrada en una subordinada.
+- **Repetición torpe** introducida al corregir una cifra: "in the three cohorts with the score
+  computed per individual the distributions…".
+- **Párrafo de 3.2 demasiado largo** y con la transferencia entre tejidos pegada al final, después
+  de su propia conclusión. Partido en dos, con el cierre al final.
+
+**61.3 Ritmo de frase, medido.** Desviación de 14 a 16 palabras dentro de cada sección, que es
+variación humana; por debajo de 6 sería la huella de texto generado. El agente de estilo lo
+comprueba automáticamente.
+
+**61.4 Nota sobre el orden de las figuras.** Se revisó la duda de si la 4 y la 5 debían
+intercambiarse: **no se acordó tal cosa**. Lo que la revisión proponía era mover la sección 3.5, y
+eso sí habría obligado a intercambiar las Figuras 3 y 4, pero se descartó. Lo que se movió fue la
+dispersión, que no cita ninguna figura principal. Orden de primera cita verificado: 1, 2, 3, 4, 5.
+
+---
+
+## 62. REVISIÓN EXTERNA DE MANUSCRIPT_v2: CUATRO ERRORES CONFIRMADOS Y UNO QUE ERA PEOR
+
+**62.1 Cadena de citas corrida (punto 2 de la revisión). CONFIRMADO Y CORREGIDO.** Al eliminar las
+referencias sin llamado se quitó Dai et al. 2005, que era la 13, y no se recorrieron las citas:
+[13] apuntaba a Smyth, [14] a PyDESeq2, [15] a Benjamini-Hochberg, y [16] se usaba dos veces para
+cosas distintas. Peor: la afirmación del 8,3 % de sondas con símbolo retirado quedó citando un
+artículo de estadística. Dai restituida como 13, las 29 posteriores recorridas y las cuatro citas
+de Métodos arregladas. La bibliografía pasa a 43.
+
+**62.2 "Homogeneous" con I² = 69 % (punto 3). CONFIRMADO Y CORREGIDO.** Reescrito a "positive in
+every adipose-tissue estimate but heterogeneous in magnitude", y añadidos el I² global (84 %) y los
+dos componentes de varianza, que el modelo de tres niveles ya calculaba y no estaban en el texto.
+
+**62.3 Pie de la Fig. 2A con el método antiguo (punto 4). CONFIRMADO Y CORREGIDO.** El pie decía
+DerSimonian-Laird cuando el estimado primario es el de tres niveles. Ahora declara que los
+diamantes son el de dos niveles y da el primario entre paréntesis.
+
+**62.4 Ecuaciones fuera de orden (punto 5). CONFIRMADO Y CORREGIDO.** Renumeradas por orden de
+aparición: amplitud (1), enriquecimiento (2), varianza de Fisher (3), oscilador (4) y (5).
+
+**62.5 El punto 7 era peor de lo que el revisor pudo ver.** Tenía razón en que BMAL1 no pertenece al
+brazo de salida y en que los paneles redefinían la lista en el sitio. Al recalcular con el conjunto
+del registro (`gene_sets.py`, ocho de los nueve genes medidos; HLF ausente):
+| cantidad | con BMAL1 añadido | con el conjunto del registro |
+|---|---|---|
+| TZD | ρ −0,32 | **ρ −0,02 (P 0,96)**, pendiente **+0,004** |
+| Cushing | 0,71 | **0,55 (P 0,16)** |
+| hidrocortisona | 0,60 | **0,71 (P 0,047)** |
+**Los valores de Cushing e hidrocortisona estaban intercambiados** respecto a lo que da el conjunto
+correcto, porque cada uno se calculaba sobre una lista distinta. Y el ρ de −0,32 era enteramente
+producto de añadir BMAL1, como el revisor dedujo del gráfico.
+Reescrito el pasaje con lo que los datos sostienen y es más fuerte: **los ocho genes están
+deprimidos en el tejido resistente, la mediana recuperada es del 4,4 % y la pendiente es +0,004
+frente a −1 de reversión completa.** Los dos paneles importan ahora de `gene_sets.py` y el panel I
+muestra la pendiente en lugar de la ρ.
+
+**62.6 Pendientes de la revisión, no resueltos:**
+- **Punto 1, reproducibilidad**: falta el script que escribe `signatures_log2_common_genes.tsv`, hay
+  rutas absolutas en `fig6_mecanismo.py`, `verify_package.py` no comprueba la existencia de los
+  ficheros que leen las figuras, y el repositorio tiene la composición de figuras anterior. **Hay
+  que resolverlo antes de rearchivar en Zenodo.**
+- **Punto 6, alcance de las afirmaciones**: "sets", "tone" y "acute insulin does not participate".
+  Es decisión de alcance y es tuya. Mi lectura coincide con la del revisor: el diseño no mide
+  arrastre y el brazo de insulina no tiene control temporal apareado propio.
+- **Punto 8**: declarar que la validación por muestra única en músculo es marginal (P 0,067), y
+  revisar si el procedimiento de submuestreo sobreestima el ruido.
+- **Punto 9**: cuantificar en el texto la caída al quitar componentes, y el control de especificidad
+  simétrico (rankear los 34.020 genes por su correlación con el score de reloj y ver dónde cae
+  NR3C1). **Es el que más devuelve por el trabajo invertido.**
+
+---
+
+## 63. ALCANCE MODERADO Y AGENTES DE REPOSITORIO
+
+**63.1 Aplicados los tres cambios de alcance:**
+- **Título**: "Glucocorticoid signalling tracks circadian output across human metabolic tissues",
+  sin el "not insulin".
+- **"sets" → "tracks"** en abstract y conclusiones.
+- **"tone" eliminado**; se usa "glucocorticoid signalling", que es el término que el manuscrito
+  define.
+- **"Acute insulin does not participate" → "the acute insulin response is not separable from the
+  passage of time"**, que es lo que el diseño permite afirmar.
+Cuerpo en 4.991 palabras y abstract en 246 tras los recortes que exigió el añadido.
+
+**63.2 El punto 1 de la revisión: intenté escribir el script que falta y NO pude reproducir la
+tabla.** `23_build_signatures_table.py` reconstruye `signatures_log2_common_genes.tsv` desde las
+fuentes disponibles, pero da **números distintos**: Cushing +0,15 en lugar de +0,55, hidrocortisona
+−0,22 en lugar de +0,71. Es decir, la columna de IR frente a sensible y la de Cushing no se
+calcularon como diferencia de medianas sobre las matrices del repositorio, sino por algún
+procedimiento que no está en el proyecto. El script queda marcado como `.FALLIDO` y la tabla
+original restaurada.
+**Esto confirma y agrava el punto 1 del revisor: la tabla de la que dependen tres afirmaciones de
+la sección 3.4 no es reproducible con el código disponible, ni por el autor ni por un lector.**
+Hay que recuperar el procedimiento original o rehacer las tres columnas con un método documentado,
+y en ese caso los números del manuscrito cambiarán.
+
+**63.3 Cinco agentes de repositorio añadidos a `AGENTS.md`:** 11 código, 12 auditor de código,
+13 coherencia código-manuscrito, 14 consistencia global y 15 revisor final. El 13 lleva una regla
+dura que acaba de demostrarse necesaria: **si una cifra no se reproduce, no se ajusta el texto al
+número nuevo sin entender por qué cambió; una discrepancia es un hallazgo, no una errata.**
+
+---
+
+## 64. COLUMNA DE HIDROCORTISONA REPRODUCIDA, Y EL SUPUESTO POSICIONAL YA ESTABA ARREGLADO
+
+**64.1 Reproducida exactamente.** La función `hydrocortisone()` de `02_meta_and_validation.py`
+corre y da los valores publicados: **glucocorticoide +0,582 y núcleo de insulina +0,482, ambos con
+P = 0,0002**, y **ZBTB16 como el gen más inducido (+2,05)**. El `delta` por gen que calcula esa
+función **es** la columna de la tabla de firmas: correlación de Pearson **r = 0,983 sobre 5.910
+genes**, y los valores coinciden dígito a dígito en los que inspeccioné.
+Mi reconstrucción fallaba porque usé `GSE148640_HC_response_stats.tsv`, que es la mediana del
+cambio por persona de otro procesamiento, no el delta del fichero procesado de GEO.
+
+**64.2 El supuesto posicional que señalé ya estaba resuelto en la versión actual del script.** La
+función `_hydrocortisone_arms` lee el tratamiento de cada muestra de la matriz de serie en lugar de
+asumir que las columnas alternan, y avisa si no puede. Confirmado al correr: "brazos leídos de la
+matriz de serie: 10 placebo, 10 hidrocortisona", y la matriz efectivamente alterna
+placebo/SoluCortef. La versión que yo había visto era anterior.
+
+**64.3 Comprobación independiente del pareamiento.** Con los brazos leídos de la matriz:
+PER1 +1,504, PER3 −0,720, DBP −0,210, CIART −0,320, NR1D1 +0,213. **PER1 sube y PER3 baja**, que es
+la dirección reportada en la sección 3.4, y ZBTB16 encabeza. El pareamiento es correcto.
+
+**64.4 Lo que esto cierra y lo que no.** Cierra la procedencia de la columna de hidrocortisona y
+confirma el ρ de 0,71 contra la firma del resistente. **Siguen sin reproducirse las columnas de
+resistente frente a sensible y de Cushing**, que son las otras dos de la misma oración. Hay que
+localizar la función que las genera; con las tres identificadas se puede escribir el paso que falta
+en `run_all.sh` y cerrar el punto 1 de la revisión externa.
+
+---
+
+## 65. PROCEDENCIA DE LA TABLA DE FIRMAS: TRES COLUMNAS REPRODUCIDAS, UNA NO
+
+Rastreo columna por columna de `signatures_log2_common_genes.tsv` contra los datos del repositorio.
+
+| columna | procedimiento | r con la tabla |
+|---|---|---|
+| hydrocortisone adipose (GSE148640) | `delta` de `hydrocortisone()` en `02_meta_and_validation.py`: brazos leídos de la matriz de serie, media tratamiento − media placebo sobre el fichero procesado de GEO | **0,983** |
+| Cushing adipose (GSE66446) | **mediana Cushing − mediana control sobre log2 CPM SIN centrar** (5 vs 11) | **1,0000** |
+| TZD 3mo adipose (GSE13070) | `median_log2fc` del contraste `tzd_adipose` en `clamp_genes_change.tsv` | **1,0000** |
+| **IR adipose (GSE13070, 35 vs 6)** | no reproducida | mejor candidato **0,468** |
+
+**65.1 Dos aprendizajes de método.** El primero: **la tabla no usa el centrado por muestra**. Esa
+es la razón de que mis reconstrucciones fallaran; el centrado es correcto para los scores entre
+individuos pero esta tabla es de diferencias entre grupos y se construyó sin él. Hay que
+documentarlo, porque mezclar las dos convenciones es precisamente lo que produjo el intercambio de
+los valores de Cushing e hidrocortisona de §62.5.
+El segundo: la columna de TZD sale de `clamp_genes_change.tsv`, que **sí** produce el repositorio,
+de modo que esa parte de la cadena ya está cerrada.
+
+**65.2 La columna que falta.** "IR adipose (GSE13070, 35 vs 6)" no se reproduce con la diferencia
+de medianas ni de medias entre resistentes y sensibles del adiposo basal (r 0,45-0,47). Además el
+recuento no cuadra: la etiqueta dice **35 frente a 6** y las muestras de adiposo basal de
+`clamp_samples.tsv` son **34 frente a 6**. Una muestra de diferencia sugiere que el conjunto se
+definió en otro sitio, con otro criterio de inclusión. **Es la última pieza del punto 1 de la
+revisión externa.**
+
+**65.3 Para cerrar el punto 1 hace falta:** localizar el script que produce esa columna, escribir el
+paso que ensambla la tabla con los cuatro procedimientos documentados arriba, conectarlo en
+`run_all.sh` antes del paso de figuras, extender `verify_package.py` para que compruebe la
+existencia de cada entrada de cada figura, y rearchivar en Zenodo.

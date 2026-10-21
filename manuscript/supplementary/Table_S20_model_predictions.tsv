@@ -1,0 +1,7 @@
+cohorte	n	rho_amp	p	R_q1	R_q5
+AAGMEx adiposo	232	0.201	0.002	0.378	0.506
+GTEx adiposo sc	714	0.167	0.0	0.437	0.531
+GTEx visceral	587	0.094	0.023	0.44	0.548
+GTEx músculo	818	0.223	0.0	0.308	0.14
+GSE78721 adiposo	130	-0.213	0.015	0.845	0.663
+islotes	85	-0.218	0.045	0.513	0.709

@@ -1,0 +1,6 @@
+cohorte	tejido	rho	rho_sin_nivel_donante
+GTEx	adiposo sc	0.32	0.13
+GTEx	adiposo visceral	0.39	0.23
+GTEx	músculo	0.32	0.1
+GSE41168	adiposo	0.37	-0.06
+GSE41168	músculo	0.66	0.43

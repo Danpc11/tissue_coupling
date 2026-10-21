@@ -56,7 +56,10 @@ ANNOT = {
     "GPL570_annot.txt":   "Affymetrix U133 Plus 2.0 annotation (GEO platform file); probe -> Entrez",
     "GPL15207_annot.txt": "Affymetrix PrimeView annotation; probe -> Entrez",
     "Human_GRCh38_p13_annot_tsv.gz": "NCBI gene annotation; Entrez -> current symbol and synonyms",
-    "dorothea_ABC.tsv":   "OmniPath DoRothEA A-C regulons with sign",
+    "dorothea_ABC.tsv":   ("OmniPath DoRothEA A-C regulons with sign. Download with:\n"
+        "      curl -o $T2D_RAW/dorothea_ABC.tsv 'https://omnipathdb.org/interactions"
+        "?datasets=dorothea&dorothea_levels=A,B,C&organisms=9606&genesymbols=yes"
+        "&fields=dorothea_level,sources,references'"),
     "msigdb/*.gmt":       "MSigDB v2026.2 collections H, C2, C5, C8 (symbols)",
     "GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt": "RIN and ischaemic time per sample",
     "GTEx_Analysis_v11_Annotations_SubjectPhenotypesDS.txt": "sex, age bracket, Hardy scale",
