@@ -15,51 +15,51 @@ export T2D_REF="${T2D_REF:-data/reference}"
 mkdir -p "$T2D_OUT/new" "$T2D_OUT/figs"
 step () { printf '\n=== %s\n' "$1"; shift; "$@"; }
 
-step "00 every script compiles"                python tests/test_syntax.py
+step "00 every script compiles"                "${PY:-python3}" tests/test_syntax.py
 
 # --- data ------------------------------------------------------------------------------
-step "01 prepare the public series"            python python/analyses/00_prepare_data.py
+step "01 prepare the public series"            "${PY:-python3}" python/analyses/00_prepare_data.py
 
 # --- the estimator and its validation (Fig. 1) -------------------------------------------
-step "02 phase and amplitude template"         python python/analyses/02b_phase_template.py
-step "03 case-control analysis, Fig. 1b-d"     python python/analyses/01b_fig1_signature_test.py
-step "04 leave-one-out, myotubes"              python python/analyses/11_loo_validation_myotubes.py
-step "05 leave-one-out, muscle in vivo"        python python/analyses/12_loo_validation_invivo.py
-step "06 phase concordance with CHIRAL"        python python/analyses/17_chiral_concordance.py
+step "02 phase and amplitude template"         "${PY:-python3}" python/analyses/02b_phase_template.py
+step "03 case-control analysis, Fig. 1b-d"     "${PY:-python3}" python/analyses/01b_fig1_signature_test.py
+step "04 leave-one-out, myotubes"              "${PY:-python3}" python/analyses/11_loo_validation_myotubes.py
+step "05 leave-one-out, muscle in vivo"        "${PY:-python3}" python/analyses/12_loo_validation_invivo.py
+step "06 phase concordance with CHIRAL"        "${PY:-python3}" python/analyses/17_chiral_concordance.py
 
 # --- the receptor-clock axis (Fig. 2) -----------------------------------------------------
-step "07 cross-tissue axis"                    python python/analyses/01_crosstissue_axis.py
-step "08 GTEx adjusted for ischaemia and RIN"  python python/analyses/08_gtex_adjusted.py
-step "09 meta-analysis, two-level"             python python/analyses/06_meta_analysis.py
-step "10 meta-analysis, three-level"           python python/analyses/13_meta_three_level.py
-step "11 heterogeneity moderators"             python python/analyses/25_meta_moderators.py
-step "12 sensitivity to principal components"  python python/analyses/22_pc_sensitivity_core.py
+step "07 cross-tissue axis"                    "${PY:-python3}" python/analyses/01_crosstissue_axis.py
+step "08 GTEx adjusted for ischaemia and RIN"  "${PY:-python3}" python/analyses/08_gtex_adjusted.py
+step "09 meta-analysis, two-level"             "${PY:-python3}" python/analyses/06_meta_analysis.py
+step "10 meta-analysis, three-level"           "${PY:-python3}" python/analyses/13_meta_three_level.py
+step "11 heterogeneity moderators"             "${PY:-python3}" python/analyses/25_meta_moderators.py
+step "12 sensitivity to principal components"  "${PY:-python3}" python/analyses/22_pc_sensitivity_core.py
 
 # --- perturbations (Fig. 3) ----------------------------------------------------------------
-step "13 within-person clamp and TZD"          python python/analyses/05_clamp_within_person.py
-step "14 hydrocortisone, dexamethasone, Cushing" python python/analyses/04_perturbations.py
-step "15 assemble the signature table"         python python/analyses/23_build_signatures_table.py
+step "13 within-person clamp and TZD"          "${PY:-python3}" python/analyses/05_clamp_within_person.py
+step "14 hydrocortisone, dexamethasone, Cushing" "${PY:-python3}" python/analyses/04_perturbations.py
+step "15 assemble the signature table"         "${PY:-python3}" python/analyses/23_build_signatures_table.py
 
 # --- transcriptional context (Fig. 4) --------------------------------------------------------
-step "16 transcription-factor activity"        python python/analyses/07_tf_activity.py
-step "17 phenotype ontology by tissue"         python python/analyses/09_hpo_by_tissue.py
+step "16 transcription-factor activity"        "${PY:-python3}" python/analyses/07_tf_activity.py
+step "17 phenotype ontology by tissue"         "${PY:-python3}" python/analyses/09_hpo_by_tissue.py
 
 # --- the model and its prediction (Fig. 5) -----------------------------------------------------
-step "18 entrainment tongue"                   python python/model/make_tongue.py
-step "19 synthetic single-biopsy cohorts"      python python/model/make_fig7_data.py
-step "20 amplitude dispersion"                 python python/analyses/10_amplitude_dispersion.py
-step "21 estimator noise by group"             python python/analyses/15_dispersion_noise_by_group.py
+step "18 entrainment tongue"                   "${PY:-python3}" python/model/make_tongue.py
+step "19 synthetic single-biopsy cohorts"      "${PY:-python3}" python/model/make_fig7_data.py
+step "20 amplitude dispersion"                 "${PY:-python3}" python/analyses/10_amplitude_dispersion.py
+step "21 estimator noise by group"             "${PY:-python3}" python/analyses/15_dispersion_noise_by_group.py
 
 # --- figures ------------------------------------------------------------------------------------
-step "22 Figures 1, 3 and 4"                   python python/figures/paper_figures.py
-step "23 Figure 2"                             python python/figures/fig3_eje.py
-step "24 Figure 5"                             python python/figures/fig7_modelo.py
-step "25 Supplementary Figures S1-S3, S5-S7"   python python/figures/supplementary_figures.py
-step "26 Supplementary Figure S4"              python python/figures/ed4_gc_architecture.py
+step "22 Figures 1, 3 and 4"                   "${PY:-python3}" python/figures/paper_figures.py
+step "23 Figure 2"                             "${PY:-python3}" python/figures/fig3_eje.py
+step "24 Figure 5"                             "${PY:-python3}" python/figures/fig7_modelo.py
+step "25 Supplementary Figures S1-S3, S5-S7"   "${PY:-python3}" python/figures/supplementary_figures.py
+step "26 Supplementary Figure S4"              "${PY:-python3}" python/figures/ed4_gc_architecture.py
 
 # --- checks ---------------------------------------------------------------------------------------
-step "27 every figure input has a producer"    python tests/verify_inputs.py
-step "28 smoke test"                           python tests/smoke_test.py
-step "29 verify the package"                   python tests/verify_package.py "$T2D_OUT"
+step "27 every figure input has a producer"    "${PY:-python3}" tests/verify_inputs.py
+step "28 smoke test"                           "${PY:-python3}" tests/smoke_test.py
+step "29 verify the package"                   "${PY:-python3}" tests/verify_package.py "$T2D_OUT"
 
 printf '\nDone. Figures in %s/figs, tables in %s/new.\n' "$T2D_OUT" "$T2D_OUT"
