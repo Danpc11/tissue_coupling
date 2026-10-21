@@ -200,8 +200,20 @@ def fig1():
     ax.set_xlabel("\u03c1  receptor ~ clock output"); ax.set_xlim(-.05, .8); ax.set_ylim(-.6, len(s2) - .4)
     src(ax, "NR3C1 vs clock-output score, across individuals; 95% CI")
     panel(ax, "J", "The missing signal lies between\nindividuals, not between groups")
-    frame(fig.add_subplot(gs[2, 3]), "K",
-          "From comparing groups\nto correlating within individuals\n\n(hand-drawn)")
+    # K  external control: a 10-h delay of the sleep period dampens amplitude (GSE107537)
+    ax = fig.add_subplot(gs[2, 3])
+    SH = pd.read_csv(f"{OUT}/new/GSE107537_shift_response.tsv", sep="\t")
+    for _, r in SH.iterrows():
+        ax.plot([0, 1], [r.amp_day, r.amp_night], color=MU, lw=1.0, alpha=.75, marker="o", ms=4)
+    ax.set_xticks([0, 1]); ax.set_xticklabels(["habitual", "10 h delay"])
+    ax.set_xlim(-.35, 1.35); ax.set_ylabel("cosinor amplitude (log$_2$)")
+    pw = stats.wilcoxon(SH.amp_night, SH.amp_day).pvalue
+    ax.set_ylim(SH[["amp_day", "amp_night"]].min().min() * .92,
+                SH[["amp_day", "amp_night"]].max().max() * 1.16)
+    ax.text(.5, .97, f"8/8 down, median $-${abs(SH.pct.median()):.0f}%, P = {pw:.3f}",
+            transform=ax.transAxes, ha="center", va="top", fontsize=7)
+    src(ax, "GSE107537 \u00b7 PBMC \u00b7 8 subjects \u00b7 recorded sampling times")
+    panel(ax, "K")
     tidy(fig)
     fig.savefig(f"{OUT}/figs/F1.png", dpi=400, bbox_inches="tight")
     fig.savefig(f"{OUT}/figs/F1.pdf", bbox_inches="tight"); plt.close(fig)
