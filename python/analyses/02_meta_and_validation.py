@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Metaanalisis entre cohortes, reto de glucocorticoides y lectura entre tejidos.
 
+NOTA: no es un paso de run_all.sh. Su funcion hydrocortisone() la importa
+23_build_signatures_table.py para construir la columna de hidrocortisona de la tabla de firmas.
+
 Combina las estimaciones por cohorte del paso 21 con efectos aleatorios, aplica la puntuacion
 CONGELADA a una perturbacion glucocorticoide controlada, y mide cuanto puede leerse el eje de un
 tejido desde otro sin fuga de informacion.

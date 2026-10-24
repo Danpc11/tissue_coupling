@@ -27,7 +27,12 @@ ax.set(xlabel="effective forcing  F · K",ylabel="ensemble amplitude",
 ax2=ax.twinx(); ax2.plot(D["fks"],D["Rs"],"s--",color=ORANGE); ax2.set_ylabel("synchrony R",color=ORANGE)
 ax2.spines[["top"]].set_visible(False)
 ax=fig.add_subplot(gs[0,2]); ax.text(-0.22,1.07,"C",transform=ax.transAxes,fontsize=11,fontweight="bold",va="top")
-sim=D["sig_sim"]; genes=list(D["sig_genes"])
+sim=D["sig_sim"]; genes=[str(g) for g in D["sig_genes"]]
+# solo el brazo de salida: BMAL1 pertenece al oscilador central y se puntua aparte
+import sys as _s; _s.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),"../lib"))
+from gene_sets import SETS as _S
+_keep=[k for k,g in enumerate(genes) if g in _S["Clock output"]["genes"]]
+sim=sim[_keep]; genes=[genes[k] for k in _keep]
 OBS=pd.read_csv(f"{OUT}/new/observed_signature_for_model.tsv",sep="\t",index_col=0)["IR_minus_sensitive_log2"]
 obs=np.array([OBS.get(g,np.nan) for g in genes])
 x=np.arange(len(sim))
@@ -36,6 +41,10 @@ ax.bar(x+.2,obs,.4,color=GREEN,label="observed (resistant − sensitive)")
 ax.axhline(0,color="k",lw=.8); ax.set_xticks(x); ax.set_xticklabels(genes,rotation=45,fontsize=7.5,ha="right")
 ok=~np.isnan(obs); conc=int(np.sum(np.sign(sim[ok])==np.sign(obs[ok])))
 ratio=np.abs(sim[ok]).mean()/np.abs(obs[ok]).mean()
+ax.set_title(f"{conc}/{int(ok.sum())} signs agree; mean magnitude within {abs(1-ratio)*100:.0f}%",
+             fontsize=8, pad=4)
+pd.DataFrame(dict(gene=[g for g,k in zip(genes,ok) if k], model=sim[ok], observed=obs[ok])).to_csv(
+    f"{OUT}/new/model_vs_observed.tsv", sep="\t", index=False)
 ax.set(ylabel="change (log$_2$ / model units)",
        )
 ax.legend(fontsize=7,frameon=False)

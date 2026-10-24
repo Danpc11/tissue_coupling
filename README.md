@@ -4,7 +4,7 @@
 [![tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Code and data for the manuscript. Everything in the paper is produced by `run_all.sh` from
+Code for the manuscript. Everything in the paper is produced by `run_all.sh` from
 public data.
 
 ## What the paper shows
@@ -26,7 +26,7 @@ pip install -r requirements.txt        # or requirements-lock.txt for exact vers
 bash run_all.sh
 ```
 
-`run_all.sh` runs 29 steps in order, grouped by the figure they feed, and ends with three checks:
+`run_all.sh` runs the pipeline in order, grouped by the figure they feed, and ends with three checks:
 that every input a figure reads is produced by the pipeline or versioned in `data/reference/`,
 a smoke test, and a verification of the output package. Figures land in `results/figs` and tables
 in `results/new`.
@@ -44,7 +44,6 @@ Continuous integration runs on 3.11.
 | `python/lib/gene_sets.py` | the single definition of every gene set used anywhere |
 | `data/reference/` | inputs that are not regenerated here, and why (`docs/DATA.md`) |
 | `tests/` | syntax, dependency chain, smoke test, package verification |
-| `manuscript/` | the manuscript and its supplementary information |
 
 ## Two conventions worth knowing before reading the code
 
