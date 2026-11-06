@@ -106,6 +106,18 @@ if __name__=="__main__":
                 r=resolve(x,res.index)
                 if r: sg.append(dict(cohorte=name,tejido=tis,conjunto=setname,gen=x,
                                      logFC=res.logFC[r],t=res.t[r],P=res.P[r],FDR=res.FDR[r]))
+    # --- rama repro-hugo: islotes de donantes (GSE159984), PyDESeq2 en 01c_islets_deseq2.py ---
+    isl=f"{OUT}/new/GSE159984_islets_T2D_vs_ND.tsv"
+    if os.path.exists(isl):
+        res=pd.read_csv(isl,sep="\t",index_col=0); res=res[res.t.notna()]
+        name,tis="GSE159984 · islotes","islotes"; ncase=27; nctrl=58
+        rows.append(dict(cohorte=name,tejido=tis,casos=ncase,controles=nctrl,genes_FDR01=int((res.FDR<0.1).sum()),t_mediana=float(res.t.median())))
+        for setname in ("Clock output","Glucocorticoid","Insulin core","Oxidative","Core oscillator"):
+            z,k=set_z(res,SETS[setname]["genes"]); se.append(dict(cohorte=name,tejido=tis,conjunto=setname,n_genes=k,z=z))
+        for setname in ("Clock output","Glucocorticoid"):
+            for x in SETS[setname]["genes"]:
+                r=resolve(x,res.index)
+                if r: sg.append(dict(cohorte=name,tejido=tis,conjunto=setname,gen=x,logFC=res.logFC[r],t=res.t[r],P=res.P[r],FDR=res.FDR[r]))
     D=pd.DataFrame(rows); S=pd.DataFrame(sg); Z=pd.DataFrame(se)
     D.to_csv(f"{OUT}/fig1_de_per_cohort.tsv",sep="\t",index=False)
     S.to_csv(f"{OUT}/fig1_signature_genes.tsv",sep="\t",index=False)
