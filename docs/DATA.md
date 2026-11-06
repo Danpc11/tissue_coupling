@@ -42,3 +42,19 @@ convenience.
 
 Scores computed across individuals use per-sample centred expression. Differences between groups,
 including the signature table, are computed without centring. See the README.
+
+## Reconstruction of the preparation step (branch `repro-hugo`, November 2026)
+
+The published package did not include the step that turns the public downloads into the matrices under `results/new/*.pkl`. This branch adds it:
+
+| script | what it produces |
+|---|---|
+| `download_public.sh` | every public input listed above, from GEO FTP, the GTEx bucket, Broad, OmniPath and recount3; `T2D_ARCHS4=1` also fetches the ARCHS4 HDF5 |
+| `python/analyses/00b_build_matrices.py` | the 26 `*.pkl` matrices (annotation by Entrez for microarrays, log2 CPM for RNA-seq, one donor per column for GTEx), the `*_meta.pkl` tables, `GSE108539_counts.tsv.gz` from recount3, and the copy of `data/reference/` into `results/new/` |
+| `python/analyses/00c_archs4_counts.py` | `GSE159984_raw_counts.tsv.gz` from ARCHS4, read by HTTP range if the HDF5 is not on disk |
+
+Substitutes for files that are only served by `www.ncbi.nlm.nih.gov`, which answers non-interactive clients with a CAPTCHA:
+
+- `Human_GRCh38_p13_annot_tsv.gz` is derived from `Homo_sapiens.gene_info.gz` (NCBI Gene FTP); the scripts read only `GeneID` and `Symbol`.
+- The NCBI-generated counts of GSE108539 are replaced by recount3 (SRP127581, gene sums summed over runs per GSM) and those of GSE159984 by ARCHS4 (kallisto, GENCODE). Neither is identical to the HISAT2/featureCounts counts of NCBI; the log2 CPM scores are expected to be close but not bit-identical.
+- Platform tables (GPL570, GPL15207, GPL17586, GPL24324) are the `!platform_table` block of the family SOFT file, read in streaming mode.

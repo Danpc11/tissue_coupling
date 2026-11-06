@@ -424,5 +424,14 @@ def fig5():
     for ext in ("png", "pdf"): os.replace(f"{OUT}/figs/F7_modelo.{ext}", f"{OUT}/figs/F5.{ext}")
 
 if __name__ == "__main__":
-    fig1(); print("F1 ok"); fig2(); print("F2 ok"); fig3(); print("F3 ok")
-    fig4(); print("F4 ok"); fig5(); print("F5 ok")
+    # rama repro-hugo: una figura que falla no impide las siguientes; el paso termina con error
+    # si alguna fallo, para que run_all.sh lo registre
+    import traceback
+    failed = []
+    for name, f in (("F1", fig1), ("F2", fig2), ("F3", fig3), ("F4", fig4), ("F5", fig5)):
+        try:
+            f(); print(f"{name} ok")
+        except Exception:
+            failed.append(name); print(f"{name} FALLO"); traceback.print_exc()
+    if failed:
+        sys.exit(f"figuras no generadas: {', '.join(failed)}")
