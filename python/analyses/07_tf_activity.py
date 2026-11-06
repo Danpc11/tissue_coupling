@@ -15,7 +15,7 @@ d=pd.read_csv(f"{RAW}/dorothea_ABC.tsv",sep="\t",low_memory=False,usecols=["sour
 d["mor"]=np.where(d.is_stimulation&~d.is_inhibition,1,np.where(d.is_inhibition&~d.is_stimulation,-1,0))
 d=d[d.mor!=0].drop_duplicates(["source_genesymbol","target_genesymbol"])
 CL=set(SETS["Clock output"]["genes"])|set(SETS["Core oscillator"]["genes"])|{"PER1","PER2","PER3","CIART","ARNTL","BMAL1"}
-A=pd.read_pickle("results/new/AAGMEx_adipose_log2.pkl")
+A=pd.read_pickle("results/new/AAGMEx_adipose_log2.pkl"); A=A.sub(A.mean(0),axis=1)   # centrado por muestra (Methods); rama repro-hugo
 with gzip.open("data/raw/GSE95674_series_matrix.txt.gz","rt") as f:
     for l in f:
         if l.startswith("!Sample_title"): t=[x.strip('"') for x in l.rstrip().split("\t")[1:]]
