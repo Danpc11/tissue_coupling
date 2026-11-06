@@ -23,7 +23,7 @@ def main():
     for f in glob.glob(f"{ROOT}/python/**/*.py", recursive=True):
         t = open(f).read()
         writes |= basenames(WRITE, t)
-        if "_legacy" in f: continue
+        if "_legacy" in f or os.path.basename(f).startswith("00"): continue   # 00*: leen descargas, no productos
         if "/figures/" in f or "/analyses/" in f or "/model/" in f:
             for b in basenames(READ, t): reads.setdefault(b.replace('.gz',''), []).append(os.path.relpath(f, ROOT))
     # lo que esta versionado como dato de entrada no necesita productor

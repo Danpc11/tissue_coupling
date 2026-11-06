@@ -4,3 +4,5 @@ data/raw/*
 !data/raw/.gitkeep
 results/*
 !results/.gitkeep
+data/gtex/
+data/msigdb/

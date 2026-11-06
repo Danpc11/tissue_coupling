@@ -19,6 +19,7 @@ step "00 every script compiles"                "${PY:-python3}" tests/test_synta
 
 # --- data ------------------------------------------------------------------------------
 step "01 prepare the public series"            "${PY:-python3}" python/analyses/00_prepare_data.py
+step "01b build the expression matrices"       "${PY:-python3}" python/analyses/00b_build_matrices.py
 
 # --- the estimator and its validation (Fig. 1) -------------------------------------------
 step "02 phase and amplitude template"         "${PY:-python3}" python/analyses/02b_phase_template.py

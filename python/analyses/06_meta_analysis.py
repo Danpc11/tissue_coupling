@@ -32,6 +32,7 @@ adi13=d[(d.tissue=="adipose")&(d.tzd=="pre")].drop_duplicates("subject").set_ind
 G1=pd.read_pickle("results/new/GTEx_adipose_sc.pkl"); G2=pd.read_pickle("results/new/GTEx_adipose_visc.pkl"); G3=pd.read_pickle("results/new/GTEx_muscle.pkl")
 rows=[]
 def add(coh,tis,X,cv,x_lab="NR3C1"):
+    if os.environ.get("T2D_CENTER","1")!="0": X=X.sub(X.mean(0),axis=1)   # centrado por muestra (Methods, "Sample centring"); T2D_CENTER=0 lo desactiva
     x=pres(X.loc[x_lab],cv); y=pres(sc(X,CL),cv); g=pres(sc(X,GC),cv)
     for lab,v in (("NR3C1~reloj",x),("GC~reloj",g)):
         r=stats.spearmanr(v,y).statistic; n=len(y)
@@ -41,6 +42,21 @@ add("AAGMEx","adiposo",A,aag); add("AAGMEx","músculo",M,aag)
 add("GSE41168","adiposo",Ea,[]); add("GSE41168","músculo",Em,[])
 add("GSE13070","adiposo",E[list(adi13.gsm)],[]); add("GSE13070","músculo",E[list(mus13.gsm)],[])
 add("GTEx","adiposo sc",G1,gtexcov(G1)); add("GTEx","adiposo visceral",G2,gtexcov(G2)); add("GTEx","músculo",G3,gtexcov(G3))
+# --- rama repro-hugo: las cuatro estimaciones restantes de la Fig. 2a (13 en total) ---
+if os.path.exists("results/new/GSE78721_log2.pkl"):
+    X=pd.read_pickle("results/new/GSE78721_log2.pkl"); md=pd.read_pickle("results/new/GSE78721_meta.pkl").set_index("gsm").reindex(X.columns)
+    Hd=pd.get_dummies(md.depot).values.astype(float)
+    add("GSE78721","adiposo",X,[(md.sex=="M").astype(float).values]+[Hd[:,k] for k in range(1,Hd.shape[1])])
+if os.path.exists("results/new/GSE25462_entrez.pkl"):
+    X=pd.read_pickle("results/new/GSE25462_entrez.pkl"); md=pd.read_pickle("results/new/GSE25462_meta.pkl").set_index("gsm").reindex(X.columns)
+    add("GSE25462","músculo",X,[(md.sex=="male").astype(float).values,md.age.fillna(md.age.median()).values.astype(float)])
+if os.path.exists("data/raw/GSE159984_raw_counts.tsv.gz"):
+    ann=pd.read_csv("data/raw/Human_GRCh38_p13_annot_tsv.gz",sep="\t",usecols=["GeneID","Symbol"],dtype=str); sym=dict(zip(ann.GeneID,ann.Symbol))
+    C=pd.read_csv("data/raw/GSE159984_raw_counts.tsv.gz",sep="\t",index_col=0)
+    C.index=[sym.get(str(i),str(i)) for i in C.index]; C=C[~C.index.str.isdigit()].groupby(level=0).sum()
+    don=[g for g in C.columns if int(g[3:])<=4852118]; cul=[g for g in C.columns if g not in don]
+    for lab,cols in (("islotes (donantes)",don),("islotes (cultivos)",cul)):
+        Cc=C[cols]; Cc=Cc[(Cc>5).sum(1)>=10]; add("GSE159984",lab,np.log2(Cc/Cc.sum()*1e6+1),[])
 R=pd.DataFrame(rows)
 def dl(sub):
     w=1/sub.se**2; m=(w*sub.z).sum()/w.sum(); Q=(w*(sub.z-m)**2).sum(); k=len(sub)
@@ -49,8 +65,8 @@ def dl(sub):
     return np.tanh(m2),np.tanh(m2-1.96*se2),np.tanh(m2+1.96*se2),Q,k,I2,2*(1-stats.norm.cdf(abs(m2/se2)))
 out=[]
 for lab in R.contraste.unique():
-    for tej in ("todos","adiposo","músculo"):
-        sub=R[(R.contraste==lab)&((R.tejido.str.contains("adiposo") if tej=="adiposo" else R.tejido.str.contains("músculo")) if tej!="todos" else True)]
+    for tej in ("todos","adiposo","músculo","islotes"):
+        sub=R[(R.contraste==lab)&(R.tejido.str.contains(tej) if tej!="todos" else True)]
         if len(sub)<2: continue
         rr,lo,hi,Q,k,I2,p=dl(sub)
         print(f"{lab:12s} {tej:8s} k={k}: ρ combinado {rr:+.3f} (IC95 {lo:+.3f} a {hi:+.3f}), P {p:.2e}, Q={Q:.1f}, I²={I2:.0f}%")
