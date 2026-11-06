@@ -345,6 +345,60 @@ def run_contrast(E, pre, post, label, estimator, rng, rows):
     per.to_csv(f"{OUT}/clamp_per_person_{label}.tsv", sep="\t", index=False)
 
 
+def response_by_sensitivity(rng):
+    """E. "Neither response was graded by insulin sensitivity (P = 0.42)" (Results §4).
+
+    Respuesta = cambio por persona del score de salida del reloj bajo el clamp, en musculo
+    (GSE13070, clamp basal: NRd sensibles frente a IRd resistentes) y en adiposo (GSE26637: cinco
+    sensibles y cinco resistentes, tabla de 00d). En GEO la sensibilidad solo existe como categoria,
+    asi que la prueba es Mann-Whitney por cohorte; la P unica se obtiene combinando las dos
+    (Stouffer con signo) y con un modelo lineal del cambio estandarizado por cohorte con un termino
+    de cohorte. Salida: results/new/clamp_response_by_sensitivity.tsv."""
+    per = pd.read_csv(f"{OUT}/clamp_per_person_clamp_baseline.tsv", sep="\t")
+    mus = pd.DataFrame(dict(subject=per.subject.astype(str), sensitive=(per.sensitivity == "sensitive").astype(int),
+                            d=per["d_Clock output"], cohort="GSE13070 muscle"))
+    f = f"{OUT}/new/GSE26637_clamp_adipose_per_person.tsv"
+    if not os.path.exists(f):
+        print("  (aviso) sin GSE26637_clamp_adipose_per_person.tsv: la prueba por sensibilidad se hace solo en musculo")
+        adi = None
+    else:
+        D = pd.read_csv(f, sep="\t", index_col=0); D.columns = D.columns.astype(str)
+        md = pd.read_pickle(f"{OUT}/new/GSE26637_meta.pkl")
+        subj_status = dict(zip(md.title.str.extract(r"(\d+)$")[0], md.status))
+        g = [x for x in SCORE_SETS["Clock output"] if x in D.index]
+        sc = D.loc[g].mean()
+        adi = pd.DataFrame(dict(subject=sc.index, sensitive=[int(subj_status.get(s) == "sensitive") for s in sc.index],
+                                d=sc.values, cohort="GSE26637 adipose"))
+    rows = []; zs = []
+    for c in ([mus] if adi is None else [mus, adi]):
+        x, y = c.d[c.sensitive == 1], c.d[c.sensitive == 0]
+        p = stats.mannwhitneyu(x, y).pvalue; z = stats.norm.isf(p / 2) * np.sign(x.median() - y.median()); zs.append(z)
+        rows.append(dict(test=f"{c.cohort.iloc[0]}: Mann-Whitney, d_clock_output sensitive vs resistant",
+                         n_sensitive=len(x), n_resistant=len(y), median_sensitive=x.median(), median_resistant=y.median(),
+                         estimate=x.median() - y.median(), p=p))
+    if adi is not None:
+        both = pd.concat([mus, adi], ignore_index=True)
+        both["dz"] = both.groupby("cohort").d.transform(lambda v: (v - v.mean()) / v.std())
+        Z = sum(zs) / np.sqrt(len(zs))
+        rows.append(dict(test="combined: Stouffer of the two Mann-Whitney (signed)", n_sensitive=int(both.sensitive.sum()),
+                         n_resistant=int((both.sensitive == 0).sum()), median_sensitive=np.nan, median_resistant=np.nan,
+                         estimate=Z, p=2 * stats.norm.sf(abs(Z))))
+        try:
+            import statsmodels.formula.api as smf
+            for f_ in ("dz ~ sensitive + cohort", "dz ~ sensitive * cohort"):
+                r = smf.ols(f_, both).fit()
+                rows.append(dict(test=f"combined: OLS {f_} (coefficient of sensitive)", n_sensitive=int(both.sensitive.sum()),
+                                 n_resistant=int((both.sensitive == 0).sum()), median_sensitive=np.nan, median_resistant=np.nan,
+                                 estimate=r.params["sensitive"], p=r.pvalues["sensitive"]))
+        except ImportError:
+            print("  (aviso) sin statsmodels: se omite el modelo conjunto")
+    R = pd.DataFrame(rows)
+    os.makedirs(f"{OUT}/new", exist_ok=True)
+    R.to_csv(f"{OUT}/new/clamp_response_by_sensitivity.tsv", sep="\t", index=False, float_format="%.4f")
+    print("\n== E. respuesta al clamp por sensibilidad a la insulina (manuscrito: P = 0.42) ==")
+    print(R.round(3).to_string(index=False))
+
+
 def pairs(d, m_pre, m_post):
     a = d[m_pre].drop_duplicates("subject").set_index("subject")
     b = d[m_post].drop_duplicates("subject").set_index("subject")
@@ -395,6 +449,7 @@ if __name__ == "__main__":
     pd.DataFrame(rows["scores"]).to_csv(f"{OUT}/clamp_scores_change.tsv", sep="\t", index=False)
     pd.DataFrame(rows["genes"]).to_csv(f"{OUT}/clamp_genes_change.tsv", sep="\t", index=False)
     W = pd.DataFrame(rows["within"]); W.to_csv(f"{OUT}/clamp_within_person.tsv", sep="\t", index=False)
+    response_by_sensitivity(rng)
     pd.set_option("display.width", 200); pd.set_option("display.max_rows", 500)
     print("\n== B. cambio de scores post - pre ==")
     print(pd.DataFrame(rows["scores"]).drop(columns="genes").to_string(index=False))
