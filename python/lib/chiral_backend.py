@@ -25,12 +25,27 @@ import numpy as np
 SCRITMO_SRC = os.environ.get("SCRITMO_SRC", "/tmp/scRITMO/src")
 
 
+PYCHIRAL_SRC = os.environ.get("PYCHIRAL_SRC", "")
+
+
 def _load():
+    """Devuelve la funcion CHIRAL. Tres vias, en este orden (rama repro-hugo):
+      1. paquete `pychiral` instalado o en PYCHIRAL_SRC (github.com/AndreaSalati/pyCHIRAL, src/)
+      2. subpaquete `scritmo.pychiral` de un clon de scRITMO en SCRITMO_SRC
+    Las dos copias son la misma implementacion de Andrea Salati; ninguna esta en PyPI."""
+    if PYCHIRAL_SRC and os.path.isdir(PYCHIRAL_SRC) and PYCHIRAL_SRC not in sys.path:
+        sys.path.insert(0, PYCHIRAL_SRC)
+    try:
+        from pychiral.chiral import CHIRAL
+        return CHIRAL
+    except ImportError:
+        pass
     if "scritmo" not in sys.modules:
         if not os.path.isdir(SCRITMO_SRC):
             raise ImportError(
-                f"No encuentro scRITMO en {SCRITMO_SRC}. Clona el repositorio o define "
-                "SCRITMO_SRC: git clone --depth 1 https://github.com/AndreaSalati/scRITMO.git")
+                f"No encuentro pychiral (PYCHIRAL_SRC={PYCHIRAL_SRC!r}) ni scRITMO en {SCRITMO_SRC}. "
+                "Clona uno de los dos: git clone --depth 1 https://github.com/AndreaSalati/pyCHIRAL.git "
+                "(y PYCHIRAL_SRC=<clon>/src) o https://github.com/AndreaSalati/scRITMO.git")
         sys.path.insert(0, SCRITMO_SRC)
         pkg = types.ModuleType("scritmo")
         pkg.__path__ = [os.path.join(SCRITMO_SRC, "scritmo")]
@@ -56,6 +71,6 @@ def infer_phase(E, genes, standardize=True, **kw):
     if X.shape[0] != len(genes):
         raise ValueError(f"E tiene {X.shape[0]} filas y se dieron {len(genes)} genes; "
                          "E debe ser genes x muestras")
-    out = CHIRAL(X.T, genes=list(genes), standardize=standardize, **kw)   # CHIRAL quiere muestras x genes
+    out = CHIRAL(X.T, clockgenes=list(genes), standardize=standardize, **kw)   # CHIRAL quiere muestras x genes; con ndarray ya debe venir restringida a los genes del reloj
     out["phi"] = np.asarray(out["phi"]).ravel()
     return out
