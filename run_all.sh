@@ -27,6 +27,7 @@ step "01b build the expression matrices"       "${PY:-python3}" python/analyses/
 step "02 phase and amplitude template"         "${PY:-python3}" python/analyses/02b_phase_template.py
 step "02c islets, T2D vs non-diabetic (PyDESeq2)" "${PY:-python3}" python/analyses/01c_islets_deseq2.py
 step "02d regenerate the versioned reference tables" "${PY:-python3}" python/analyses/00d_reference_tables.py
+step "02e template benchmark in adipose, GSE87761" "${PY:-python3}" python/analyses/02e_gse87761_benchmark.py
 step "03 case-control analysis, Fig. 1b-d"     "${PY:-python3}" python/analyses/01b_fig1_signature_test.py
 step "04 leave-one-out, myotubes"              "${PY:-python3}" python/analyses/11_loo_validation_myotubes.py
 step "05 leave-one-out, muscle in vivo"        "${PY:-python3}" python/analyses/12_loo_validation_invivo.py
