@@ -12,6 +12,8 @@ set -euo pipefail
 export T2D_RAW="${T2D_RAW:-data/raw}"
 export T2D_OUT="${T2D_OUT:-results}"
 export T2D_REF="${T2D_REF:-data/reference}"
+# CHIRAL (paso 06): clon de github.com/AndreaSalati/pyCHIRAL; si no existe, 17 avisa y sigue sin la concordancia
+export PYCHIRAL_SRC="${PYCHIRAL_SRC:-$HOME/circadian_timing/external/pyCHIRAL/src}"
 mkdir -p "$T2D_OUT/new" "$T2D_OUT/figs"
 step () { printf '\n=== %s\n' "$1"; shift; "$@"; }
 
