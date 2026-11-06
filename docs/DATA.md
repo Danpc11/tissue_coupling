@@ -51,6 +51,7 @@ The published package did not include the step that turns the public downloads i
 |---|---|
 | `download_public.sh` | every public input listed above, from GEO FTP, the GTEx bucket, Broad, OmniPath and recount3; `T2D_ARCHS4=1` also fetches the ARCHS4 HDF5 |
 | `python/analyses/00b_build_matrices.py` | the 26 `*.pkl` matrices (annotation by Entrez for microarrays, log2 CPM for RNA-seq, one donor per column for GTEx), the `*_meta.pkl` tables, `GSE108539_counts.tsv.gz` from recount3, and the copy of `data/reference/` into `results/new/` |
+| `python/analyses/00d_reference_tables.py` | regenerates the 23 tables of `data/reference/` that had no producer, writes them to `results/new/` and compares each with the versioned copy (`results/new/reference_tables_check.tsv`) |
 | `python/analyses/01c_islets_deseq2.py` | `GSE159984_islets_T2D_vs_ND.tsv`, the PyDESeq2 contrast of the 85 islet donors (27 T2D against 58 non-diabetic) that Fig. 1b-c reads |
 | `python/analyses/00c_archs4_counts.py` | `GSE159984_raw_counts.tsv.gz` from ARCHS4, read by HTTP range if the HDF5 is not on disk |
 
