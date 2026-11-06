@@ -56,6 +56,7 @@ if os.path.exists("data/raw/GSE159984_raw_counts.tsv.gz"):
     C.index=[sym.get(str(i),str(i)) for i in C.index]; C=C[~C.index.str.isdigit()].groupby(level=0).sum()
     don=[g for g in C.columns if int(g[3:])<=4852118]; cul=[g for g in C.columns if g not in don]
     for lab,cols in (("islotes (donantes)",don),("islotes (cultivos)",cul)):
+        if len(cols)<10: print(f"  GSE159984 {lab}: {len(cols)} muestras en el fichero de cuentas; se omite"); continue
         Cc=C[cols]; Cc=Cc[(Cc>5).sum(1)>=10]; add("GSE159984",lab,np.log2(Cc/Cc.sum()*1e6+1),[])
 R=pd.DataFrame(rows)
 def dl(sub):
