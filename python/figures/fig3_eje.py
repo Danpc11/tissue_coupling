@@ -51,10 +51,9 @@ def sc(X,g):
     gg=[r for r in (resolve(x,X.index) for x in g) if r]; Z=X.loc[gg]; return ((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T.mean(0)
 ann=pd.read_csv(f"{os.environ.get('T2D_RAW','data/raw')}/Human_GRCh38_p13_annot_tsv.gz",sep="\t",usecols=["GeneID","Symbol"],dtype=str)
 symmap=dict(zip(ann.GeneID,ann.Symbol))
-C=pd.read_csv(f"{os.environ.get('T2D_RAW','data/raw')}/GSE159984_raw_counts.tsv.gz",sep="\t",index_col=0)
-C=C[[g for g in C.columns if int(g[3:])<=4852118]]
-C.index=[symmap.get(str(i),str(i)) for i in C.index]; C=C[~C.index.str.isdigit()]; C=C.groupby(level=0).sum(); C=C[(C>5).sum(1)>=10]
-I=np.log2(C/C.sum()*1e6+1); I=I.sub(I.mean(0),axis=1)   # centrado por muestra (Methods); rama repro-hugo
+import islets as _isl; _don,_cul=_isl.groups(os.environ.get('T2D_RAW','data/raw'))
+I=_isl.log2cpm_symbols(f"{os.environ.get('T2D_RAW','data/raw')}/GSE159984_raw_counts.tsv.gz",_don,f"{os.environ.get('T2D_RAW','data/raw')}/Human_GRCh38_p13_annot_tsv.gz")
+I=I.sub(I.mean(0),axis=1)   # centrado por muestra (Methods); rama repro-hugo
 panels=[("islets (n=85)",I.loc["NR3C1"],sc(I,SETS["Clock output"]["genes"]),COL["islets"]),
         ("GTEx adipose visceral (n=587)",*[None,None],COL["adipose"])]
 G=pd.read_pickle(f"{OUT}/new/GTEx_adipose_visc.pkl"); G=G.sub(G.mean(0),axis=1)   # centrado por muestra
@@ -98,10 +97,8 @@ ax.set(ylabel="ρ NR3C1 ~ reloj",)
 ax.legend(fontsize=7,frameon=False)
 # ---- e islets cultivados
 ax=fig.add_subplot(gs[1,2]); ax.text(-0.2,1.06,"E",transform=ax.transAxes,fontsize=11,fontweight="bold",va="top")
-C2=pd.read_csv(f"{os.environ.get('T2D_RAW','data/raw')}/GSE159984_raw_counts.tsv.gz",sep="\t",index_col=0)
-C2=C2[[g for g in C2.columns if int(g[3:])>=4852119]]
-C2.index=[symmap.get(str(i),str(i)) for i in C2.index]; C2=C2[~C2.index.str.isdigit()]; C2=C2.groupby(level=0).sum(); C2=C2[(C2>5).sum(1)>=10]
-X2=np.log2(C2/C2.sum()*1e6+1); X2=X2.sub(X2.mean(0),axis=1); co2=sc(X2,SETS["Clock output"]["genes"])   # centrado por muestra
+X2=_isl.log2cpm_symbols(f"{os.environ.get('T2D_RAW','data/raw')}/GSE159984_raw_counts.tsv.gz",_cul,f"{os.environ.get('T2D_RAW','data/raw')}/Human_GRCh38_p13_annot_tsv.gz")
+X2=X2.sub(X2.mean(0),axis=1); co2=sc(X2,SETS["Clock output"]["genes"])   # centrado por muestra
 r=stats.spearmanr(X2.loc["NR3C1"],co2)
 ax.scatter(X2.loc["NR3C1"],co2,s=22,color=COL["islets"],alpha=.75)
 b_=np.polyfit(np.asarray(X2.loc["NR3C1"],float),np.asarray(co2,float),1); xs_=np.linspace(X2.loc["NR3C1"].min(),X2.loc["NR3C1"].max(),40); ax.plot(xs_,np.polyval(b_,xs_),"k--",lw=1.1)

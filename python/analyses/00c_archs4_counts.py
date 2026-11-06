@@ -53,6 +53,11 @@ def series_counts(h5, acc):
 if __name__ == "__main__":
     for acc in sys.argv[1:] or ["GSE159984"]:
         C = series_counts(H5, acc)
-        out = f"{RAW}/{acc}_raw_counts.tsv.gz"
+        out = f"{RAW}/{acc}_raw_counts_ARCHS4.tsv.gz"
         C.to_csv(out, sep="\t")
+        link = f"{RAW}/{acc}_raw_counts.tsv.gz"
+        if not os.path.lexists(link):
+            os.symlink(os.path.basename(out), link); print(f"  enlace {link} -> {os.path.basename(out)} (no habia cuentas de NCBI)")
+        else:
+            print(f"  {link} ya existe (cuentas de NCBI): no se sustituye")
         print(f"{acc}: {C.shape[0]} genes x {C.shape[1]} muestras -> {out}")

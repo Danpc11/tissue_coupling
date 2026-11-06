@@ -64,12 +64,7 @@ def fig1():
     # B  classic differential expression, by tissue and cohort
     ax = fig.add_subplot(gs[0, 1])
     d = D.copy(); d["tis"] = d.tejido.map({"músculo": "muscle", "adiposo": "adipose", "islotes": "islets"})
-    isl = f"{OUT}/new/GSE159984_islets_T2D_vs_ND.tsv"
-    for ext in ("", ".gz"):
-        if os.path.exists(isl + ext):
-            r = pd.read_csv(isl + ext, sep="\t", index_col=0)
-            d = pd.concat([d, pd.DataFrame([dict(cohorte="GSE159984", tejido="islotes", tis="islets",
-                 casos=27, controles=58, genes_FDR01=int((r.padj < 0.1).sum()))])], ignore_index=True); break
+    # la fila de islotes la escribe 01b (rama repro-hugo); antes se anadia aqui una segunda vez
     d = d.sort_values(["tis", "genes_FDR01"])
     col = {"muscle": MU, "adipose": AD, "islets": IS}
     ax.barh(range(len(d)), d.genes_FDR01.clip(lower=.25), color=[col[t] for t in d.tis])

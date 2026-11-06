@@ -71,6 +71,7 @@ def infer_phase(E, genes, standardize=True, **kw):
     if X.shape[0] != len(genes):
         raise ValueError(f"E tiene {X.shape[0]} filas y se dieron {len(genes)} genes; "
                          "E debe ser genes x muestras")
+    np.random.seed(0)   # pyCHIRAL usa el generador global sin semilla
     out = CHIRAL(X.T, clockgenes=list(genes), standardize=standardize, **kw)   # CHIRAL quiere muestras x genes; con ndarray ya debe venir restringida a los genes del reloj
     out["phi"] = np.asarray(out["phi"]).ravel()
     return out

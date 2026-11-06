@@ -39,7 +39,8 @@ if __name__ == "__main__":
     ann = pd.read_csv(f"{RAW}/Human_GRCh38_p13_annot_tsv.gz", sep="\t", usecols=["GeneID", "Symbol"], dtype=str)
     sym = dict(zip(ann.GeneID, ann.Symbol))
     C = pd.read_csv(f"{RAW}/GSE159984_raw_counts.tsv.gz", sep="\t", index_col=0)
-    C = C[[g for g in C.columns if int(g[3:]) < CULTURE_FROM]]
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../lib")); import islets
+    donors, _ = islets.groups(RAW); C = C[[g for g in C.columns if g in set(donors)]]
     C.index = [sym.get(str(i), str(i)) for i in C.index]
     C = C[~C.index.str.isdigit()].groupby(level=0).sum()
     C = C[(C > 5).sum(1) >= 10]
@@ -59,4 +60,5 @@ if __name__ == "__main__":
     r.index.name = "gene"
     os.makedirs(f"{OUT}/new", exist_ok=True)
     r.to_csv(f"{OUT}/new/GSE159984_islets_T2D_vs_ND.tsv", sep="\t")
+    pd.DataFrame([dict(n_T2D=int((md.group == "T2D").sum()), n_ND=int((md.group == "ND").sum()))]).to_csv(f"{OUT}/new/GSE159984_islets_groups.tsv", sep="\t", index=False)
     print(f"genes con FDR < 0.1: {int((r.padj < 0.1).sum())}  -> {OUT}/new/GSE159984_islets_T2D_vs_ND.tsv")

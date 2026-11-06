@@ -60,7 +60,7 @@ def set_z(res, genes, n=2000, seed=0):
     rng=np.random.default_rng(seed)
     g=[r for r in (resolve(x,res.index) for x in genes) if r]
     if len(g)<3: return np.nan,0
-    obs=res.t[g].mean(); null=np.array([res.t.sample(len(g)).mean() for _ in range(n)])
+    obs=res.t[g].mean(); null=np.array([res.t.sample(len(g),random_state=int(rng.integers(1e9))).mean() for _ in range(n)])
     return (obs-null.mean())/null.std(), len(g)
 
 if __name__=="__main__":
@@ -82,7 +82,8 @@ if __name__=="__main__":
     # --- GSE78721 (PrimeView): adiposo de extremidad, 68 T2D / 62 normales
     if os.path.exists(f"{OUT}/new/GSE78721_log2.pkl"):
         X=pd.read_pickle(f"{OUT}/new/GSE78721_log2.pkl"); md=pd.read_pickle(f"{OUT}/new/GSE78721_meta.pkl").set_index("gsm")
-        COH["GSE78721 · adiposo"]=(X,(md.dx.reindex(X.columns)!="Normal").values,"adiposo")
+        keep=md.index[md.one_per_person] if "one_per_person" in md else md.index   # una muestra por persona (rama repro-hugo)
+        COH["GSE78721 · adiposo"]=(X[list(keep)],(md.dx.reindex(keep)!="Normal").values,"adiposo")
     # --- GSE182120 (HTA 2.0): músculo 25 T2D / 24 NGT, centrado por laboratorio
     if os.path.exists(f"{OUT}/new/GSE182120_log2.pkl"):
         X=pd.read_pickle(f"{OUT}/new/GSE182120_log2.pkl"); md=pd.read_pickle(f"{OUT}/new/GSE182120_meta.pkl").set_index("gsm")
@@ -110,7 +111,8 @@ if __name__=="__main__":
     isl=f"{OUT}/new/GSE159984_islets_T2D_vs_ND.tsv"
     if os.path.exists(isl):
         res=pd.read_csv(isl,sep="\t",index_col=0); res=res[res.t.notna()]
-        name,tis="GSE159984 · islotes","islotes"; ncase=27; nctrl=58
+        name,tis="GSE159984 · islotes","islotes"
+        ng=pd.read_csv(f"{OUT}/new/GSE159984_islets_groups.tsv",sep="\t"); ncase=int(ng.n_T2D[0]); nctrl=int(ng.n_ND[0])
         rows.append(dict(cohorte=name,tejido=tis,casos=ncase,controles=nctrl,genes_FDR01=int((res.FDR<0.1).sum()),t_mediana=float(res.t.median())))
         for setname in ("Clock output","Glucocorticoid","Insulin core","Oxidative","Core oscillator"):
             z,k=set_z(res,SETS[setname]["genes"]); se.append(dict(cohorte=name,tejido=tis,conjunto=setname,n_genes=k,z=z))

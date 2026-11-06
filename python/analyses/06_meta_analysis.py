@@ -6,7 +6,7 @@ Salidas: results/new/meta_per_cohort.tsv y meta_pooled.tsv
 """
 import pandas as pd, numpy as np, sys, gzip, importlib.util, os
 from scipy import stats
-os.environ["T2D_OUT"]="results"; sys.path.insert(0,"python/lib"); from gene_sets import SETS, resolve
+OUT=os.environ.get("T2D_OUT","results"); RAW=os.environ.get("T2D_RAW","data/raw"); sys.path.insert(0,"python/lib"); from gene_sets import SETS, resolve; import islets
 def sc(X,g):
     gg=[r for r in (resolve(x,X.index) for x in g) if r]; Z=X.loc[gg]; return ((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T.mean(0)
 def pres(y,cv):
@@ -15,7 +15,7 @@ def pres(y,cv):
 CL=SETS["Clock output"]["genes"]; GC=SETS["Glucocorticoid"]["genes"]
 PH=pd.read_pickle("results/new/GTEx_pheno.pkl"); agemid={'20-29':25,'30-39':35,'40-49':45,'50-59':55,'60-69':65,'70-79':75}
 def gtexcov(X):
-    p=PH.reindex(X.columns); H=pd.get_dummies(p.DTHHRDY.fillna(-1).astype(int),prefix="h").values.astype(float)
+    p=PH.reindex(X.columns); H=pd.get_dummies(p.DTHHRDY.fillna(-1).astype(int),prefix="h",drop_first=True).values.astype(float)
     cv=[(p.SEX==1).astype(float).values,p.AGE.map(agemid).values.astype(float)]+[H[:,k] for k in range(H.shape[1])]
     return cv
 A=pd.read_pickle("results/new/AAGMEx_adipose_log2.pkl"); M=pd.read_pickle("results/new/AAGMEx_muscle_log2.pkl")
@@ -43,21 +43,19 @@ add("GSE41168","adiposo",Ea,[]); add("GSE41168","músculo",Em,[])
 add("GSE13070","adiposo",E[list(adi13.gsm)],[]); add("GSE13070","músculo",E[list(mus13.gsm)],[])
 add("GTEx","adiposo sc",G1,gtexcov(G1)); add("GTEx","adiposo visceral",G2,gtexcov(G2)); add("GTEx","músculo",G3,gtexcov(G3))
 # --- rama repro-hugo: las cuatro estimaciones restantes de la Fig. 2a (13 en total) ---
-if os.path.exists("results/new/GSE78721_log2.pkl"):
-    X=pd.read_pickle("results/new/GSE78721_log2.pkl"); md=pd.read_pickle("results/new/GSE78721_meta.pkl").set_index("gsm").reindex(X.columns)
-    Hd=pd.get_dummies(md.depot).values.astype(float)
-    add("GSE78721","adiposo",X,[(md.sex=="M").astype(float).values]+[Hd[:,k] for k in range(1,Hd.shape[1])])
-if os.path.exists("results/new/GSE25462_entrez.pkl"):
-    X=pd.read_pickle("results/new/GSE25462_entrez.pkl"); md=pd.read_pickle("results/new/GSE25462_meta.pkl").set_index("gsm").reindex(X.columns)
+if os.path.exists(f"{OUT}/new/GSE78721_log2.pkl"):
+    X=pd.read_pickle(f"{OUT}/new/GSE78721_log2.pkl"); md=pd.read_pickle(f"{OUT}/new/GSE78721_meta.pkl").set_index("gsm").reindex(X.columns)
+    keep=list(md.index[md.one_per_person]); X=X[keep]; md=md.reindex(keep)   # una muestra por persona (95): extremidad o subcutaneo
+    add("GSE78721","adiposo",X,[(md.sex=="M").astype(float).values,(md.depot=="Subcutaneous").astype(float).values])
+if os.path.exists(f"{OUT}/new/GSE25462_entrez.pkl"):
+    X=pd.read_pickle(f"{OUT}/new/GSE25462_entrez.pkl"); md=pd.read_pickle(f"{OUT}/new/GSE25462_meta.pkl").set_index("gsm").reindex(X.columns)
     add("GSE25462","músculo",X,[(md.sex=="male").astype(float).values,md.age.fillna(md.age.median()).values.astype(float)])
-if os.path.exists("data/raw/GSE159984_raw_counts.tsv.gz"):
-    ann=pd.read_csv("data/raw/Human_GRCh38_p13_annot_tsv.gz",sep="\t",usecols=["GeneID","Symbol"],dtype=str); sym=dict(zip(ann.GeneID,ann.Symbol))
-    C=pd.read_csv("data/raw/GSE159984_raw_counts.tsv.gz",sep="\t",index_col=0)
-    C.index=[sym.get(str(i),str(i)) for i in C.index]; C=C[~C.index.str.isdigit()].groupby(level=0).sum()
-    don=[g for g in C.columns if int(g[3:])<=4852118]; cul=[g for g in C.columns if g not in don]
+if os.path.exists(f"{RAW}/GSE159984_raw_counts.tsv.gz"):
+    don,cul=islets.groups(RAW)
     for lab,cols in (("islotes (donantes)",don),("islotes (cultivos)",cul)):
-        if len(cols)<10: print(f"  GSE159984 {lab}: {len(cols)} muestras en el fichero de cuentas; se omite"); continue
-        Cc=C[cols]; Cc=Cc[(Cc>5).sum(1)>=10]; add("GSE159984",lab,np.log2(Cc/Cc.sum()*1e6+1),[])
+        L=islets.log2cpm_symbols(f"{RAW}/GSE159984_raw_counts.tsv.gz",cols,f"{RAW}/Human_GRCh38_p13_annot_tsv.gz")
+        if L.shape[1]<10: print(f"  GSE159984 {lab}: {L.shape[1]} muestras en el fichero de cuentas; se omite"); continue
+        add("GSE159984",lab,L,[])
 R=pd.DataFrame(rows)
 def dl(sub):
     w=1/sub.se**2; m=(w*sub.z).sum()/w.sum(); Q=(w*(sub.z-m)**2).sum(); k=len(sub)
@@ -72,5 +70,5 @@ for lab in R.contraste.unique():
         rr,lo,hi,Q,k,I2,p=dl(sub)
         print(f"{lab:12s} {tej:8s} k={k}: ρ combinado {rr:+.3f} (IC95 {lo:+.3f} a {hi:+.3f}), P {p:.2e}, Q={Q:.1f}, I²={I2:.0f}%")
         out.append(dict(contraste=lab,grupo=tej,k=k,rho=rr,lo=lo,hi=hi,p=p,Q=Q,I2=I2))
-R.to_csv("results/new/meta_per_cohort.tsv",sep="\t",index=False); pd.DataFrame(out).to_csv("results/new/meta_pooled.tsv",sep="\t",index=False)
+R.to_csv(f"{OUT}/new/meta_per_cohort.tsv",sep="\t",index=False); pd.DataFrame(out).to_csv(f"{OUT}/new/meta_pooled.tsv",sep="\t",index=False)
 print("\nPor cohorte:"); print(R.round(3).to_string(index=False))

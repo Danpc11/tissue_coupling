@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Descarga los datos publicos que espera tissue_coupling (docs/DATA.md, 00_prepare_data.py)
-# en data/raw. Solo usa FTP de GEO, GCS de GTEx, Broad (MSigDB), OmniPath, recount3 y ARCHS4:
-# www.ncbi.nlm.nih.gov puede responder con reCAPTCHA a clientes no interactivos, asi que los
-# ficheros que solo existen ahi (cuentas generadas por NCBI, Human.GRCh38.p13.annot.tsv.gz) se
-# sustituyen por alternativas documentadas en docs/DATA.md.
+# en data/raw: FTP de GEO, GCS de GTEx, Broad (MSigDB), OmniPath, recount3, ARCHS4 (opcional) y
+# www.ncbi.nlm.nih.gov para las cuentas generadas por NCBI. Este ultimo puede responder con una
+# pagina de reCAPTCHA a clientes no interactivos; en ese caso se avisa y hay que reintentar (las
+# alternativas de respaldo estan documentadas en docs/DATA.md).
 #
 #   bash download_public.sh            # todo menos ARCHS4
-#   T2D_ARCHS4=1 bash download_public.sh   # ademas el HDF5 de ARCHS4 (62 GB) para GSE159984
+#   T2D_ARCHS4_DL=1 bash download_public.sh   # ademas el HDF5 de ARCHS4 (62 GB) para GSE159984
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 RAW=$ROOT/data/raw
@@ -100,6 +100,20 @@ ln -sfn Human_GRCh38_p13_annot_tsv.gz Human_GRCh38_p13_annot.tsv.gz
 
 echo "## 8. Otros ficheros que leen 00b_build_matrices.py y 00c_archs4_counts.py"
 soft_table https://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL17nnn/GPL17586/soft/GPL17586_family.soft.gz GPL17586_annot.txt
+soft_table https://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL4nnn/GPL4133/soft/GPL4133_family.soft.gz     GPL4133_annot.txt
+soft_table https://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL15nnn/GPL15331/soft/GPL15331_family.soft.gz GPL15331_annot.txt
+for c in c2.cp.reactome c2.cp.wikipathways c2.cp.kegg_medicus c2.cgp c2.cp.pid c3.tft.gtrd c3.mir.mirdb c4.all c5.go.bp c7.all; do
+  get $M/$c.v2026.2.Hs.symbols.gmt msigdb/$c.v2026.2.Hs.symbols.gmt
+done
+# cuentas generadas por NCBI (www.ncbi.nlm.nih.gov; si responde con una pagina HTML, reintentar mas tarde)
+N='https://www.ncbi.nlm.nih.gov/geo/download/?type=rnaseq_counts'
+for a in GSE159984 GSE108539; do
+  get "$N&acc=$a&format=file&file=${a}_raw_counts_GRCh38.p13_NCBI.tsv.gz" ${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz
+  if [ -s ${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz ] && ! gzip -t ${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz 2>/dev/null; then
+    rm -f ${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz; echo "  [FALLO] $a: NCBI devolvio HTML (CAPTCHA); reintentar"
+  fi
+done
+[ -s GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz ] && ln -sfn GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz GSE159984_raw_counts.tsv.gz
 get "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE66nnn/GSE66446/suppl/GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt.gz" GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt.gz
 # la serie tiene dos plataformas; 00_prepare_data.py busca el nombre sin sufijo
 [ -s GSE159984-GPL16791_series_matrix.txt.gz ] && ln -sfn GSE159984-GPL16791_series_matrix.txt.gz GSE159984_series_matrix.txt.gz
@@ -113,12 +127,15 @@ get $R/metadata/81/SRP127581/sra.sra.SRP127581.MD.gz          recount3/sra.sra.S
 get $R/gene_sums/49/SRP055749/sra.gene_sums.SRP055749.G026.gz recount3/sra.gene_sums.SRP055749.G026.gz
 get $R/metadata/49/SRP055749/sra.sra.SRP055749.MD.gz          recount3/sra.sra.SRP055749.MD.gz
 
-if [ -n "${T2D_ARCHS4:-}" ]; then
+if [ -n "${T2D_ARCHS4_DL:-}" ]; then
   echo "## 10. ARCHS4 human_gene_v2 (62 GB), para GSE159984 (sin cuentas de autor ni en recount3)"
   mkdir -p archs4
   curl -s -S -L -C - -o archs4/human_gene_v2.latest.h5 https://s3.k8s.maayanlab.cloud/archs4/files/human_gene_v2.latest.h5 \
     && echo "  [ok]    archs4/human_gene_v2.latest.h5" || echo "  [FALLO] ARCHS4"
 fi
+
+# fuentes sin version (gene_info cambia a diario, OmniPath es una consulta en vivo): se registra fecha y sha256
+{ echo "# $(date -u +%Y-%m-%dT%H:%MZ)"; sha256sum _soft/Homo_sapiens.gene_info.gz dorothea_ABC.tsv Human_GRCh38_p13_annot_tsv.gz 2>/dev/null; } >> CHECKSUMS.txt
 
 echo "### $(date)  fin"
 echo "## Informe de 00_prepare_data.py:"

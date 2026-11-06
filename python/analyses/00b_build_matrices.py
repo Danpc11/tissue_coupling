@@ -73,8 +73,9 @@ def log2_if_needed(E):
 
 
 def log2cpm(C, min_count=5, min_samples=10):
-    C = C[(C > min_count).sum(1) >= min_samples]
-    return np.log2(C / C.sum() * 1e6 + 1)
+    """log2 CPM con el tamano de libreria calculado antes del filtro de genes."""
+    lib = C.sum(); C = C[(C > min_count).sum(1) >= min_samples]
+    return np.log2(C / lib * 1e6 + 1)
 
 
 _ENS = None
@@ -99,6 +100,20 @@ def by_symbol_from_ensembl(C):
     C = C.copy(); C.index = [m.get(i, None) for i in idx]
     C = C[pd.notna(C.index)]
     return C.groupby(level=0).sum()
+
+
+def synonym_map():
+    """results/new/ncbi_synonym_map.tsv: sinonimo (que no es simbolo vigente) -> simbolo vigente,
+    desde gene_info de NCBI. Lo leen aagmex(), 09_hpo_by_tissue.py y 00d_reference_tables.py."""
+    out = f"{NEW}/ncbi_synonym_map.tsv"
+    g = pd.read_csv(f"{RAW}/_soft/Homo_sapiens.gene_info.gz", sep="\t", usecols=["Symbol", "Synonyms"], dtype=str)
+    cur = set(g.Symbol); m = {}
+    for sym, syn in zip(g.Symbol, g.Synonyms.fillna("-")):
+        for x in syn.split("|"):
+            if x and x != "-" and x not in cur and x not in m: m[x] = sym
+    D = pd.Series(m, name="current").to_frame(); D.index.name = None
+    D.to_csv(out, sep="\t"); print(f"  -> {out}  ({len(D)} sinonimos)")
+    return D["current"].to_dict()
 
 
 def collapse(expr, M):
@@ -136,7 +151,8 @@ def save(obj, name):
 def aagmex():
     """GSE95674 adiposo / GSE95675 musculo, Illumina HT-12 v4 cuantil-normalizado, no log.
     Columnas = identificador de donante (titulo; el de musculo lleva sufijo -M)."""
-    syn = pd.read_csv(f"{REF}/ncbi_synonym_map.tsv", sep="\t", index_col=0)["current"].to_dict()
+    fn = f"{NEW}/ncbi_synonym_map.tsv"
+    syn = pd.read_csv(fn, sep="\t", index_col=0)["current"].to_dict() if os.path.exists(fn) else synonym_map()
     mats = {}
     for acc, tis in (("GSE95674", "adipose"), ("GSE95675", "muscle")):
         p, e = read_series(acc)
@@ -182,7 +198,9 @@ def gpl570_case_control():
         E = log2_if_needed(e)
         if acc == "GSE25462":
             p["sex"] = val(p.c1); p["age"] = pd.to_numeric(val(p.c2), errors="coerce")
-            p["fh"] = val(p.c3); p["si"] = pd.to_numeric(val(p.c11), errors="coerce")
+            p["fh"] = val(p.c3)
+            sicol = next(c for c in p.columns if c.startswith("c") and p[c].astype(str).str.startswith("si:").all())
+            p["si"] = pd.to_numeric(val(p[sicol]), errors="coerce")
         else:
             p["sex"] = val(p.c0); p["stim"] = val(p.c2); p["status"] = val(p.c3)
         save(p, f"{acc}_meta")
@@ -195,6 +213,9 @@ def gse78721():
     """PrimeView (GPL15207), RMA log2; 130 muestras de adiposo (limb, subcutaneo, visceral)."""
     p, e = read_series("GSE78721")
     p["sex"] = val(p.c0); p["dx"] = val(p.c1); p["depot"] = val(p.c2).str.replace("Sudcutaneous", "Subcutaneous")
+    # 130 muestras de 95 personas: las 35 de cirugia abdominal aportan subcutaneo y visceral (sin identificador
+    # de persona en GEO). `one_per_person` marca una muestra por persona: extremidad o subcutaneo.
+    p["one_per_person"] = p.depot.isin(["Limb", "Subcutaneous"])
     E = gpl570.annotate(log2_if_needed(e), path=f"{RAW}/GPL15207_annot.txt")
     save(p, "GSE78721_meta"); save(E, "GSE78721_log2")
     print(f"GSE78721: {E.shape}, dx {p.dx.value_counts().to_dict()}")
@@ -262,7 +283,12 @@ def recount3_counts(srp):
     C = pd.read_csv(f"{d}/sra.gene_sums.{srp}.G026.gz", sep="\t", comment="#", index_col=0)
     r2g = dict(zip(md.external_id, md.sample_name))
     C = C[[c for c in C.columns if c in r2g]]
-    C = C.T.groupby([r2g[c] for c in C.columns]).sum().T
+    # las gene_sums de recount3 son cobertura por base: se dividen por la longitud media de lectura
+    # (star.average_input_read_length de recount_qc) para dejarlas en lecturas
+    qc = pd.read_csv(f"{d}/sra.recount_qc.{srp}.MD.gz", sep="\t")
+    rl = dict(zip(qc.external_id, pd.to_numeric(qc["star.average_input_read_length"], errors="coerce")))
+    C = C / np.array([rl.get(c, np.nan) for c in C.columns])
+    C = C.T.groupby([r2g[c] for c in C.columns]).sum().T.round()
     return by_symbol_from_ensembl(C)
 
 
@@ -297,17 +323,23 @@ def gtex():
     ph = pd.read_csv(f"{RAW}/GTEx_Analysis_v11_Annotations_SubjectPhenotypesDS.txt", sep="\t").set_index("SUBJID")
     PH = ph[["SEX", "AGE", "DTHHRDY"]]
     save(PH, "GTEx_pheno")
-    for fn, name in (("gene_reads_v11_muscle_skeletal.gct.gz", "GTEx_muscle"),
-                     ("gene_reads_v11_adipose_subcutaneous.gct.gz", "GTEx_adipose_sc"),
-                     ("gene_reads_v11_adipose_visceral_omentum.gct.gz", "GTEx_adipose_visc")):
+    SA = pd.read_csv(f"{RAW}/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt", sep="\t", low_memory=False)
+    SA["donor"] = SA.SAMPID.str.split("-").str[:2].str.join("-")
+    for fn, name, smtsd in (("gene_reads_v11_muscle_skeletal.gct.gz", "GTEx_muscle", "Muscle - Skeletal"),
+                            ("gene_reads_v11_adipose_subcutaneous.gct.gz", "GTEx_adipose_sc", "Adipose - Subcutaneous"),
+                            ("gene_reads_v11_adipose_visceral_omentum.gct.gz", "GTEx_adipose_visc", "Adipose - Visceral (Omentum)")):
         G = pd.read_csv(f"{RAW}/{fn}", sep="\t", skiprows=2)
+        # simbolo vigente por Ensembl (gene_info); si no hay, el de GENCODE de la GCT
+        ens = ensembl_to_symbol(); G["Description"] = [ens.get(n.split(".")[0], s) for n, s in zip(G.Name, G.Description)]
         C = G.drop(columns=["Name"]).set_index("Description")
         C = C.groupby(level=0).sum()
-        donor = ["-".join(c.split("-")[:2]) for c in C.columns]
-        keep, seen = [], set()
-        for c, d in zip(C.columns, donor):
-            if d not in seen and d in PH.index: seen.add(d); keep.append(c)
+        # una muestra por donante: la primera que SampleAttributes lista para ese tejido (misma regla que 08)
+        # una muestra por donante: la primera que SampleAttributes lista para ese tejido y que esta en la GCT
+        sa = SA[SA.SMTSD == smtsd]; sa = sa[sa.SAMPID.isin(C.columns)]
+        first = sa.drop_duplicates("donor").set_index("donor").SAMPID
+        keep = [first[d] for d in first.index if d in PH.index]
         C = C[keep]; C.columns = ["-".join(c.split("-")[:2]) for c in keep]
+        pd.Series(keep, index=C.columns, name="SAMPID").to_csv(f"{NEW}/{name}_samples.tsv", sep="\t")
         X = log2cpm(C)
         save(X, name)
         print(f"{name}: {X.shape}")
@@ -333,20 +365,15 @@ def gse148640():
     pats = [c.split(".")[0] for c in pats]
     vals = d.iloc[:, 5:25].apply(pd.to_numeric, errors="coerce"); vals.columns = range(20)
     pla = [i for i in range(20) if trt[i].startswith("placebo")]; hc = [i for i in range(20) if not trt[i].startswith("placebo")]
+    assert all(pats[p] == pats[h] for p, h in zip(pla, hc)), "placebo e hidrocortisona no emparejan por paciente"
     diff = pd.DataFrame({pats[h]: vals[h].values - vals[p].values for p, h in zip(pla, hc)}, index=d.gene.values)
     diff = diff.groupby(level=0).mean()
     diff.to_pickle(f"{OUT}/GSE148640_diff_genes.pkl")
     print(f"GSE148640: {diff.shape} -> {OUT}/GSE148640_diff_genes.pkl; PER1 sube en {(diff.loc['PER1']>0).sum()}/10")
 
 
-def seed_reference():
-    """Las tablas versionadas se leen desde results/new: copiarlas si no existen."""
-    import shutil
-    n = 0
-    for f in glob.glob(f"{REF}/*"):
-        dst = f"{NEW}/{os.path.basename(f)}"
-        if not os.path.exists(dst): shutil.copy(f, dst); n += 1
-    print(f"data/reference -> results/new: {n} tablas copiadas")
+def gtex_link():
+    """data/gtex/SampleAttributes.txt, la ruta no documentada que leen 08 y las suplementarias."""
     gt = "data/gtex/SampleAttributes.txt"
     if not os.path.exists(gt):
         os.makedirs("data/gtex", exist_ok=True)
@@ -354,16 +381,18 @@ def seed_reference():
         print(f"enlace {gt}")
 
 
-STEPS = dict(aagmex=aagmex, gse41168=gse41168, gpl570=gpl570_case_control, gse78721=gse78721,
+STEPS = dict(synonyms=synonym_map, aagmex=aagmex, gse41168=gse41168, gpl570=gpl570_case_control, gse78721=gse78721,
              gse182120=gse182120, gse182117=gse182117, gse129843=gse129843, gse66446=gse66446,
-             gse13070=gse13070, gse148640=gse148640, gtex=gtex, gse108539=gse108539_recount3, reference=seed_reference)
+             gse13070=gse13070, gse148640=gse148640, gtex=gtex, gse108539=gse108539_recount3, gtex_link=gtex_link)
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(STEPS)
+    failed = []
     for k in want:
         print(f"\n=== {k}")
         try:
             STEPS[k]()
         except Exception as ex:
-            print(f"  FALLO {k}: {type(ex).__name__}: {ex}")
-            if len(sys.argv) > 1: raise
+            import traceback; traceback.print_exc(); print(f"  FALLO {k}: {type(ex).__name__}: {ex}"); failed.append(k)
+    if failed:
+        sys.exit(f"pasos fallidos: {', '.join(failed)}")

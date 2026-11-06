@@ -22,7 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "../lib"))
 from gene_sets import SETS, resolve
 import phase as ph
-import gpl570
+import gpl570, islets
 
 RAW = os.environ.get("T2D_RAW", "data/raw")
 OUT = os.environ.get("T2D_OUT", "results")
@@ -111,7 +111,7 @@ def t_within_donor():
         for t, X in G.items():
             co = sc(X, CLK); x = X.loc["NR3C1"]
             d = nr.index[multi & nr[t].notna()]
-            resid = nr.loc[d, t] - nr.loc[d].mean(1)
+            resid = pd.Series(pres(nr.loc[d, t], [nr.loc[d].mean(1).values]), index=d)   # residuo de la regresion sobre la media del donante
             rows.append(dict(cohorte="GTEx", tejido=t, rho=stats.spearmanr(x, co).statistic,
                              rho_sin_nivel_donante=stats.spearmanr(resid, co.reindex(d)).statistic, centrado=cen))
         Ea = pd.read_pickle(f"{NEW}/GSE41168_adipose.pkl"); Em = pd.read_pickle(f"{NEW}/GSE41168_muscle.pkl")
@@ -121,10 +121,10 @@ def t_within_donor():
         for t, X in (("adiposo", Ea), ("músculo", Em)):
             co = sc(X, CLK)
             rows.append(dict(cohorte="GSE41168", tejido=t, rho=stats.spearmanr(X.loc["NR3C1"], co).statistic,
-                             rho_sin_nivel_donante=stats.spearmanr(X.loc["NR3C1", pair] - m, co[pair]).statistic, centrado=cen))
+                             rho_sin_nivel_donante=stats.spearmanr(pres(X.loc["NR3C1", pair], [m.values]), co[pair]).statistic, centrado=cen))
     D = pd.DataFrame(rows).round(2)
     compare("within_donor_decomposition.tsv", D[~D.centrado].drop(columns="centrado"), key=["cohorte", "tejido"],
-            note="referencia sin centrar; GSE41168 con 28 parejas")
+            note="referencia sin centrar y con 28 parejas de GSE41168; aqui residuo de la regresion sobre la media del donante")
     out = D[D.centrado].drop(columns="centrado") if CENTER else D[~D.centrado].drop(columns="centrado")
     out.to_csv(f"{NEW}/within_donor_decomposition.tsv", sep="\t", index=False)
 
@@ -134,7 +134,7 @@ def t_gcreceptor_adiposity():
     y con la salida del reloj, AAGMEx adiposo."""
     A, cv = aagmex_cov()
     if CENTER: A = center(A)
-    genes = list(read_ref("AAGMEx_GCreceptor_vs_adiposity.tsv").gene)
+    genes = ["NR3C1", "FKBP5", "TSC22D3", "ZBTB16", "KLF15", "HSD11B1", "PER3", "DBP", "HLF"]   # Fig. 4d
     co = pres(sc(A, CLK), cv); lep = pres(A.loc["LEP"], cv)
     rows = [dict(gene=g, rho_vs_LEP=stats.spearmanr(pres(A.loc[g], cv), lep).statistic,
                  rho_vs_clock=stats.spearmanr(pres(A.loc[g], cv), co).statistic) for g in genes if g in A.index]
@@ -144,7 +144,7 @@ def t_gcreceptor_adiposity():
 def rank_vs_nr3c1():
     A, cv = aagmex_cov()
     Xc = center(A)
-    D = np.column_stack([np.ones(Xc.shape[1])] + cv + [A.loc["LEP"].values, A.loc["CD68"].values])
+    D = np.column_stack([np.ones(Xc.shape[1])] + cv + [Xc.loc["LEP"].values, Xc.loc["CD68"].values])
     Q, _ = np.linalg.qr(D); V = Xc.values.T; Vr = V - Q @ (Q.T @ V)
     rk = np.apply_along_axis(stats.rankdata, 0, Vr)
     nr = rk[:, list(Xc.index).index("NR3C1")]
@@ -202,12 +202,8 @@ def t_enrichment():
 
 def cohorts_axis():
     """Las matrices de las diez cohortes-tejido de AUDIT_global_axis.tsv, sin centrar."""
-    ann = pd.read_csv(f"{RAW}/Human_GRCh38_p13_annot_tsv.gz", sep="\t", usecols=["GeneID", "Symbol"], dtype=str)
-    sym = dict(zip(ann.GeneID, ann.Symbol))
-    C = pd.read_csv(f"{RAW}/GSE159984_raw_counts.tsv.gz", sep="\t", index_col=0)
-    C.index = [sym.get(str(i), str(i)) for i in C.index]; C = C[~C.index.str.isdigit()].groupby(level=0).sum()
-    don = [g for g in C.columns if int(g[3:]) <= 4852118]; Cc = C[don]; Cc = Cc[(Cc > 5).sum(1) >= 10]
-    yield "islotes", np.log2(Cc / Cc.sum() * 1e6 + 1)
+    don, _ = islets.groups(RAW)
+    yield "islotes", islets.log2cpm_symbols(f"{RAW}/GSE159984_raw_counts.tsv.gz", don, f"{RAW}/Human_GRCh38_p13_annot_tsv.gz")
     for lab, fn in (("GTEx adiposo sc", "GTEx_adipose_sc"), ("GTEx visceral", "GTEx_adipose_visc"), ("GTEx músculo", "GTEx_muscle"),
                     ("AAGMEx adiposo", "AAGMEx_adipose_log2"), ("AAGMEx músculo", "AAGMEx_muscle_log2"), ("GSE78721 adiposo", "GSE78721_log2"),
                     ("GSE41168 adiposo", "GSE41168_adipose"), ("GSE41168 músculo", "GSE41168_muscle"), ("GSE25462 músculo", "GSE25462_entrez")):
@@ -247,19 +243,13 @@ def t_msigdb_coverage():
 
 
 def t_synonym_map():
-    """ncbi_synonym_map.tsv: sinonimo (que no es simbolo vigente) -> simbolo vigente, de gene_info."""
-    g = pd.read_csv(f"{RAW}/_soft/Homo_sapiens.gene_info.gz", sep="\t", usecols=["Symbol", "Synonyms", "type_of_gene"], dtype=str)
-    cur = set(g.Symbol); m = {}
-    for s, syn in zip(g.Symbol, g.Synonyms.fillna("-")):
-        for x in syn.split("|"):
-            if x and x != "-" and x not in cur and x not in m: m[x] = s
-    D = pd.Series(m, name="current").to_frame(); D.index.name = None
+    """ncbi_synonym_map.tsv: la escribe 00b_build_matrices.py (gene_info); aqui solo se compara."""
+    D = pd.read_csv(f"{NEW}/ncbi_synonym_map.tsv", sep="\t", index_col=0)
     ref = read_ref("ncbi_synonym_map.tsv"); common = ref.index.intersection(D.index)
     agree = (ref.loc[common, "current"] == D.loc[common, "current"]).mean() if len(common) else np.nan
     print(f"  [ncbi_synonym_map.tsv] ref {len(ref)} / nueva {len(D)} / comunes {len(common)}; coinciden {agree*100:.1f} %")
     CHECK.append(dict(tabla="ncbi_synonym_map.tsv", filas_ref=len(ref), filas_nueva=len(D), filas_comunes=len(common),
                       columnas_comparadas=1, r_minimo=agree, detalle=f"acuerdo en 'current' {agree*100:.1f} %", nota="gene_info actual (p14), no p13"))
-    D.to_csv(f"{NEW}/ncbi_synonym_map.tsv", sep="\t")
 
 
 def t_gse26637():
@@ -311,6 +301,23 @@ def gse13070():
     c5 = mod("c5", "05_clamp_within_person.py"); E, d = c5.load(); return E, d
 
 
+def clamp_contrasts(E, dd):
+    """Mediana entre parejas de (post - pre) por gen: clamp 3 h en musculo basal, TZD 3 meses en
+    musculo (sin clamp) y en adiposo. Mismo criterio que 05 para los 45 genes que este guarda."""
+    def paired(tis, fix, var):
+        q = dd[(dd.tissue == tis) & dd[var].isin(["pre", "post"])]
+        if fix: q = q[q[fix[0]] == fix[1]]
+        D = []
+        for s, g in q.groupby("subject"):
+            a = g.gsm[g[var] == "pre"]; b_ = g.gsm[g[var] == "post"]
+            if len(a) == 1 and len(b_) == 1: D.append(E[b_.iloc[0]] - E[a.iloc[0]])
+        return pd.concat(D, axis=1).median(1), len(D)
+    out = {}
+    for name, args in (("clamp_baseline", ("muscle", ("tzd", "pre"), "clamp")), ("tzd_muscle", ("muscle", ("clamp", "pre"), "tzd")), ("tzd_adipose", ("adipose", None, "tzd"))):
+        out[name], out[name + "_n"] = paired(*args)
+    return out
+
+
 def t_gse13070_ir():
     """GSE13070_IR_vs_sensitive_log2.tsv (Fig. 3h-i, 5c) y observed_signature_for_model.tsv:
     media de resistentes menos media de sensibles, basal, musculo (51 vs 18) y adiposo (35 vs 6)."""
@@ -324,7 +331,7 @@ def t_gse13070_ir():
         out[lab] = E[list(r)].mean(1) - E[list(s)].mean(1)
     D = pd.DataFrame(out)
     compare("GSE13070_IR_vs_sensitive_log2.tsv", D, note="todos los genes; la referencia solo lleva los 6,108 comunes a los 12 contrastes")
-    genes = list(read_ref("observed_signature_for_model.tsv").index)
+    genes = ["PER3", "DBP", "TEF", "NR1D1", "NR1D2", "PER2", "CIART", "BMAL1"]   # brazo de salida, Fig. 5c
     O = D["IR adipose (GSE13070, 35 vs 6)"].reindex(genes).rename("IR_minus_sensitive_log2").to_frame()
     compare("observed_signature_for_model.tsv", O)
     return D
@@ -359,13 +366,16 @@ def t_time_calibration():
     X, md = gse129843_by_time()
     exf, n1 = morning(X, md[md.cond == "EXF"], 7, 11); trf, n2 = morning(X, md[md.cond == "TRF"], 7, 11)
     X8, md8 = gse108539_by_time(); m8, n3 = morning(X8, md8, 8, 12, ind="subject", tcol="clock_h")
-    W = pd.read_csv(f"{OUT}/clamp_genes_change.tsv", sep="\t"); w = W[W.contrast == "clamp_baseline"].drop_duplicates("gene").set_index("gene")
-    genes = list(read_ref("time_calibration_vs_clamp.tsv").index)
+    E, dd = gse13070(); cc = clamp_contrasts(E, dd)
+    genes = ["BMAL1", "CDKN1A", "CIART", "CRY1", "DBP", "DDIT4", "FBXO32", "FKBP5", "GADD45A", "HK2", "HLF", "KLF15", "NR1D1", "NR1D2",
+             "PDK4", "PER1", "PER3", "SLC2A4", "TEF", "TRIM63", "TSC22D3", "TXNIP"]   # Fig. 3b y Supp. Table 7
     D = pd.DataFrame({f"GSE129843 EXF 11h-07h (n={n1})": exf, f"GSE129843 TRF 11h-07h (n={n2})": trf,
-                      f"GSE108539 12h-08h (n={n3})": m8, "GSE13070 clamp 3h (n=68)": w.median_log2fc}).reindex(genes).round(2)
-    ref = read_ref("time_calibration_vs_clamp.tsv"); D.columns = list(ref.columns)   # mismos n: 9, 10, 9, 68
-    compare("time_calibration_vs_clamp.tsv", D, note="clamp: mediana de log2FC por gen de 05 (clamp_genes_change.tsv)")
-    return exf, trf, m8
+                      f"GSE108539 12h-08h (n={n3})": m8, f"GSE13070 clamp 3h (n={cc['clamp_baseline_n']})": cc["clamp_baseline"]}).reindex(genes).round(2)
+    ref = read_ref("time_calibration_vs_clamp.tsv")
+    if list(D.columns) != list(ref.columns): print(f"    (aviso) rotulos distintos de la referencia: {list(D.columns)}")
+    D.columns = list(ref.columns) if D.shape[1] == ref.shape[1] else D.columns
+    compare("time_calibration_vs_clamp.tsv", D, note="clamp: mediana de log2FC por pareja (clamp_contrasts)")
+    return exf, trf, m8, cc
 
 
 def t_template():
@@ -382,6 +392,7 @@ def t_template():
     T["asym"] = T.amp2 / T.amp1
     T = T.sort_values("r2", ascending=False)
     compare("template_2harm.tsv", T, key=["gene"], note="GSE108539 desde las cuentas de NCBI; 57 muestras")
+    T.to_csv(f"{OUT}/template_2harm.tsv", sep="\t", index=False)   # 04, 05 y 17 la leen de results/
 
 
 def gse17992():
@@ -404,6 +415,9 @@ def gse17992():
             D[s] = pd.concat(v, axis=1).mean(1)
         D = pd.DataFrame(D)
         D = D.loc[D.index.intersection(symb.index)]; D.index = symb[D.index].values
+        D = D.groupby(level=0).mean()
+        syn = pd.read_csv(f"{NEW}/ncbi_synonym_map.tsv", sep="\t", index_col=0)["current"].to_dict(); have = set(D.index)
+        D.index = [syn[g] if (g in syn and syn[g] not in have) else g for g in D.index]   # simbolo vigente (ARNTL -> BMAL1)
         out[tis] = D.groupby(level=0).mean()
     return out, p
 
@@ -420,21 +434,12 @@ def t_gse17992():
     return out
 
 
-def t_signatures(IR, exf, m8, dex):
-    """signatures_reference.tsv: las doce columnas, genes medidos en todas."""
+def t_signatures(IR, exf, m8, dex, cc):
+    """signatures_reference.tsv: las doce columnas, genes medidos en todas. "T2D myotubes" se define
+    como la mediana de T2D menos la mediana de NGT en el brazo control de GSE182117 (todas las
+    horas); es una definicion deducida, el manuscrito no la da."""
     c23 = mod("c23", "23_build_signatures_table.py")
-    # clamp y TZD para todos los genes: mediana de log2FC por pareja (05 solo guarda los 45 genes de las firmas)
-    E, dd = gse13070()
-    def paired(tis, fix, var):
-        q = dd[(dd.tissue == tis) & (dd[fix[0]] == fix[1]) & dd[var].isin(["pre", "post"])] if fix else dd[(dd.tissue == tis) & dd[var].isin(["pre", "post"])]
-        D = []
-        for s, g in q.groupby("subject"):
-            a = g.gsm[g[var] == "pre"]; b_ = g.gsm[g[var] == "post"]
-            if len(a) == 1 and len(b_) == 1: D.append(E[b_.iloc[0]] - E[a.iloc[0]])
-        return pd.concat(D, axis=1).median(1)
-    cols = {"clamp_baseline": paired("muscle", ("tzd", "pre"), "clamp"), "tzd_muscle": paired("muscle", ("clamp", "pre"), "tzd"),
-            "tzd_adipose": paired("adipose", None, "tzd")}
-    col = lambda c: cols[c]
+    col = lambda c: cc[c]
     X = pd.read_pickle(f"{NEW}/GSE182117_log2cpm.pkl"); md = pd.read_pickle(f"{NEW}/GSE182117_meta.pkl").set_index("gsm").reindex(X.columns)
     ctl = md.c1.str.contains("CTL"); t2d = md.c0.str.contains("T2D")
     myo = X.loc[:, ctl & t2d].median(1) - X.loc[:, ctl & ~t2d].median(1)
@@ -469,8 +474,10 @@ def t_amplitude_two_cohorts():
     amplitud libre (amp_free), en GSE13070 musculo basal y GSE182120."""
     p4 = mod("p4", "04_perturbations.py"); T, g800 = template800()
     E, d = gse13070(); mus = d[(d.tissue == "muscle") & (d.tzd == "pre") & (d.clamp == "pre")].drop_duplicates("subject").set_index("gsm")
-    X1 = E[list(mus.index)]
+    Ee = pd.read_pickle(f"{NEW}/GSE13070_entrez.pkl")   # anotacion por Entrez (Methods); 05 usa el simbolo de plataforma
+    X1 = Ee[list(mus.index)]
     X2 = pd.read_pickle(f"{NEW}/GSE182120_log2.pkl"); md2 = pd.read_pickle(f"{NEW}/GSE182120_meta.pkl").set_index("gsm").reindex(X2.columns)
+    if CENTER: X1, X2 = center(X1), center(X2)   # centrado por muestra antes de cualquier score (Methods); T2D_CENTER=0 lo quita
     rows = []
     for X, grp, coh, M, lab in ((X1, mus.sensitivity, "GSE13070 músculo basal", None, None),
                                 (X2, pd.Series(np.where(md2.disease == "T2D", "resistant", "sensitive"), index=X2.columns), "GSE182120 músculo", md2.mvalue, md2.lab)):
@@ -481,7 +488,7 @@ def t_amplitude_two_cohorts():
                               lab=lab.reindex(X.columns).values if lab is not None else ""))
         rows.append(D)
     D = pd.concat(rows)
-    compare("amplitude_phase_distributions_two_cohorts.tsv", D, note="amp_free = phase.amplitude sobre genes del reloj")
+    compare("amplitude_phase_distributions_two_cohorts.tsv", D, note=f"amp_free = phase.amplitude sobre genes del reloj; centrado={CENTER}, matriz Entrez")
 
 
 def cosinor_amp(y, t, per=24.0):
@@ -559,17 +566,17 @@ def t_symbol_audit():
     D.to_csv(f"{NEW}/symbol_audit_renamed_genes.tsv", sep="\t", index=False)
 
 
-# orden: las tablas de amplitud se comparan con la plantilla versionada ANTES de regenerarla
-STEPS = {"within_donor": t_within_donor, "gcreceptor": t_gcreceptor_adiposity, "rank": t_rank_vs_nr3c1,
+# orden: la plantilla se regenera antes de las tablas de amplitud que la usan
+STEPS = {"template": t_template, "within_donor": t_within_donor, "gcreceptor": t_gcreceptor_adiposity, "rank": t_rank_vs_nr3c1,
          "synonyms": t_synonym_map, "coverage": t_msigdb_coverage, "gse26637": t_gse26637, "gse148640": t_gse148640_stats,
          "gras": t_gras, "foxo3": t_foxo3, "symbol_audit": t_symbol_audit, "audit": t_audit_global_axis,
          "amplitude": t_amplitude_two_cohorts, "gse182117": t_gse182117_inferred, "gse129843": t_gse129843_amp,
-         "enrichment": t_enrichment, "template": t_template}
+         "enrichment": t_enrichment}
 
 
 def run_signature_group():
     """Las tablas de firmas comparten calculos: IR, calibracion, dexametasona y la tabla de 12 columnas."""
-    IR = t_gse13070_ir(); exf, trf, m8 = t_time_calibration(); dex = t_gse17992(); t_signatures(IR, exf, m8, dex)
+    IR = t_gse13070_ir(); exf, trf, m8, cc = t_time_calibration(); dex = t_gse17992(); t_signatures(IR, exf, m8, dex, cc)
 
 
 if __name__ == "__main__":
@@ -583,3 +590,5 @@ if __name__ == "__main__":
             CHECK.append(dict(tabla=k, filas_ref=np.nan, filas_nueva=np.nan, filas_comunes=np.nan, columnas_comparadas=0, r_minimo=np.nan, detalle="", nota=f"FALLO: {ex}"))
     pd.DataFrame(CHECK).to_csv(f"{NEW}/reference_tables_check.tsv", sep="\t", index=False)
     print(f"\nresumen -> {NEW}/reference_tables_check.tsv")
+    failed = [c["tabla"] for c in CHECK if str(c.get("nota", "")).startswith("FALLO")]
+    if failed: sys.exit(f"productores fallidos: {', '.join(failed)}")
