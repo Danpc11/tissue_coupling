@@ -14,7 +14,8 @@ from scipy import stats
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "../lib")); sys.path.insert(0, os.path.join(HERE, "../model"))
 from gene_sets import SETS, resolve
-OUT = os.environ.get("T2D_OUT", "results"); RAW = os.environ.get("T2D_RAW", "data/raw")
+OUT = os.environ.get("T2D_OUT", "results")
+REF = os.environ.get("T2D_REF", "data/reference"); RAW = os.environ.get("T2D_RAW", "data/raw")
 AD, MU, IS, GC, GR = "#2a9d8f", "#d95f02", "#6a3d9a", "#1f77b4", "#9a9a9a"
 plt.rcParams.update({"font.size": 8, "axes.labelsize": 8, "xtick.labelsize": 7,
                      "ytick.labelsize": 7, "legend.fontsize": 6.5, "axes.titlesize": 8.5})
@@ -119,29 +120,36 @@ def fig1():
     panel(ax, "D", "The clock set is already altered;\nthe glucocorticoid set never is")
     frame(fig.add_subplot(gs[1, 1]), "E",
           "Single-sample estimator\n\none biopsy → phase and amplitude,\nvalidated against the time series\nof the same person\n\n(hand-drawn)")
-    # F  myotubes
+    # F  myotubes: validacion leave-one-out, la misma tabla que cita el texto
     ax = fig.add_subplot(gs[1, 2])
-    M = pd.read_csv(f"{OUT}/new/GSE182117_inferred_free_vs_measured.tsv", sep="\t")
+    M = pd.read_csv(f"{REF}/GSE182117_loo_validation.tsv", sep="\t")
     for trt, c in (("CTL", GC), ("HGI", MU)):
-        q = M[M.trt == trt]; r = stats.spearmanr(q.amp_free, q.amp_mean_log2)
-        ax.scatter(q.amp_mean_log2, q.amp_free, s=22, color=c, label=f"{trt}   ρ = {r.statistic:.2f}")
-        trend(ax, q.amp_mean_log2, q.amp_free, c)
+        q = M[M.trt == trt]; r = stats.spearmanr(q.amp_cos, q.amp_inf)
+        ax.scatter(q.amp_cos, q.amp_inf, s=14, color=c, alpha=.75,
+                   label=f"{trt}   \u03c1 = {r.statistic:.2f}")
+        trend(ax, q.amp_cos, q.amp_inf, c)
+    D = M.groupby(["ind", "trt"])[["amp_cos", "amp_inf"]].mean()
+    rd = stats.spearmanr(D.amp_cos, D.amp_inf)
     ax.set(xlabel="measured amplitude, cosinor (log$_2$)", ylabel="inferred amplitude")
-    ax.legend(frameon=False, loc="upper left")
-    src(ax, "GSE182117 \u00b7 human myotubes \u00b7 11 donors \u00d7 2 conditions \u00b7 8 time points")
-    panel(ax, "F", "Synchronised myotubes:\ninferred amplitude is the measured one")
-    # G  in vivo
+    ax.legend(frameon=False, loc="upper left",
+              title=f"per donor \u03c1 = {rd.statistic:.2f}", title_fontsize=7)
+    src(ax, f"GSE182117 \u00b7 human myotubes \u00b7 {M.ind.nunique()} donors \u00d7 2 conditions \u00b7 leave-one-out")
+    panel(ax, "F", "Synchronised myotubes:\ninferred amplitude tracks the measured one")
+    # G  in vivo: leave-one-out
     ax = fig.add_subplot(gs[1, 3])
-    G = pd.read_csv(f"{OUT}/new/GSE129843_amplitude_per_person.tsv", sep="\t")
-    r = stats.spearmanr(G.amp_measured, G.amp_free)
+    G = pd.read_csv(f"{REF}/GSE129843_loo_validation.tsv", sep="\t")
+    r = stats.spearmanr(G.amp_cos, G.amp_inf)
     for cond, c in (("EXF", GC), ("TRF", AD)):
-        q = G[G.cond == cond]; ax.scatter(q.amp_measured, q.amp_free, s=26, color=c, label=cond)
-    trend(ax, G.amp_measured, G.amp_free)
+        q = G[G.cond == cond]; ax.scatter(q.amp_cos, q.amp_inf, s=16, color=c, alpha=.75, label=cond)
+    trend(ax, G.amp_cos, G.amp_inf)
+    S = G.groupby(["ind", "cond"])[["amp_cos", "amp_inf"]].mean()
+    rs = stats.spearmanr(S.amp_cos, S.amp_inf)
     ax.set(xlabel="measured amplitude, cosinor (6 points)", ylabel="inferred amplitude")
-    ax.legend(frameon=False, loc="upper left", title=f"ρ = {r.statistic:.2f}, P = {r.pvalue:.0e}",
+    ax.legend(frameon=False, loc="upper left",
+              title=f"\u03c1 = {r.statistic:.2f}, P = {r.pvalue:.2f}\nper series \u03c1 = {rs.statistic:.2f}",
               title_fontsize=7)
-    src(ax, "GSE129843 \u00b7 skeletal muscle in vivo \u00b7 11 men \u00b7 6 biopsies per person and condition")
-    panel(ax, "G", f"Skeletal muscle in vivo:\nρ = {r.statistic:.2f}, P = {r.pvalue:.1e}, 22 series")
+    src(ax, f"GSE129843 \u00b7 skeletal muscle in vivo \u00b7 {len(S)} series \u00b7 leave-one-out")
+    panel(ax, "G", f"Skeletal muscle in vivo:\nper sample \u03c1 = {r.statistic:.2f}, per series {rs.statistic:.2f}")
     # H  per-person distributions
     ax = fig.add_subplot(gs[2, 0]); rng = np.random.default_rng(0)
     COH = []

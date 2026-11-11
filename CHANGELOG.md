@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.0.0 — the version behind the Nature Communications submission
+
+### Added
+- `27_crosstissue_prediction.py`, as step 11b. The abstract claimed that the signal of one tissue
+  predicts the response in another, and nothing in the pipeline produced it: the function lived in
+  `02_meta_and_validation.py`, which is not a step. It now runs and writes
+  `crosstissue_prediction.tsv` and the out-of-fold predictions per donor. Across the 647 GTEx
+  donors with both tissues, the adipose glucocorticoid signal predicts the muscle target score with
+  **R² = 0.44** out of fold (0.52 unadjusted), against **0.03** using age, sex and Hardy scale
+  alone. Predictor and outcome genes are disjoint, both tissues of a donor share a fold, and all
+  fitting happens inside the training fold.
+
+### Fixed
+- **Panels 1F and 1G did not show the leave-one-out validation the text reports.** They read the
+  tables without leave-one-out and drew ρ = 0.90, 0.88 and 0.69 while the caption said 0.28, 0.34,
+  0.17 and 0.82. They now read `GSE182117_loo_validation.tsv` and `GSE129843_loo_validation.tsv`,
+  and the hardcoded "22 series" is gone: the count comes from the table and is 20.
+
+### Verified
+- GTEx skeletal muscle gives **ρ = 0.279 with n = 818** in the meta-analysis, reproduced
+  independently from the gene-reads GCT. All 818 donors carry phenotype data, and the confidence
+  interval half-width is 0.06, as that sample size requires. The ρ ≈ 0.04 with a wide interval seen
+  in an earlier submitted figure does not come from this code.
+
+
 ## v1.3.0 — the repository is the code behind the paper
 
 The repository now contains the model and the code that reproduces the published results, and
