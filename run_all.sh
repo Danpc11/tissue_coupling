@@ -40,6 +40,7 @@ step "09 GTEx adjusted for ischaemia and RIN"  "${PY:-python3}" python/analyses/
 step "10 meta-analysis, two-level"             "${PY:-python3}" python/analyses/06_meta_analysis.py
 step "11 meta-analysis, three-level"           "${PY:-python3}" python/analyses/13_meta_three_level.py
 step "12 heterogeneity moderators"             "${PY:-python3}" python/analyses/25_meta_moderators.py
+step "11b cross-tissue prediction"            "${PY:-python3}" python/analyses/27_crosstissue_prediction.py
 step "13 sensitivity to principal components"  "${PY:-python3}" python/analyses/22_pc_sensitivity_core.py
 
 # --- perturbations (Fig. 3) ----------------------------------------------------------------

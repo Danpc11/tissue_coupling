@@ -28,6 +28,9 @@ def main():
             for b in basenames(READ, t): reads.setdefault(b.replace('.gz',''), []).append(os.path.relpath(f, ROOT))
     # lo que esta versionado como dato de entrada no necesita productor
     versioned = {os.path.basename(p) for p in glob.glob(f"{ROOT}/data/reference/*")}
+    # nombres que un script compone con una variable y escribe el mismo (p. ej. clamp_per_person_<contraste>)
+    templated = {w.split("{")[0] for w in writes if "{" in w} | {"clamp_per_person_"}
+    reads_templated = lambda b: any(b.startswith(t) for t in templated if t)
     raw = {os.path.basename(p) for p in glob.glob(f"{ROOT}/data/raw/**/*", recursive=True)}
     raw |= {b[:-3] for b in raw if b.endswith(".gz")}
     raw |= {b.replace('.','_') for b in raw} | {b.replace('_','.') for b in raw}
@@ -35,10 +38,14 @@ def main():
     produced_by_prepare = lambda b: b.endswith(".pkl") and (b.startswith(("GTEx_", "GSE", "AAGMEx")))
     # descargas publicas que lista 00_prepare_data.py y el usuario coloca en data/raw
     external = lambda b: ("GRCh38" in b or b.startswith("GTEx_Analysis") or b.endswith(".gct")
-                          or b.startswith("GSE") and "raw_counts" in b or b in {".gct", "dorothea_ABC.tsv"})
+                          or b.startswith("GSE") and "raw_counts" in b
+                          or b in {".gct", "dorothea_ABC.tsv", "Homo_sapiens.gene_info",
+                                   "GSE129843_RESTRICT.txt", "GSE182117_counts.tsv",
+                                   "GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt"})
     missing = {b: v for b, v in reads.items()
                if not b.startswith(".") and b not in writes and b not in versioned and b not in raw
-               and not produced_by_prepare(b) and not external(b)}
+               and not produced_by_prepare(b) and not external(b)
+               and not reads_templated(b)}
     for b, v in sorted(missing.items()):
         print(f"  SIN PRODUCTOR  {b}  (leido por {', '.join(sorted(set(v)))})")
     # orden: cada productor debe correr en run_all.sh antes que sus lectores
