@@ -65,3 +65,6 @@ Substitutes for files that are only served by `www.ncbi.nlm.nih.gov`, which answ
 - `gene_info` and the OmniPath export have no version; `download_public.sh` appends their date and sha256 to `data/raw/CHECKSUMS.txt`.
 - GSE78721 has 130 samples from 95 people (35 abdominal-surgery patients contribute subcutaneous and visceral depots; GEO gives no person identifier). The branch uses one sample per person (limb or subcutaneous) in the case-control analysis and in the meta-analysis, with the depot as a covariate.
 - GSE129843 is used from the author's CPM table (no raw counts deposited); genes with CPM > 1 in at least 10 samples.
+
+`GSE148640_processed.txt.gz`, the processed supplement of that series, is also read directly by
+`00b_build_matrices.py` and placed under `data/raw/` by `download_public.sh`.

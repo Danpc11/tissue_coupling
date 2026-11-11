@@ -40,7 +40,7 @@ def main():
     external = lambda b: ("GRCh38" in b or b.startswith("GTEx_Analysis") or b.endswith(".gct")
                           or b.startswith("GSE") and "raw_counts" in b
                           or b in {".gct", "dorothea_ABC.tsv", "Homo_sapiens.gene_info",
-                                   "GSE129843_RESTRICT.txt", "GSE182117_counts.tsv",
+                                   "GSE129843_RESTRICT.txt", "GSE148640_processed.txt", "GSE182117_counts.tsv",
                                    "GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt"})
     missing = {b: v for b, v in reads.items()
                if not b.startswith(".") and b not in writes and b not in versioned and b not in raw
