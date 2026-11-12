@@ -27,7 +27,7 @@ listdir () { curl -s -A "$UA" "$1" | grep -o 'href="[^"]*"' | sed 's/href="//; s
 echo "### $(date)  inicio"
 echo "## 1. Matrices de serie (GEO FTP)"
 for a in GSE11868 GSE13070 GSE17992 GSE25462 GSE26637 GSE41168 GSE66446 GSE78721 GSE87761 \
-         GSE95674 GSE95675 GSE104674 GSE107537 GSE108539 GSE129843 GSE148640 GSE159984 GSE182117 GSE182120; do
+         GSE40589 GSE95674 GSE95675 GSE104674 GSE107537 GSE108539 GSE129843 GSE148640 GSE159984 GSE182117 GSE182120; do
   n=${a:0:$((${#a}-3))}nnn
   files=$(listdir "https://ftp.ncbi.nlm.nih.gov/geo/series/$n/$a/matrix/" | grep '_series_matrix.txt.gz$')
   [ -z "$files" ] && echo "  [FALLO] $a: sin matrices listadas"
@@ -101,6 +101,9 @@ ln -sfn Human_GRCh38_p13_annot_tsv.gz Human_GRCh38_p13_annot.tsv.gz
 echo "## 8. Otros ficheros que leen 00b_build_matrices.py y 00c_archs4_counts.py"
 soft_table https://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL17nnn/GPL17586/soft/GPL17586_family.soft.gz GPL17586_annot.txt
 soft_table https://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL4nnn/GPL4133/soft/GPL4133_family.soft.gz     GPL4133_annot.txt
+# GPL6848 (Agilent 4x44K, nombres de sonda): GSE40589, clamp frente a salina a las mismas horas.
+# No tiene fichero .annot curado en GEO; la tabla se toma del SOFT como las demas.
+soft_table https://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL6nnn/GPL6848/soft/GPL6848_family.soft.gz     GPL6848_annot.txt
 soft_table https://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL15nnn/GPL15331/soft/GPL15331_family.soft.gz GPL15331_annot.txt
 for c in c2.cp.reactome c2.cp.wikipathways c2.cp.kegg_medicus c2.cgp c2.cp.pid c3.tft.gtrd c3.mir.mirdb c4.all c5.go.bp c7.all; do
   get $M/$c.v2026.2.Hs.symbols.gmt msigdb/$c.v2026.2.Hs.symbols.gmt

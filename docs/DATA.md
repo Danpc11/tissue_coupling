@@ -83,3 +83,18 @@ increasing waits and deletes any HTML it receives. GSE159984 is the one series t
 cannot do without: if NCBI keeps refusing, `T2D_ARCHS4_DL=1 bash download_public.sh` followed by
 `python python/analyses/00c_archs4_counts.py` builds the same counts from ARCHS4 (a 62 GB
 download).
+
+## The time-matched control for the clamp (GSE40589)
+
+Subcutaneous adipose biopsies taken 40 min before and 240 min after the start of an infusion that
+begins at 08:00, with saline alone, with a euglycaemic hyperinsulinaemic clamp or with a
+hyperglycaemic clamp (Tuvia et al., Diabetes 2021;70:1985). `download_public.sh` fetches the series
+matrix and the platform table (`GPL6848_annot.txt`, taken from the SOFT file because GEO has no
+curated annotation for that platform).
+
+The series does not declare the participant. `28_clamp_vs_saline.py` pairs the two biopsies of an
+experiment by the consecutive numbering of the sample titles and checks each pair with genes that
+identify an individual (the Genetic and HLA sets of `python/lib/gene_sets.py`). A pair is excluded
+from the primary analysis when its identity correlation falls below the 90th percentile of the
+correlations between different pairs. The script also reports the analysis with every pair and
+one that does not use the pairing at all.

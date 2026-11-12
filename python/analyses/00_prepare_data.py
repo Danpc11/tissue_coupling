@@ -47,6 +47,7 @@ GEO = {
     "GSE182117": "synchronised myotubes, 8 time points, 11 donors",
     "GSE87761":  "adipose under constant routine, recorded times",
     "GSE11868":  "3 h hyperinsulinaemic clamp, 6 lean subjects",
+    "GSE40589":  "adipose, saline infusion vs euglycaemic and hyperglycaemic clamp at the same clock times (time-matched control for the clamp)",
 }
 GTEX = "https://gtexportal.org/home/datasets/   (gene reads and sample annotations, v11)"
 # Ficheros de anotacion que el analisis necesita ademas de las matrices:
