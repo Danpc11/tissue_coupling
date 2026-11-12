@@ -1,7 +1,18 @@
-numpy==1.26.4
-pandas==2.2.2
-scipy==1.13.1
-scikit-learn==1.5.0
-matplotlib==3.9.0
-openpyxl==3.1.2
-rdata==0.11.2
+# Dependencias de ejecucion. Las versiones exactas con las que se produjeron los resultados
+# publicados estan en requirements-lock.txt; este fichero fija solo los minimos necesarios.
+#
+# Python 3.11 o posterior (el lock fija numpy 2.4 y pandas 3.0, que no existen para 3.9).
+numpy>=1.26
+pandas>=2.2
+scipy>=1.13
+scikit-learn>=1.5
+matplotlib>=3.9
+statsmodels>=0.14        # metarregresion de heterogeneidad (paso 12)
+pydeseq2>=0.5            # expresion diferencial de islotes (paso 02c)
+anndata>=0.10            # lo requiere pydeseq2
+openpyxl>=3.1            # tablas suplementarias en xlsx
+rdata>=0.11              # lectura de objetos R de algunas series
+
+# Solo para rutas opcionales:
+#   h5py, fsspec, aiohttp   ARCHS4 como sustituto de las cuentas de NCBI (00c_archs4_counts.py)
+#   tqdm                    CHIRAL via scRITMO (paso 06); ver docs/DATA.md

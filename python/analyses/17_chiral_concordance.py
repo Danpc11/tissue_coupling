@@ -58,8 +58,10 @@ def run(Em, Ea, donors, label, use_chiral=True):
             R, p = concentration(f(Em[donors], g), f(Ea[donors], g))
             rows.append(dict(cohort=label, method=name, n_donors=len(donors), n_genes=len(g), R=R, P=p))
             print(f"  {label:10s} {name:10s} n={len(donors):4d}  R = {R:.3f}  P = {p:.4f}")
-        except ImportError:
-            print(f"  {label:10s} {name:10s} no disponible: falta python/lib/chiral_backend.py")
+        except ImportError as e:
+            print(f"  {label:10s} {name:10s} no disponible: {e}.\n"
+                  f"{'':23s}CHIRAL necesita scRITMO: bash download_public.sh lo clona en "
+                  f"data/raw/scritmo, o PYCHIRAL_SRC apunta a otra copia.")
     return rows
 
 if __name__ == "__main__":

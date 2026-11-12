@@ -53,9 +53,12 @@ for f in glob.glob(f"{RES}/ci_*.tsv"):
     check(f"{os.path.basename(f)}: registra que genes se midieron", "genes_measured" in d.columns)
 
 print("\n4. Aritmetica del metaanalisis")
-fci, fme = f"{RES}/ci_all_cohorts.tsv", f"{RES}/meta_random_effects.tsv"
+fci, fme = f"{RES}/new/meta_per_cohort.tsv", f"{RES}/new/meta_pooled.tsv"
 if os.path.exists(fci) and os.path.exists(fme):
-    ci = pd.read_csv(fci, sep="\t"); me = pd.read_csv(fme, sep="\t").set_index("set")
+    ci = pd.read_csv(fci, sep="\t").rename(columns={"rho": "r", "contraste": "set"})
+    me = pd.read_csv(fme, sep="\t")
+    me = me[me.get("tejido", "todos").astype(str).eq("todos")] if "tejido" in me.columns else me
+    me = me.rename(columns={"rho": "r", "contraste": "set"}).set_index("set")
     worst = 0.0
     for s in me.index:
         sub = ci[ci.set == s]
@@ -68,7 +71,8 @@ if os.path.exists(fci) and os.path.exists(fme):
         worst = max(worst, abs(np.tanh(np.sum(wr * z) / np.sum(wr)) - me.loc[s, "r"]))
     check("el pooled se reproduce desde los exports por cohorte", worst < 1e-9, f"max dif {worst:.2e}")
 else:
-    check("existen los exports del metaanalisis", False)
+    check("existen los exports del metaanalisis", False,
+          "corra el pipeline: pasos 10 y 11 escriben meta_per_cohort.tsv y meta_pooled.tsv")
 
 print("\n5. Benjamini-Hochberg en los enriquecimientos")
 for f in glob.glob(f"{RES}/enrich_*.tsv"):
@@ -81,7 +85,7 @@ for f in glob.glob(f"{RES}/enrich_*.tsv"):
     check(f"{os.path.basename(f)}: FDR monotono", (d.fdr.diff().dropna() >= -1e-12).all())
 
 print("\n6. Prediccion sin fuga de informacion")
-fp = f"{RES}/crosstissue_prediction.tsv"
+fp = f"{RES}/new/crosstissue_prediction.tsv"
 if os.path.exists(fp):
     d = pd.read_csv(fp, sep="\t")
     check("la prediccion declara n, pliegues y semilla", {"n", "folds", "seed"} <= set(d.columns))
@@ -92,7 +96,8 @@ if os.path.exists(fp):
         # predictor y resultado deben ser disjuntos: se comprueba en el propio script con assert
         check("predictor y resultado son disjuntos (assert en 22_meta_and_validation.py)", True)
 else:
-    check("existe el export de la prediccion", False)
+    check("existe el export de la prediccion", False,
+          "corra el pipeline: el paso 11b escribe results/new/crosstissue_prediction.tsv")
 
 print("\n7. Un solo origen por fichero")
 stamps = {}
