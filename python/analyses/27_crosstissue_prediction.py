@@ -23,12 +23,12 @@ from scipy import stats
 from sklearn.model_selection import KFold
 from sklearn.linear_model import RidgeCV
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.join(HERE, "../lib"))
-from gene_sets import genes as _g
+from gene_sets import genes as _g, panel as _panel
 RAW = os.environ.get("T2D_RAW", "data/raw"); OUT = os.environ.get("T2D_OUT", "results")
 
 GC = _g("Glucocorticoid")
 # dianas del receptor fuera del conjunto predictor: ningun gen a ambos lados
-TARGET = ["MT1X", "MT2A", "CEBPB", "TSC22D1", "SESN3", "KLF9", "DUSP1", "ERRFI1"]
+TARGET = _panel("Receptor targets, disjoint")
 assert not (set(GC) & set(TARGET)), "predictor y resultado deben ser disjuntos"
 TN = {"muscle": "Muscle - Skeletal", "adipose": "Adipose - Subcutaneous"}
 AGEMID = {"20-29": 25, "30-39": 35, "40-49": 45, "50-59": 55, "60-69": 65, "70-79": 75}

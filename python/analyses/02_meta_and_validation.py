@@ -23,10 +23,10 @@ from scipy import stats
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 RAW = os.environ.get("T2D_RAW", "data/raw"); OUT = os.environ.get("T2D_OUT", "results/gtex")
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../lib"))
-from gene_sets import genes as _g
+from gene_sets import genes as _g, panel as _panel
 GC = _g("Glucocorticoid")          # registro unico: python/lib/gene_sets.py
 INS = _g("Insulin core")
-TARGET = ["MT1X", "MT2A", "CEBPB", "TSC22D1", "SESN3", "KLF9", "DUSP1", "ERRFI1"]
+TARGET = _panel("Receptor targets, disjoint")
 assert not (set(GC) & set(TARGET)), "predictor y resultado deben ser disjuntos"
 
 def dersimonian_laird(r, se):

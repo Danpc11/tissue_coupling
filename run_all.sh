@@ -9,11 +9,12 @@
 # annotation files for the GTEx steps. Everything else is produced here or versioned in
 # data/reference/ (see docs/DATA.md for why).
 set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")"        # las rutas son relativas a la raiz del repositorio
 export T2D_RAW="${T2D_RAW:-data/raw}"
 export T2D_OUT="${T2D_OUT:-results}"
 export T2D_REF="${T2D_REF:-data/reference}"
-# CHIRAL (paso 06): clon de github.com/AndreaSalati/pyCHIRAL; si no existe, 17 avisa y sigue sin la concordancia
-export PYCHIRAL_SRC="${PYCHIRAL_SRC:-$HOME/circadian_timing/external/pyCHIRAL/src}"
+# CHIRAL (paso 06) se busca en $T2D_RAW/pychiral, donde lo clona download_public.sh. Si no esta,
+# el paso lo dice y sigue con el estimador propio; T2D_REQUIRE_CHIRAL=1 lo vuelve obligatorio.
 mkdir -p "$T2D_OUT/new" "$T2D_OUT/figs"
 step () { printf '\n=== %s\n' "$1"; shift; "$@"; }
 
@@ -69,7 +70,17 @@ step "27b clamp vs saline figure"              "${PY:-python3}" python/figures/f
 
 # --- checks ---------------------------------------------------------------------------------------
 step "28 every figure input has a producer"    "${PY:-python3}" tests/verify_inputs.py
+step "28b no gene set outside the registry"    "${PY:-python3}" tests/test_gene_lists.py
 step "29 smoke test"                           "${PY:-python3}" tests/smoke_test.py
+step "29b phase-coherence statistic"           "${PY:-python3}" tests/test_phase_statistic.py
+step "29c integration test, step 14b"          "${PY:-python3}" tests/test_clamp_vs_saline.py
 step "30 verify the package"                   "${PY:-python3}" tests/verify_package.py "$T2D_OUT"
 
-printf '\nDone. Figures in %s/figs, tables in %s/new.\n' "$T2D_OUT" "$T2D_OUT"
+# --- what this run did not do ---------------------------------------------------------------------
+printf '\n=== run complete\n'
+if grep -q "CHIRAL.*[[:space:]]ok[[:space:]]" "$T2D_OUT/new/chiral_concordance.tsv" 2>/dev/null; then
+  echo "CHIRAL concordance (step 06): regenerated."
+else
+  echo "CHIRAL concordance (step 06): NOT regenerated in this run. The implementation was not found;"
+  echo "  bash download_public.sh clones it. Everything else is complete."
+fi

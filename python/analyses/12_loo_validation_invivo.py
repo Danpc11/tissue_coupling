@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore")
 from scipy import stats
-sys.path.insert(0,"python/lib"); import phase as ph
-X=pd.read_pickle("results/new/GSE129843_log2cpm.pkl"); md=pd.read_pickle("results/new/GSE129843_meta.pkl").set_index("gsm")
+import phase as ph
+X=pd.read_pickle(f"{_OUT}/new/GSE129843_log2cpm.pkl"); md=pd.read_pickle(f"{_OUT}/new/GSE129843_meta.pkl").set_index("gsm")
 md["ind"]=md.title.str.extract(r"Participant: (\d+)")[0]
 md["cond"]=np.where(md.c0.str.contains("Time restricted"),"TRF","EXF")
 md["t"]=md.c1.str.replace("time point: ","").str.split(":").str[0].astype(float)
@@ -25,7 +28,7 @@ for (ind,cond),q in md.groupby(["ind","cond"]):
         z=(np.asarray(Xc.loc[g,held],float)-mu)/sd
         th=np.arctan2(np.dot(z,b),np.dot(z,a))
         rows.append(dict(ind=ind,cond=cond,amp_inf=np.dot(z,a*np.cos(th)+b*np.sin(th))/np.sqrt(len(g)),amp_cos=amp_cos))
-R=pd.DataFrame(rows); R.to_csv("results/new/GSE129843_loo_validation.tsv",sep="\t",index=False)
+R=pd.DataFrame(rows); R.to_csv(f"{_OUT}/new/GSE129843_loo_validation.tsv",sep="\t",index=False)
 r=stats.spearmanr(R.amp_inf,R.amp_cos); print(f"por muestra retenida: rho {r.statistic:+.2f} (P {r.pvalue:.1e}, n={len(R)})")
 M=R.groupby(["ind","cond"])[["amp_inf","amp_cos"]].mean().reset_index()
 r=stats.spearmanr(M.amp_inf,M.amp_cos); print(f"promediado por serie:  rho {r.statistic:+.2f} (P {r.pvalue:.1e}, n={len(M)})")

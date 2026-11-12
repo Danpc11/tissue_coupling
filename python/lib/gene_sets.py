@@ -3,7 +3,21 @@
 Un solo lugar de definicion para evitar que el codigo y las tablas diverjan. Cada conjunto lleva
 su fuente. Ningun conjunto se deriva de los datos que se ponen a prueba.
 
-Los scripts y las tablas suplementarias deben importar de aqui; nunca redefinir in situ.
+Hay dos tablas:
+
+  SETS    los conjuntos que se PUNTUAN y se comparan entre si (salida del reloj, oscilador
+          central, glucocorticoide, insulina, oxidativo) y los controles de identidad (genetico,
+          sexo, HLA). Varios pasos recorren SETS entero, de modo que anadir aqui un conjunto
+          anade una fila a esos analisis.
+  PANELS  los paneles de genes que usa un estimador, un control o un paso concreto, y que no se
+          puntuan junto a los de SETS: los genes con los que se ordena la fase, los que recibe
+          CHIRAL, el programa de ayuno del clamp, las dianas disjuntas de la prediccion entre
+          tejidos y la firma del modelo.
+
+La regla: todo conjunto que define una puntuacion, una inferencia o un control vive aqui, y los
+scripts lo importan; nunca se redefine in situ. Fuera de este fichero solo quedan las listas que
+eligen que genes dibuja un panel (en python/figures/) y las tablas de parametros por gen (fase de
+pico del modelo, sonda por gen de una plataforma), que tests/test_gene_lists.py enumera una a una.
 """
 
 SETS = {
@@ -41,6 +55,58 @@ SETS = {
                "ESRRA", "TFAM"],
         source="PGC-1alpha-associated oxidative phosphorylation programme (Mootha 2003, Patti 2003)."),
 }
+
+# Paneles de genes de pasos concretos. Se guardan tal como se usan: mismo contenido y mismo orden
+# que tenian en el script que los definia, de modo que moverlos aqui no cambia ningun resultado.
+PANELS = {
+    "Phase ordering": dict(
+        genes=["BMAL1", "NPAS2", "CLOCK", "PER1", "PER2", "PER3", "NR1D1", "NR1D2", "DBP", "TEF", "HLF", "CIART",
+               "CRY1", "CRY2", "BHLHE40", "BHLHE41", "NFIL3", "RORA", "PDK4", "CEBPD", "FKBP5", "KLF15", "TXNIP"],
+        used_by="python/lib/phase.py (CLK)",
+        source="Clock genes plus clock-controlled metabolic and glucocorticoid-responsive genes with "
+               "robust 24-h rhythms in human muscle and adipose tissue. It is a panel for ordering "
+               "samples around the cycle, not a circadian signature to be scored: the metabolic genes "
+               "are there because they are rhythmic, and the estimator is run with and without them."),
+    "CHIRAL input": dict(
+        genes=["ARNTL", "NPAS2", "CLOCK", "PER1", "PER2", "PER3", "NR1D1", "NR1D2", "DBP", "TEF", "HLF",
+               "CIART", "CRY1", "CRY2", "BHLHE40", "NFIL3", "RORA", "PDK4", "CEBPD", "FKBP5", "TXNIP", "KLF15"],
+        used_by="python/analyses/17_chiral_concordance.py",
+        source="The phase-ordering panel as it was passed to CHIRAL for the published concordance. It "
+               "differs from 'Phase ordering' in two ways that are kept on purpose so the published "
+               "values can be regenerated: BHLHE41 is absent, and BMAL1 is listed under its former "
+               "symbol ARNTL and matched literally, so in matrices annotated with the current symbol "
+               "it does not enter. Whether to resolve the synonym is a decision for the manuscript."),
+    "Benchmark clock": dict(
+        genes=["BMAL1", "CLOCK", "NPAS2", "NR1D1", "NR1D2", "PER1", "PER2", "PER3", "CRY1", "CRY2", "DBP",
+               "TEF", "HLF", "CIART", "NFIL3", "BHLHE40", "BHLHE41", "RORA", "RORC"],
+        used_by="python/analyses/02e_gse87761_benchmark.py",
+        source="Core clock and direct clock-output genes only, with no metabolic genes, used to benchmark "
+               "the muscle template against recorded sampling times in adipose tissue."),
+    "Fasting/FOXO3": dict(
+        genes=["TXNIP", "PDK4", "ANGPTL4", "FBXO32", "TRIM63", "CDKN1A", "GADD45A", "SESN1",
+               "BNIP3L", "KLF15", "DDIT4"],
+        used_by="python/analyses/05_clamp_within_person.py",
+        source="Fasting programme: FOXO and glucocorticoid targets induced by fasting in skeletal muscle, "
+               "pre-specified."),
+    "Glucose uptake": dict(
+        genes=["HK2", "SLC2A4"],
+        used_by="python/analyses/05_clamp_within_person.py",
+        source="Insulin-stimulated glucose uptake and phosphorylation."),
+    "Receptor targets, disjoint": dict(
+        genes=["MT1X", "MT2A", "CEBPB", "TSC22D1", "SESN3", "KLF9", "DUSP1", "ERRFI1"],
+        used_by="python/analyses/27_crosstissue_prediction.py, 02_meta_and_validation.py",
+        source="Glucocorticoid-receptor targets that share no gene with the 'Glucocorticoid' set, used as "
+               "the outcome of the cross-tissue prediction so that no gene sits on both sides."),
+    "Model signature": dict(
+        genes=["PER3", "DBP", "HLF", "TEF", "NR1D1", "NR1D2", "PER2", "CIART"],
+        used_by="python/model/make_fig7_data.py, python/figures/supplementary_figures.py",
+        source="Output-arm genes for which the forced-oscillator model generates synthetic expression "
+               "and that are compared with the observed signature."),
+}
+
+def panel(name):
+    """Genes de un panel de PANELS, en su orden."""
+    return list(PANELS[name]["genes"])
 
 # Sinonimos: los conjuntos usan simbolos HGNC actuales, pero las plataformas antiguas estan
 # anotadas con los de su epoca. Sin esta tabla, genes que SI estan medidos se declaran ausentes.
@@ -118,8 +184,13 @@ def qc_sex_pairing(M, A, ids):
     d["agree"] = d.muscle == d.adipose
     return d
 
-def as_table():
+def as_table(panels=False):
+    """Tabla de los conjuntos puntuados. Con panels=True anade los paneles de PANELS."""
     import pandas as pd
-    return pd.DataFrame([dict(gene_set=k, n_genes=len(v["genes"]),
-                              genes="; ".join(v["genes"]), source=v["source"])
-                         for k, v in SETS.items()])
+    rows = [dict(gene_set=k, kind="scored set", n_genes=len(v["genes"]),
+                 genes="; ".join(v["genes"]), source=v["source"]) for k, v in SETS.items()]
+    if panels:
+        rows += [dict(gene_set=k, kind="panel", n_genes=len(v["genes"]), genes="; ".join(v["genes"]),
+                      source=v["source"], used_by=v["used_by"]) for k, v in PANELS.items()]
+    d = pd.DataFrame(rows)
+    return d if panels else d.drop(columns="kind")

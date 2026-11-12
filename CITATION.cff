@@ -2,12 +2,12 @@ cff-version: 1.2.0
 title: "Glucocorticoid signalling tracks circadian output across human metabolic tissues"
 message: "If you use this software, please cite both the software and the accompanying manuscript."
 type: software
-version: 2.2.0
+version: 2.2.1
 date-released: 2026-11-12
 abstract: >-
   Code to infer circadian phase and amplitude from single transcriptomic samples, to measure the
-  relationship between glucocorticoid signalling and clock output across six human cohorts and four
-  metabolic tissues, and to simulate a forced oscillator in which the effective forcing is the
+  relationship between glucocorticoid signalling and clock output across seven human cohorts and four
+  tissue types, and to simulate a forced oscillator in which the effective forcing is the
   product of the cortisol rhythm and receptor availability. Includes validation against time series
   from the same individuals, the calibration of the hyperinsulinaemic clamp against time of day,
   and the within-person perturbation analyses.
@@ -15,7 +15,7 @@ keywords:
   - circadian
   - glucocorticoid receptor
   - entrainment
-  - inter-tissue coupling
+  - phase coherence between tissues
   - insulin resistance
   - skeletal muscle
   - adipose tissue

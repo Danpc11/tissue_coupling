@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "../lib")); sys.path.insert(0, os.path.join(HERE, "../model"))
-from gene_sets import SETS, resolve
+from gene_sets import SETS, PANELS, resolve
 OUT = os.environ.get("T2D_OUT", "results"); RAW = os.environ.get("T2D_RAW", "data/raw")
 AD, MU, IS, GC, GR = "#2a9d8f", "#d95f02", "#6a3d9a", "#1f77b4", "#9a9a9a"
 plt.rcParams.update({"font.size": 8, "axes.labelsize": 8, "xtick.labelsize": 7,
@@ -200,7 +200,7 @@ def ed7():
     src(ax, "integrator convergence"); panel(ax, "A")
     ax = fig.add_subplot(gs[0, 1])
     lv = {"morning": [], "uniform": []}; av = {"morning": [], "uniform": []}
-    out = ["PER3", "DBP", "HLF", "TEF", "NR1D1", "NR1D2", "PER2", "CIART"]
+    out = list(PANELS["Model signature"]["genes"])
     for hsd, key in ((1.5, "morning"), (7.5, "uniform")):
         for s_ in range(5):
             res = []
@@ -242,7 +242,8 @@ def ed1():
     """GTEx: the receptor-clock axis across tissues."""
     PH = pd.read_pickle(f"{OUT}/new/GTEx_pheno.pkl")
     agemid = {'20-29': 25, '30-39': 35, '40-49': 45, '50-59': 55, '60-69': 65, '70-79': 75}
-    SA = pd.read_csv("data/gtex/SampleAttributes.txt", sep="\t", low_memory=False)
+    _sa = f"{RAW}/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt"
+    SA = pd.read_csv(_sa if os.path.exists(_sa) else "data/gtex/SampleAttributes.txt", sep="\t", low_memory=False)
     SA["donor"] = SA.SAMPID.str.split("-").str[:2].str.join("-")
     TIS = [("adipose sc", "GTEx_adipose_sc", "Adipose - Subcutaneous", AD),
            ("adipose visceral", "GTEx_adipose_visc", "Adipose - Visceral (Omentum)", IS),

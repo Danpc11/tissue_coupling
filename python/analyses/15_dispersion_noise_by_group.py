@@ -1,8 +1,11 @@
+import os as _os, sys as _sys
+_RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore")
 from scipy import stats
-sys.path.insert(0,"python/lib"); import phase as ph
-X=pd.read_pickle("results/new/GSE13070_entrez.pkl"); Xc=X.sub(X.mean(0),axis=1)
-S=pd.read_csv("results/clamp_samples.tsv",sep="\t")
+import phase as ph
+X=pd.read_pickle(f"{_OUT}/new/GSE13070_entrez.pkl"); Xc=X.sub(X.mean(0),axis=1)
+S=pd.read_csv(f"{_OUT}/clamp_samples.tsv",sep="\t")
 S=S[(S.contrast=="clamp_baseline")&(S.condition=="pre")].drop_duplicates("gsm")
 S=S[S.gsm.isin(Xc.columns)]
 genes=[g for g in ph.CLK if g in Xc.index]
@@ -34,4 +37,4 @@ RNG=lambda v: np.percentile(v,95)-np.percentile(v,5)
 obs=RNG(mr)/RNG(ms); pool=np.concatenate([mr,ms]); na=len(mr)
 null=np.array([RNG(p[:na])/RNG(p[na:]) for p in (rng.permutation(pool) for _ in range(3000))])
 print(f"  razón de rango 5-95 {obs:.2f}, P permutación {(np.sum(np.abs(np.log(null))>=abs(np.log(obs)))+1)/3001:.4f}")
-pd.DataFrame(dict(gsm=cols,group=grp,amp=mean,noise=noise)).to_csv("results/new/GSE13070_amplitude_noise_by_group.tsv",sep="\t",index=False)
+pd.DataFrame(dict(gsm=cols,group=grp,amp=mean,noise=noise)).to_csv(f"{_OUT}/new/GSE13070_amplitude_noise_by_group.tsv",sep="\t",index=False)

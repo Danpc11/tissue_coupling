@@ -4,32 +4,35 @@ DerSimonian-Laird sobre Fisher-z, igual que el metaanalisis de la Tabla S17 del 
 Una estimacion por cohorte y tejido, residualizada frente a las covariables de cada cohorte.
 Salidas: results/new/meta_per_cohort.tsv y meta_pooled.tsv
 """
+import os as _os, sys as _sys
+_RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import pandas as pd, numpy as np, sys, gzip, importlib.util, os
 from scipy import stats
-OUT=os.environ.get("T2D_OUT","results"); RAW=os.environ.get("T2D_RAW","data/raw"); sys.path.insert(0,"python/lib"); from gene_sets import SETS, resolve; import islets
+OUT=os.environ.get("T2D_OUT","results"); RAW=os.environ.get("T2D_RAW","data/raw"); from gene_sets import SETS, resolve; import islets
 def sc(X,g):
     gg=[r for r in (resolve(x,X.index) for x in g) if r]; Z=X.loc[gg]; return ((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T.mean(0)
 def pres(y,cv):
     D=np.column_stack([np.ones(len(y))]+cv) if cv else np.ones((len(y),1))
     b,*_=np.linalg.lstsq(D,np.asarray(y,float),rcond=None); return np.asarray(y,float)-D@b
 CL=SETS["Clock output"]["genes"]; GC=SETS["Glucocorticoid"]["genes"]
-PH=pd.read_pickle("results/new/GTEx_pheno.pkl"); agemid={'20-29':25,'30-39':35,'40-49':45,'50-59':55,'60-69':65,'70-79':75}
+PH=pd.read_pickle(f"{_OUT}/new/GTEx_pheno.pkl"); agemid={'20-29':25,'30-39':35,'40-49':45,'50-59':55,'60-69':65,'70-79':75}
 def gtexcov(X):
     p=PH.reindex(X.columns); H=pd.get_dummies(p.DTHHRDY.fillna(-1).astype(int),prefix="h",drop_first=True).values.astype(float)
     cv=[(p.SEX==1).astype(float).values,p.AGE.map(agemid).values.astype(float)]+[H[:,k] for k in range(H.shape[1])]
     return cv
-A=pd.read_pickle("results/new/AAGMEx_adipose_log2.pkl"); M=pd.read_pickle("results/new/AAGMEx_muscle_log2.pkl")
-with gzip.open("data/raw/GSE95674_series_matrix.txt.gz","rt") as f:
+A=pd.read_pickle(f"{_OUT}/new/AAGMEx_adipose_log2.pkl"); M=pd.read_pickle(f"{_OUT}/new/AAGMEx_muscle_log2.pkl")
+with gzip.open(f"{_RAW}/GSE95674_series_matrix.txt.gz","rt") as f:
     for l in f:
         if l.startswith("!Sample_title"): t=[x.strip('"') for x in l.rstrip().split("\t")[1:]]
         if l.startswith("!Sample_characteristics") and "gender" in l: sx=[x.strip('"').split(": ")[1] for x in l.rstrip().split("\t")[1:]]
         if l.startswith("!Sample_characteristics") and "age" in l: ag=[float(x.strip('"').split(": ")[1]) for x in l.rstrip().split("\t")[1:]]
 cov=pd.DataFrame({"sex":sx,"age":ag},index=t).reindex(A.columns); aag=[(cov.sex=="M").astype(float).values,cov.age.values]
-Ea=pd.read_pickle("results/new/GSE41168_adipose.pkl"); Em=pd.read_pickle("results/new/GSE41168_muscle.pkl")
+Ea=pd.read_pickle(f"{_OUT}/new/GSE41168_adipose.pkl"); Em=pd.read_pickle(f"{_OUT}/new/GSE41168_muscle.pkl")
 sp=importlib.util.spec_from_file_location("c5","python/analyses/05_clamp_within_person.py"); c5=importlib.util.module_from_spec(sp); sp.loader.exec_module(c5)
 E,d=c5.load(); mus13=d[(d.tissue=="muscle")&(d.tzd=="pre")&(d.clamp=="pre")].drop_duplicates("subject").set_index("subject")
 adi13=d[(d.tissue=="adipose")&(d.tzd=="pre")].drop_duplicates("subject").set_index("subject")
-G1=pd.read_pickle("results/new/GTEx_adipose_sc.pkl"); G2=pd.read_pickle("results/new/GTEx_adipose_visc.pkl"); G3=pd.read_pickle("results/new/GTEx_muscle.pkl")
+G1=pd.read_pickle(f"{_OUT}/new/GTEx_adipose_sc.pkl"); G2=pd.read_pickle(f"{_OUT}/new/GTEx_adipose_visc.pkl"); G3=pd.read_pickle(f"{_OUT}/new/GTEx_muscle.pkl")
 rows=[]
 def add(coh,tis,X,cv,x_lab="NR3C1"):
     if os.environ.get("T2D_CENTER","1")!="0": X=X.sub(X.mean(0),axis=1)   # centrado por muestra (Methods, "Sample centring"); T2D_CENTER=0 lo desactiva

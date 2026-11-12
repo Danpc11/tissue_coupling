@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore")
 from scipy import stats
-sys.path.insert(0,"python/lib"); import phase as ph
-X=pd.read_pickle("results/new/GSE182117_log2cpm.pkl"); md=pd.read_pickle("results/new/GSE182117_meta.pkl").set_index("gsm")
+import phase as ph
+X=pd.read_pickle(f"{_OUT}/new/GSE182117_log2cpm.pkl"); md=pd.read_pickle(f"{_OUT}/new/GSE182117_meta.pkl").set_index("gsm")
 md["ind"]=md.c4.str.replace("individual: ",""); md["trt"]=md.c1.str.replace("treatment: ","")
 md["t"]=md.c3.str.replace("time: ","").str.replace("h","").astype(float); md=md.reindex(X.columns)
 Xc=X.sub(X.mean(0),axis=1); g=[x for x in ph.CLK if x in Xc.index]
@@ -27,7 +30,7 @@ for (ind,trt),q in md.groupby(["ind","trt"]):
         th=np.arctan2(np.dot(z,tpl.b.values),np.dot(z,tpl.a.values))
         amp_inf=np.dot(z,tpl.a.values*np.cos(th)+tpl.b.values*np.sin(th))/np.sqrt(len(g))
         rows.append(dict(ind=ind,trt=trt,held=held,amp_inf=amp_inf,amp_cos=amp_cos))
-R=pd.DataFrame(rows); R.to_csv("results/new/GSE182117_loo_validation.tsv",sep="\t",index=False)
+R=pd.DataFrame(rows); R.to_csv(f"{_OUT}/new/GSE182117_loo_validation.tsv",sep="\t",index=False)
 print(f"n puntos retenidos: {len(R)}")
 for trt,q in R.groupby("trt"):
     r=stats.spearmanr(q.amp_inf,q.amp_cos); print(f"  {trt}: rho {r.statistic:+.2f} (P {r.pvalue:.1e}, n={len(q)})")
