@@ -1,6 +1,68 @@
 # Changelog
 
-## v2.2.0 — a time-matched control for the clamp
+## v2.2.1: answers to an external review of the repository
+
+No reported number changes. The lists that moved into the registry are identical in content and
+order to the ones they replace, and the model step, rerun with the registry, returns the published
+signature to the third decimal.
+
+### Fixed
+- **CHIRAL could not run on a clean clone, for two reasons that hid each other.** v2.1.0 made
+  `download_public.sh` clone scRITMO, but the backend looked for it in `/tmp/scRITMO/src` and
+  `run_all.sh` pointed `PYCHIRAL_SRC` at a directory in a developer's home. And had it been found,
+  the call would have failed: the backend passed the genes as `clockgenes=`, which is the name of
+  the argument in pyCHIRAL and not in scRITMO. The genes are now passed by position, which works
+  with both; there is one documented install path, pyCHIRAL cloned by `download_public.sh` into
+  `data/raw/pychiral` at commit `e1ea76e`, and the backend looks there. Checked on a simulated
+  matrix with known phases: both implementations return one phase per sample and recover the
+  truth at R = 0.995, so the genes-by-samples orientation of the wrapper is right.
+- **Ten analysis steps ignored `T2D_RAW` and `T2D_OUT`** and read `data/raw/...` and
+  `results/new/...` relative to the working directory, so the pipeline only worked when run from
+  the repository root with the default locations. They now follow the same variables as the rest;
+  with the defaults all 35 paths are the same strings as before. `run_all.sh` changes to its own
+  directory first. Step 07 was rerun on the real GSE107537 from another directory with both
+  variables set elsewhere and returns the same values (median −28.6%, 8 of 8, *P* = 0.0078).
+- **The registry was not the only place where gene sets were defined**, although the README said
+  so. Seven lists that define a score or an inference lived in the scripts that used them, one of
+  them duplicated in two files. They are now in `python/lib/gene_sets.py` under `PANELS`, apart
+  from the scored sets of `SETS` so that no existing analysis gains a row, each with its source,
+  and the scripts import them.
+- **`verify_inputs.py` accepted any matrix whose name began with GSE, GTEx or AAGMEx.** It now
+  reads from the syntax tree which matrices `save()` actually writes (28, all resolved by name)
+  and includes them in the check of execution order. Its header states what a static analysis
+  cannot see.
+- The README attributed the data-preparation step to a branch that has been part of `main` since
+  v2.0.0, stated Python 3.9 where 3.11 is required, and summarised results as if association were
+  mechanism. `docs/DATA.md` described two different ways of installing CHIRAL and said that a
+  contrast "was not reproduced consistently" which the pipeline now regenerates exactly.
+
+### Added
+- `tests/test_gene_lists.py`: fails if a collection of five or more registry genes is defined
+  outside the registry and is not a figure panel or one of four declared parameter tables.
+- `tests/test_clamp_vs_saline.py`: an integration test. It runs step 14b on a small simulated
+  series with a known answer, including a pair deliberately made of two people, and checks the
+  contents of the output: the pair is excluded, the time effect and the insulin effect are
+  recovered, the tables have the expected rows and columns.
+- `tests/test_phase_statistic.py`: what the phase-coherence statistic measures, on simulated
+  phases. Independent tissues give no signal; aligned tissues give a high value; **so do two
+  tissues that follow a shared signal with no interaction between them**; and a tissue whose
+  cycle is traversed in the opposite direction gives no signal although it is aligned.
+- That last case is not hypothetical. **CHIRAL has no anchor, and the direction in which it
+  traverses the cycle changes with the order of the samples**: on the same simulated cohort,
+  sorting the donors alphabetically turned R from 0.84 into 0.09. Step 06 therefore writes a
+  second column, `R_reflection_aware`, that takes the larger of the two directions and uses the
+  same maximum in the permutation null (5.7% false positives at the 5% level in 300 simulated
+  null cohorts). The original column is unchanged. Which one is reported for CHIRAL is a decision
+  for the manuscript; for our own estimator, anchored to the template, the two coincide.
+- Step 06 writes whether CHIRAL ran and with which implementation and revision, `run_all.sh`
+  ends by saying whether the concordance was regenerated, and `T2D_REQUIRE_CHIRAL=1` makes its
+  absence an error. CHIRAL's warnings are counted and reported instead of silenced.
+- `docs/DATA.md`: the equivalence table between each versioned table and its regeneration in a
+  complete run, including the three that do not reproduce.
+- The four no-data tests run in continuous integration, which until now only checked syntax and
+  the smoke test.
+
+## v2.2.0: a time-matched control for the clamp
 
 Adds one analysis and the data it needs. It does not change any existing result, and how it
 enters the manuscript has not been decided.
@@ -29,7 +91,7 @@ enters the manuscript has not been decided.
   without it; they now follow the font list of `journal.mplstyle`.
 
 
-## v2.1.0 — a reviewer can clone this and run it
+## v2.1.0: a reviewer can clone this and run it
 
 Nothing here changes a result. These are the things that stopped a clean clone from running.
 
@@ -56,7 +118,7 @@ Nothing here changes a result. These are the things that stopped a clean clone f
   them when they are absent.
 
 
-## v2.0.0 — the version behind the Nature Communications submission
+## v2.0.0: the version behind the Nature Communications submission
 
 ### Added
 - `27_crosstissue_prediction.py`, as step 11b. The abstract claimed that the signal of one tissue
@@ -81,7 +143,7 @@ Nothing here changes a result. These are the things that stopped a clean clone f
   in an earlier submitted figure does not come from this code.
 
 
-## v1.3.0 — the repository is the code behind the paper
+## v1.3.0: the repository is the code behind the paper
 
 The repository now contains the model and the code that reproduces the published results, and
 nothing else. No manuscript drafts, no figure files, no working notes.
@@ -106,7 +168,7 @@ nothing else. No manuscript drafts, no figure files, no working notes.
   sleep period (GSE107537), as a step of `run_all.sh`.
 - `requirements-lock.txt` with exact library versions.
 
-## v1.2.x — reproducibility chain closed
+## v1.2.x: reproducibility chain closed
 
 ### Fixed
 - The step that assembles the signature table, which three panels read, was missing: `run_all.sh`
@@ -131,4 +193,4 @@ nothing else. No manuscript drafts, no figure files, no working notes.
 - Three-level meta-analysis, heterogeneity moderators, leave-one-out validation,
   principal-component sensitivity, estimator noise by group, and phase concordance with CHIRAL.
 
-## v1.1.0 — glucocorticoid axis, forced-oscillator model, five figures
+## v1.1.0: glucocorticoid axis, forced-oscillator model, five figures

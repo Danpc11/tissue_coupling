@@ -13,6 +13,7 @@ anndata>=0.10            # lo requiere pydeseq2
 openpyxl>=3.1            # tablas suplementarias en xlsx
 rdata>=0.11              # lectura de objetos R de algunas series
 
-# Solo para rutas opcionales:
+tqdm>=4.60               # lo requiere CHIRAL (paso 06); el clon lo hace download_public.sh
+
+# Solo para una ruta opcional:
 #   h5py, fsspec, aiohttp   ARCHS4 como sustituto de las cuentas de NCBI (00c_archs4_counts.py)
-#   tqdm                    CHIRAL via scRITMO (paso 06); ver docs/DATA.md

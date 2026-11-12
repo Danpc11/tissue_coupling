@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import pandas as pd, numpy as np, warnings; warnings.filterwarnings("ignore")
 from scipy import stats
-R=pd.read_csv("results/new/meta_per_cohort.tsv",sep="\t")
+R=pd.read_csv(f"{_OUT}/new/meta_per_cohort.tsv",sep="\t")
 q=R[R.contraste=="NR3C1~reloj"].copy()
 q["post_mortem"]=q.cohorte.str.contains("GTEx").astype(float)
 q["log_n"]=np.log10(q.n)

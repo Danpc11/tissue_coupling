@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import pandas as pd, numpy as np, warnings; warnings.filterwarnings("ignore")
 from scipy import stats
-D=pd.read_csv("results/new/amplitude_phase_distributions_two_cohorts.tsv",sep="\t",index_col=0)
+D=pd.read_csv(f"{_OUT}/new/amplitude_phase_distributions_two_cohorts.tsv",sep="\t",index_col=0)
 D["coh"]=D.cohort.str.replace(" músculo basal","",regex=False).str.replace(" músculo","",regex=False).str.strip()
 rng=np.random.default_rng(0)
 def boot_ratio(a,b,fn,n=5000):

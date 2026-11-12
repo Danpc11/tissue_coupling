@@ -1,10 +1,13 @@
+import os as _os, sys as _sys
+_RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import pandas as pd, numpy as np, sys, gzip, warnings; warnings.filterwarnings("ignore")
 from scipy import stats
-sys.path.insert(0,"python/lib"); from gene_sets import SETS, resolve
-ann=pd.read_csv("data/raw/Human_GRCh38_p13_annot_tsv.gz",sep="\t",usecols=["GeneID","Symbol"],dtype=str)
+from gene_sets import SETS, resolve
+ann=pd.read_csv(f"{_RAW}/Human_GRCh38_p13_annot_tsv.gz",sep="\t",usecols=["GeneID","Symbol"],dtype=str)
 sym=dict(zip(ann.GeneID,ann.Symbol))
 def islets():
-    C=pd.read_csv("data/raw/GSE159984_raw_counts.tsv.gz",sep="\t",index_col=0)
+    C=pd.read_csv(f"{_RAW}/GSE159984_raw_counts.tsv.gz",sep="\t",index_col=0)
     C=C[[g for g in C.columns if int(g[3:])<=4852118]]
     C.index=[sym.get(str(i),str(i)) for i in C.index]; C=C[~C.index.str.isdigit()]
     C=C.groupby(level=0).sum(); C=C[(C>5).sum(1)>=10]
@@ -17,8 +20,8 @@ def rank_vs(X,cv=None):
     nr=rk[:,list(Xc.index).index("NR3C1")]
     z=(rk-rk.mean(0))/rk.std(0); nz=(nr-nr.mean())/nr.std()
     return pd.Series((z*nz[:,None]).mean(0),index=Xc.index).dropna()
-A=pd.read_pickle("results/new/AAGMEx_adipose_log2.pkl"); M=pd.read_pickle("results/new/AAGMEx_muscle_log2.pkl")
-with gzip.open("data/raw/GSE95674_series_matrix.txt.gz","rt") as f:
+A=pd.read_pickle(f"{_OUT}/new/AAGMEx_adipose_log2.pkl"); M=pd.read_pickle(f"{_OUT}/new/AAGMEx_muscle_log2.pkl")
+with gzip.open(f"{_RAW}/GSE95674_series_matrix.txt.gz","rt") as f:
     for l in f:
         if l.startswith("!Sample_title"): t=[x.strip('"') for x in l.rstrip().split("\t")[1:]]
         if l.startswith("!Sample_characteristics") and "gender" in l: sx=[x.strip('"').split(": ")[1] for x in l.rstrip().split("\t")[1:]]
@@ -28,7 +31,7 @@ RK={}
 RK["adipose"]=rank_vs(A,[(cov.sex.reindex(A.columns)=="M").astype(float).values,cov.age.reindex(A.columns).values,A.loc["LEP"].values,A.loc["CD68"].values])
 RK["muscle"]=rank_vs(M,[(cov.sex.reindex(M.columns)=="M").astype(float).values,cov.age.reindex(M.columns).values])
 RK["islets"]=rank_vs(islets())
-syn=pd.read_csv("results/new/ncbi_synonym_map.tsv",sep="\t",index_col=0)["current"].to_dict()
+syn=pd.read_csv(f"{_OUT}/new/ncbi_synonym_map.tsv",sep="\t",index_col=0)["current"].to_dict()
 rng=np.random.default_rng(0); rows=[]
 gmt={}
 for l in open("data/msigdb/c5_hpo_v2026_2_Hs_symbols.gmt"):
@@ -47,6 +50,6 @@ for tis,R in RK.items():
         if n not in cache:
             m=np.array([vals[rng.integers(0,len(vals),n)].mean() for _ in range(3000)]); cache[n]=(m.mean(),m.std())
         mu,sd=cache[n]; rows.append(dict(tissue=tis,term=name,n=n,z=(vals[g].mean()-mu)/sd))
-T=pd.DataFrame(rows); T.to_csv("results/new/HPO_by_tissue.tsv",sep="\t",index=False)
+T=pd.DataFrame(rows); T.to_csv(f"{_OUT}/new/HPO_by_tissue.tsv",sep="\t",index=False)
 P=T.pivot_table(index="term",columns="tissue",values="z").reindex(columns=["adipose","muscle","islets"])
 print(P.round(2).to_string())

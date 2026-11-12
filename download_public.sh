@@ -155,10 +155,21 @@ fi
 # fuentes sin version (gene_info cambia a diario, OmniPath es una consulta en vivo): se registra fecha y sha256
 { echo "# $(date -u +%Y-%m-%dT%H:%MZ)"; sha256sum _soft/Homo_sapiens.gene_info.gz dorothea_ABC.tsv Human_GRCh38_p13_annot_tsv.gz 2>/dev/null; } >> CHECKSUMS.txt
 
-echo "## 11. scRITMO (CHIRAL), para el paso 06 de concordancia de fase"
-if [ -d scritmo/.git ]; then echo "  [ya]    scritmo"; else
-  git clone --depth 1 -q https://github.com/AndreaSalati/scRITMO.git scritmo \
-    && echo "  [ok]    scritmo" || echo "  [FALLO] scRITMO: el paso 06 omitira CHIRAL"
+echo "## 11. pyCHIRAL, para el paso 06 de concordancia de fase (no esta en PyPI)"
+# Revision fijada: la que se uso para verificar el paso. PYCHIRAL_COMMIT permite cambiarla.
+PYCHIRAL_COMMIT="${PYCHIRAL_COMMIT:-e1ea76e6f01c3106993fcf93b9195bb351904f58}"
+if [ -d pychiral/.git ] && [ "$(git -C pychiral rev-parse HEAD 2>/dev/null)" = "$PYCHIRAL_COMMIT" ]; then
+  echo "  [ya]    pychiral @ ${PYCHIRAL_COMMIT:0:7}"
+else
+  rm -rf pychiral
+  if git clone -q https://github.com/AndreaSalati/pyCHIRAL.git pychiral 2>/dev/null \
+     && git -C pychiral -c advice.detachedHead=false checkout -q "$PYCHIRAL_COMMIT" 2>/dev/null; then
+    echo "  [ok]    pychiral @ ${PYCHIRAL_COMMIT:0:7}"
+    echo "# pyCHIRAL $(git -C pychiral rev-parse HEAD)" >> CHECKSUMS.txt
+  else
+    rm -rf pychiral
+    echo "  [FALLO] pyCHIRAL: el paso 06 dira que CHIRAL no se ejecuto"
+  fi
 fi
 
 echo "### $(date)  fin"

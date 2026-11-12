@@ -17,8 +17,8 @@ Controles obligatorios:
   coupling()     P por permutacion DENTRO de la cohorte.
 """
 import numpy as np, pandas as pd
-CLK=["BMAL1","NPAS2","CLOCK","PER1","PER2","PER3","NR1D1","NR1D2","DBP","TEF","HLF","CIART",
-     "CRY1","CRY2","BHLHE40","BHLHE41","NFIL3","RORA","PDK4","CEBPD","FKBP5","KLF15","TXNIP"]
+from gene_sets import panel as _panel
+CLK=_panel("Phase ordering")          # registro unico: python/lib/gene_sets.py
 def kap(a, kmax=1e4):
     """Concentracion de von Mises y parametro de orden R.
 

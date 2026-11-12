@@ -1,9 +1,12 @@
+import os as _os, sys as _sys
+_RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import gzip, io, re, numpy as np, pandas as pd, sys, warnings; warnings.filterwarnings("ignore")
 from scipy import stats
-sys.path.insert(0,"python/lib"); from gene_sets import SETS
+from gene_sets import SETS
 # anotacion: TC id -> simbolo, del campo gene_assignment
 ann={}
-with open("data/raw/GPL24324-69524.txt", errors="ignore") as fh:
+with open(f"{_RAW}/GPL24324-69524.txt", errors="ignore") as fh:
     for l in fh:
         if l.startswith("#") or l.startswith("ID\t"): continue
         p=l.rstrip("\r\n").split("\t")
@@ -12,7 +15,7 @@ with open("data/raw/GPL24324-69524.txt", errors="ignore") as fh:
         if m: ann[p[0]]=m.group(1)
 print("sondas anotadas:",len(ann))
 # matriz
-with gzip.open("data/raw/GSE107537_series_matrix.txt.gz","rt",errors="ignore") as fh: L=fh.read().split("\n")
+with gzip.open(f"{_RAW}/GSE107537_series_matrix.txt.gz","rt",errors="ignore") as fh: L=fh.read().split("\n")
 i=[k for k,x in enumerate(L) if x.startswith("!series_matrix_table_begin")][0]
 j=[k for k,x in enumerate(L) if x.startswith("!series_matrix_table_end")][0]
 X=pd.read_csv(io.StringIO("\n".join(L[i+1:j])),sep="\t",index_col=0)
@@ -53,4 +56,4 @@ print(f"\nn = {len(R)} sujetos")
 print(f"  amplitud: mediana del cambio {R.pct.median():+.1f}%, {(R.pct<0).sum()}/{len(R)} bajan, Wilcoxon P = {stats.wilcoxon(R.amp_night,R.amp_day).pvalue:.4f}")
 d=np.angle(np.exp(1j*(R.phase_night-R.phase_day)*2*np.pi/24))*24/(2*np.pi)
 print(f"  fase: desplazamiento mediano {np.median(d):+.1f} h, rango {d.min():+.1f} a {d.max():+.1f} h")
-R.to_csv("results/new/GSE107537_shift_response.tsv",sep="\t",index=False)
+R.to_csv(f"{_OUT}/new/GSE107537_shift_response.tsv",sep="\t",index=False)

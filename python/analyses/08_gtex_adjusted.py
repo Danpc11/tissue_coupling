@@ -3,19 +3,22 @@
 El tiempo isquemico correlaciona con el score de reloj (rho 0,21-0,29) y con NR3C1, asi que hay
 que descartarlo como explicacion. Requiere GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt
 """
+import os as _os, sys as _sys
+_RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore")
 from scipy import stats
-sys.path.insert(0,"python/lib"); from gene_sets import SETS, resolve
-SA=pd.read_csv("data/gtex/SampleAttributes.txt",sep="\t",low_memory=False)
+from gene_sets import SETS, resolve
+SA=pd.read_csv((_RAW + "/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt" if _os.path.exists(_RAW + "/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt") else "data/gtex/SampleAttributes.txt"),sep="\t",low_memory=False)
 SA["donor"]=SA.SAMPID.str.split("-").str[:2].str.join("-")
-PH=pd.read_pickle("results/new/GTEx_pheno.pkl"); agemid={'20-29':25,'30-39':35,'40-49':45,'50-59':55,'60-69':65,'70-79':75}
+PH=pd.read_pickle(f"{_OUT}/new/GTEx_pheno.pkl"); agemid={'20-29':25,'30-39':35,'40-49':45,'50-59':55,'60-69':65,'70-79':75}
 def sc(X,g):
     gg=[r for r in (resolve(x,X.index) for x in g) if r]; Z=X.loc[gg]; return ((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T.mean(0)
 def pres(y,cv):
     D=np.column_stack([np.ones(len(y))]+cv); b,*_=np.linalg.lstsq(D,np.asarray(y,float),rcond=None); return np.asarray(y,float)-D@b
 TIS={"adiposo sc":("GTEx_adipose_sc","Adipose - Subcutaneous"),"visceral":("GTEx_adipose_visc","Adipose - Visceral (Omentum)"),"músculo":("GTEx_muscle","Muscle - Skeletal")}
 for lab,(fn,smtsd) in TIS.items():
-    X=pd.read_pickle(f"results/new/{fn}.pkl")
+    X=pd.read_pickle(f"{_OUT}/new/{fn}.pkl")
     sa=SA[SA.SMTSD==smtsd].drop_duplicates("donor").set_index("donor").reindex(X.columns)
     p=PH.reindex(X.columns)
     H=pd.get_dummies(p.DTHHRDY.fillna(-1).astype(int),prefix="h").values.astype(float)

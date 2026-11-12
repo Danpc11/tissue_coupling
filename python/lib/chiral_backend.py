@@ -6,11 +6,15 @@ modelo armonico multivariado, ajustando a la vez las fases de las muestras y los
 los genes. Reimplementarlo fue un error nuestro: la version propia reproducia el metodo pero sin
 su validacion ni sus controles.
 
-INSTALACION. El paquete completo arrastra scanpy y pydeseq2, que no hacen falta para CHIRAL. Se
-clona el repositorio y se carga el subpaquete pychiral directamente:
+INSTALACION. CHIRAL no esta en PyPI. Hay un unico camino documentado: `bash download_public.sh`
+clona el repositorio del metodo, github.com/AndreaSalati/pyCHIRAL, en data/raw/pychiral, en la
+revision fijada en ese script, y este modulo lo busca ahi. Necesita ademas tqdm y anndata, que
+estan en requirements.txt como opcionales.
 
-    git clone --depth 1 https://github.com/AndreaSalati/scRITMO.git
-    pip install numpy pandas scipy statsmodels tqdm anndata
+Dos variables de entorno permiten usar otra copia: PYCHIRAL_SRC (directorio src de un clon de
+pyCHIRAL) y SCRITMO_SRC (directorio src de un clon de scRITMO, que incluye la misma
+implementacion como subpaquete). Las dos difieren solo en el nombre de un argumento y de algunas
+claves del resultado; por eso los genes se pasan por posicion.
 
 ORIENTACION DE LA MATRIZ. La documentacion de CHIRAL dice que las muestras van en columnas; en
 realidad las espera en FILAS (muestras x genes). Pasarla al reves falla con un error de forma que
@@ -22,15 +26,14 @@ import types
 
 import numpy as np
 
-SCRITMO_SRC = os.environ.get("SCRITMO_SRC", "/tmp/scRITMO/src")
-
-
-PYCHIRAL_SRC = os.environ.get("PYCHIRAL_SRC", "")
+RAW = os.environ.get("T2D_RAW", "data/raw")
+PYCHIRAL_SRC = os.environ.get("PYCHIRAL_SRC") or os.path.join(RAW, "pychiral", "src")
+SCRITMO_SRC = os.environ.get("SCRITMO_SRC") or os.path.join(RAW, "scritmo", "src")
 
 
 def _load():
-    """Devuelve la funcion CHIRAL. Tres vias, en este orden (rama repro-hugo):
-      1. paquete `pychiral` instalado o en PYCHIRAL_SRC (github.com/AndreaSalati/pyCHIRAL, src/)
+    """Devuelve la funcion CHIRAL. Dos vias, en este orden:
+      1. paquete `pychiral` instalado o en PYCHIRAL_SRC (por defecto data/raw/pychiral/src)
       2. subpaquete `scritmo.pychiral` de un clon de scRITMO en SCRITMO_SRC
     Las dos copias son la misma implementacion de Andrea Salati; ninguna esta en PyPI."""
     if PYCHIRAL_SRC and os.path.isdir(PYCHIRAL_SRC) and PYCHIRAL_SRC not in sys.path:
@@ -43,9 +46,8 @@ def _load():
     if "scritmo" not in sys.modules:
         if not os.path.isdir(SCRITMO_SRC):
             raise ImportError(
-                f"No encuentro pychiral (PYCHIRAL_SRC={PYCHIRAL_SRC!r}) ni scRITMO en {SCRITMO_SRC}. "
-                "Clona uno de los dos: git clone --depth 1 https://github.com/AndreaSalati/pyCHIRAL.git "
-                "(y PYCHIRAL_SRC=<clon>/src) o https://github.com/AndreaSalati/scRITMO.git")
+                f"no encuentro pyCHIRAL en {PYCHIRAL_SRC} ni scRITMO en {SCRITMO_SRC}; "
+                "`bash download_public.sh` clona pyCHIRAL en data/raw/pychiral")
         sys.path.insert(0, SCRITMO_SRC)
         pkg = types.ModuleType("scritmo")
         pkg.__path__ = [os.path.join(SCRITMO_SRC, "scritmo")]
@@ -72,6 +74,26 @@ def infer_phase(E, genes, standardize=True, **kw):
         raise ValueError(f"E tiene {X.shape[0]} filas y se dieron {len(genes)} genes; "
                          "E debe ser genes x muestras")
     np.random.seed(0)   # pyCHIRAL usa el generador global sin semilla
-    out = CHIRAL(X.T, clockgenes=list(genes), standardize=standardize, **kw)   # CHIRAL quiere muestras x genes; con ndarray ya debe venir restringida a los genes del reloj
+    # genes por posicion: el argumento se llama `clockgenes` en pyCHIRAL y `genes` en scRITMO
+    out = CHIRAL(X.T, list(genes), standardize=standardize, **kw)   # CHIRAL quiere muestras x genes
     out["phi"] = np.asarray(out["phi"]).ravel()
     return out
+
+
+def implementation():
+    """De donde sale CHIRAL en esta ejecucion y en que revision, para dejarlo escrito junto al
+    resultado. Devuelve None si no esta disponible."""
+    import subprocess
+    try:
+        _load()
+    except ImportError:
+        return None
+    mod = sys.modules.get("pychiral") or sys.modules.get("scritmo.pychiral") or sys.modules.get("scritmo")
+    name = "pyCHIRAL" if "pychiral" in sys.modules else "scRITMO"
+    src = PYCHIRAL_SRC if name == "pyCHIRAL" else SCRITMO_SRC
+    try:
+        rev = subprocess.run(["git", "-C", src, "rev-parse", "--short", "HEAD"], capture_output=True,
+                             text=True, timeout=10).stdout.strip()
+    except Exception:
+        rev = ""
+    return f"{name} {rev}".strip()

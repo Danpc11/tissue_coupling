@@ -29,9 +29,9 @@ import phase as phase_lib
 
 RAW = os.environ.get("T2D_RAW", "data/raw")
 OUT = os.environ.get("T2D_OUT", "results")
-CLOCK = ["BMAL1", "CLOCK", "NPAS2", "NR1D1", "NR1D2", "PER1", "PER2", "PER3", "CRY1", "CRY2", "DBP",
-         "TEF", "HLF", "CIART", "NFIL3", "BHLHE40", "BHLHE41", "RORA", "RORC"]
-OUTPUT = ["DBP", "PER1", "PER2", "PER3", "NR1D1", "NR1D2", "CIART", "TEF", "HLF"]
+from gene_sets import SETS as _SETS, panel as _panel
+CLOCK = _panel("Benchmark clock")              # registro unico: python/lib/gene_sets.py
+OUTPUT = list(_SETS["Clock output"]["genes"])
 
 
 def mod(name, fn):

@@ -21,7 +21,8 @@ for fk in fks:
     phi,r=fc.simulate_population(fk,1.0,n_cells=150,days=DAYS,seed=1); a,_,Rr=fc.ensemble(phi,r); amps.append(a); Rs.append(Rr)
 D["fks"]=fks; D["amps"]=amps; D["Rs"]=Rs
 # c) firma
-out=["PER3","DBP","HLF","TEF","NR1D1","NR1D2","PER2","CIART"]
+from gene_sets import panel as _panel
+out=_panel("Model signature")      # registro unico: python/lib/gene_sets.py
 dh,Eh=cohort(1.4,11); dl,El=cohort(0.5,12)
 D["sig_sim"]=np.array([El.loc[g].mean()-Eh.loc[g].mean() for g in out]+[El.loc["BMAL1"].mean()-Eh.loc["BMAL1"].mean()])
 D["sig_genes"]=np.array(out+["BMAL1"])

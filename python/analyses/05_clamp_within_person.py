@@ -51,7 +51,7 @@ from scipy import stats
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "../lib"))
-from gene_sets import SETS, resolve  # noqa: E402
+from gene_sets import SETS, resolve, panel  # noqa: E402
 import phase as ph  # noqa: E402
 
 RAW = os.environ.get("T2D_RAW", "data/raw")
@@ -62,9 +62,8 @@ NTEMPLATE = int(os.environ.get("T2D_CLAMP_TEMPLATE", 800))
 
 # Programa de ayuno / dianas FOXO-glucocorticoide en musculo, pre-especificado. Si el entorno tiene
 # el regulon FOXO3 de DoRothEA usado en la Fig. 5, sustituirlo aqui y decirlo en Metodos.
-FASTING = ["TXNIP", "PDK4", "ANGPTL4", "FBXO32", "TRIM63", "CDKN1A", "GADD45A", "SESN1",
-           "BNIP3L", "KLF15", "DDIT4"]
-UPTAKE = ["HK2", "SLC2A4"]
+FASTING = panel("Fasting/FOXO3")       # registro unico: python/lib/gene_sets.py
+UPTAKE = panel("Glucose uptake")
 SCORE_SETS = {
     "Glucocorticoid": SETS["Glucocorticoid"]["genes"],
     "Insulin core": SETS["Insulin core"]["genes"],
