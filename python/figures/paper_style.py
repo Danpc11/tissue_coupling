@@ -41,7 +41,7 @@ def panel_label(ax, letter, dx=-0.02, dy=0.02):
     en la esquina superior izquierda. Los titulos de panel NO van dentro de la figura: el pie
     lleva un titulo breve y la descripcion de cada panel."""
     ax.text(dx, 1 + dy, str(letter).upper(), transform=ax.transAxes, fontsize=10.5,
-            fontweight="bold", family="Liberation Sans", va="bottom", ha="right")
+            fontweight="bold", va="bottom", ha="right")
 
 def stars(p):
     return "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else "ns"

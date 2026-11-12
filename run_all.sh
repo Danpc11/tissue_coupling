@@ -45,6 +45,7 @@ step "13 sensitivity to principal components"  "${PY:-python3}" python/analyses/
 
 # --- perturbations (Fig. 3) ----------------------------------------------------------------
 step "14 within-person clamp and TZD"          "${PY:-python3}" python/analyses/05_clamp_within_person.py
+step "14b clamp vs saline at the same clock times" "${PY:-python3}" python/analyses/28_clamp_vs_saline.py
 step "15 hydrocortisone, dexamethasone, Cushing" "${PY:-python3}" python/analyses/04_perturbations.py
 step "16 assemble the signature table"         "${PY:-python3}" python/analyses/23_build_signatures_table.py
 
@@ -64,6 +65,7 @@ step "24 Figure 2"                             "${PY:-python3}" python/figures/f
 step "25 Figure 5"                             "${PY:-python3}" python/figures/fig7_modelo.py
 step "26 Supplementary Figures S1-S3, S5-S7"   "${PY:-python3}" python/figures/supplementary_figures.py
 step "27 Supplementary Figure S4"              "${PY:-python3}" python/figures/ed4_gc_architecture.py
+step "27b clamp vs saline figure"              "${PY:-python3}" python/figures/fig_clamp_vs_saline.py
 
 # --- checks ---------------------------------------------------------------------------------------
 step "28 every figure input has a producer"    "${PY:-python3}" tests/verify_inputs.py

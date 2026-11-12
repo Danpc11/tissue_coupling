@@ -1,5 +1,34 @@
 # Changelog
 
+## v2.2.0 — a time-matched control for the clamp
+
+Adds one analysis and the data it needs. It does not change any existing result, and how it
+enters the manuscript has not been decided.
+
+### Added
+- `python/analyses/28_clamp_vs_saline.py`, step 14b. GSE40589 has adipose biopsies before and
+  after four hours of saline alone, of a euglycaemic clamp and of a hyperglycaemic clamp, all
+  starting at 08:00, so the change under saline is the passage of time and the difference between
+  a clamp and saline is what insulin adds. The step reports, for the clock-output, core-oscillator,
+  glucocorticoid and insulin-response sets, the change of every pair, the test within each arm and
+  the contrast of each clamp with saline, and the same gene by gene for the clock.
+- **An identity rule for the pairing.** The series does not declare the participant, so the pairs
+  are taken from the numbering of the sample titles and checked with genes that identify an
+  individual. A pair whose identity correlation falls below the 90th percentile of the
+  correlations between different pairs is excluded from the primary analysis. Three analyses are
+  written: primary, all pairs, and one that does not use the pairing.
+- `python/figures/fig_clamp_vs_saline.py`, step 27b: one point per participant, excluded pairs
+  drawn hollow, P values written out.
+- `download_public.sh` fetches the GSE40589 series matrix and the GPL6848 platform table;
+  `00_prepare_data.py` lists the series, so its absence stops the run at step 01; `docs/DATA.md`
+  describes it.
+
+### Fixed
+- `CITATION.cff` carried the title of an earlier version of the manuscript and version 1.1.0.
+- Panel letters asked for one font by name and printed a warning for every panel on machines
+  without it; they now follow the font list of `journal.mplstyle`.
+
+
 ## v2.1.0 — a reviewer can clone this and run it
 
 Nothing here changes a result. These are the things that stopped a clean clone from running.
