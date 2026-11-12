@@ -11,6 +11,11 @@ de fase entre dos tejidos del mismo donante.
 La significancia se evalua permutando la correspondencia de donantes entre tejidos (2.000 veces).
 El argumento no es que un estimador sea mejor, sino que el resultado es el mismo con los dos.
 
+DOS COMPARACIONES. Cada estimador en su configuracion habitual usa genes distintos: el propio, los
+60 mas ritmicos de la plantilla; CHIRAL, el panel del registro. La tabla lleva ademas el estimador
+propio restringido al panel de CHIRAL, para separar el efecto del algoritmo del de los genes. La
+columna n_genes dice cuantos uso cada fila.
+
 QUE MIDE R Y QUE NO. R mide coherencia de fase entre los dos tejidos de una persona: que la
 diferencia de fase se parezca de un donante a otro. No distingue una interaccion directa entre
 tejidos de una senal sistemica que ambos siguen; las dos dan R alto (tests/test_phase_statistic.py
@@ -68,43 +73,51 @@ def phase_ours(E, genes=None):
     """Fase con el periodo ANCLADO a la plantilla, no con ordenamiento libre.
 
     El ordenamiento libre da bien la amplitud pero no fija el periodo, y la diferencia de fase
-    entre tejidos queda en escalas distintas. Para fase va
-    el anclado, con los 60 genes mas ritmicos de la plantilla.
+    entre tejidos queda en escalas distintas. Para fase va el anclado. Sin `genes` usa su
+    configuracion habitual, los 60 genes mas ritmicos de la plantilla; con `genes` se restringe a
+    ese conjunto, para compararlo con CHIRAL sobre los mismos genes. Devuelve (fases, genes usados).
     """
     T = pd.read_csv(f"{OUT}/template_2harm.tsv", sep="\t", index_col=0)
     # order_anchored espera columnas r2, phase_h y amp; la plantilla guarda armonicos
     T = T.assign(phase_h=(np.arctan2(T.b1, T.a1) % (2*np.pi))*24/(2*np.pi), amp=T.amp1)
-    return ph.order_anchored(E, T)[0].values   # devuelve (fases, genes usados)
+    phi, used = ph.order_anchored(E, T, genes=genes)
+    return phi.values, len(used)
 
 CHIRAL_WARNINGS = collections.Counter()
 
 def phase_chiral(E, genes):
     """CHIRAL. La envoltura fija la orientacion (genes x muestras de entrada). Los avisos que emita
-    no se silencian: se cuentan por tipo y se informan al final."""
+    no se silencian: se cuentan por tipo y se informan al final. Devuelve (fases, genes usados)."""
     from chiral_backend import infer_phase
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         phi = infer_phase(E.loc[genes], genes)["phi"]
     CHIRAL_WARNINGS.update(f"{x.category.__name__}: {str(x.message)[:70]}" for x in w)
-    return phi
+    return phi, len(genes)
 
 def run(Em, Ea, donors, label, use_chiral=True):
+    """Tres filas por cohorte. Las dos primeras comparan cada estimador en su configuracion
+    habitual, con genes distintos: lo que difiera puede venir del algoritmo o de los genes. La
+    tercera pone al estimador propio sobre los mismos genes que recibe CHIRAL, de modo que entre
+    ella y la de CHIRAL solo cambia el algoritmo."""
     g = [x for x in CLK if x in Em.index and x in Ea.index]
     rows = []
-    methods = [("this work", lambda E, gg: phase_ours(E))] + ([("CHIRAL", phase_chiral)] if use_chiral else [])
+    methods = [("this work", lambda E, gg: phase_ours(E)),
+               ("this work, same genes as CHIRAL", lambda E, gg: phase_ours(E, gg))] \
+        + ([("CHIRAL", phase_chiral)] if use_chiral else [])
     for name, f in methods:
-        base = dict(cohort=label, method=name, n_donors=len(donors), n_genes=len(g))
+        base = dict(cohort=label, method=name, n_donors=len(donors))
         try:
-            pm, pa = f(Em[donors], g), f(Ea[donors], g)
+            (pm, nm), (pa, na) = f(Em[donors], g), f(Ea[donors], g)
             R, p = concentration(pm, pa)
             R2, p2 = concentration_reflection_aware(pm, pa)
-            rows.append(dict(base, R=R, P=p, R_reflection_aware=R2, P_reflection_aware=p2, status="ok"))
-            print(f"  {label:10s} {name:10s} n={len(donors):4d}  R = {R:.3f}  P = {p:.4f}"
+            rows.append(dict(base, n_genes=min(nm, na), R=R, P=p, R_reflection_aware=R2, P_reflection_aware=p2, status="ok"))
+            print(f"  {label:7s} {name:32s} n={len(donors):4d}  genes={min(nm, na):3d}  R = {R:.3f}  P = {p:.4f}"
                   f"   | sin fijar el sentido de giro: R = {R2:.3f}  P = {p2:.4f}")
         except ImportError as e:
-            rows.append(dict(base, R=np.nan, P=np.nan, R_reflection_aware=np.nan, P_reflection_aware=np.nan,
-                             status=f"not run: {e}"))
-            print(f"  {label:10s} {name:10s} NO EJECUTADO: {e}")
+            rows.append(dict(base, n_genes=len(g), R=np.nan, P=np.nan, R_reflection_aware=np.nan,
+                             P_reflection_aware=np.nan, status=f"not run: {e}"))
+            print(f"  {label:7s} {name:32s} NO EJECUTADO: {e}")
     return rows
 
 if __name__ == "__main__":
@@ -122,6 +135,8 @@ if __name__ == "__main__":
     impl = chiral_backend.implementation()
     T = pd.DataFrame(out)
     T["implementation"] = np.where(T.method == "CHIRAL", impl or "", "python/lib/phase.py")
+    T = T[["cohort", "method", "n_donors", "n_genes", "R", "P", "R_reflection_aware", "P_reflection_aware",
+           "status", "implementation"]]
     T.to_csv(f"{OUT}/new/chiral_concordance.tsv", sep="\t", index=False)
 
     ran = int(((T.method == "CHIRAL") & (T.status == "ok")).sum())

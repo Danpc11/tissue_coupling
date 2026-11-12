@@ -73,12 +73,13 @@ step "28 every figure input has a producer"    "${PY:-python3}" tests/verify_inp
 step "28b no gene set outside the registry"    "${PY:-python3}" tests/test_gene_lists.py
 step "29 smoke test"                           "${PY:-python3}" tests/smoke_test.py
 step "29b phase-coherence statistic"           "${PY:-python3}" tests/test_phase_statistic.py
+step "29b2 phase template validation has no leak" "${PY:-python3}" tests/test_phase_template.py
 step "29c integration test, step 14b"          "${PY:-python3}" tests/test_clamp_vs_saline.py
 step "30 verify the package"                   "${PY:-python3}" tests/verify_package.py "$T2D_OUT"
 
 # --- what this run did not do ---------------------------------------------------------------------
 printf '\n=== run complete\n'
-if grep -q "CHIRAL.*[[:space:]]ok[[:space:]]" "$T2D_OUT/new/chiral_concordance.tsv" 2>/dev/null; then
+if awk -F'\t' '$2 == "CHIRAL" && $9 == "ok" { found = 1 } END { exit !found }' "$T2D_OUT/new/chiral_concordance.tsv" 2>/dev/null; then
   echo "CHIRAL concordance (step 06): regenerated."
 else
   echo "CHIRAL concordance (step 06): NOT regenerated in this run. The implementation was not found;"

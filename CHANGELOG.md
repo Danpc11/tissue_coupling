@@ -1,5 +1,45 @@
 # Changelog
 
+## v2.2.2: the validations use nothing from what they are tested on
+
+A second external review found information leaking from the test subject into the validation of
+the phase template. It was right. The same question was then put to the two validations whose
+numbers are in the manuscript.
+
+### Fixed
+- **Phase template (step 02): the gene selection and the standardisation saw the held-out
+  subject.** Genes were ranked by R² on every sample, each gene was standardised on every sample,
+  and only then was a subject left out; and the error announced was the smallest of twelve
+  configurations. On a simulated cohort of pure noise that procedure reported a median phase error
+  of 1.1 h, where chance is 6 h. Each fold now learns its standardisation parameters, its gene
+  ranking and its template from the training subjects only, and the configuration is chosen by a
+  second leave-subject-out inside the training set (nested validation). On the authors' normalised
+  matrix of GSE108539 the announced error moves from 0.79 h to **0.97 h** (median; 84% of samples
+  within 3 h, against 95%). The definitive figure is the one of a full run on the pipeline's own
+  matrix. No number in the manuscript rests on the old value: its text gives 1.0 to 1.2 h for
+  supervised estimators.
+- The subject and the sampling hour of that cohort are read from free-text fields. The step now
+  stops with a message if an hour cannot be read or the subjects do not come out of the titles.
+- `run_all.sh` could report the CHIRAL concordance as regenerated when it was not.
+
+### Added
+- **Amplitude validation (steps 04 and 05): a second column with the whole donor excluded.** The
+  manuscript says the whole donor was excluded from the ordering and the template. The code
+  excluded the series of the held-out point, so the same donor's samples in the other condition
+  stayed in the base. `amp_inf` is unchanged, to the last bit, and `amp_inf_donor_out` builds the
+  base without any sample of that donor. The two agree: in myotubes ρ = 0.28 and 0.34 per sample
+  become 0.32 and 0.32, and 0.97 and 0.94 per donor become 0.98 and 0.87; in muscle in vivo 0.17
+  and 0.82 become 0.17 and 0.81. The gene panel of these validations is fixed in advance and the
+  standardisation already used the base only, so there was nothing else to correct.
+- Step 06 adds a row with our estimator restricted to the genes CHIRAL receives. Each estimator in
+  its usual configuration uses different genes (60 against 22), so a difference between them could
+  come from the genes; between this row and CHIRAL's only the algorithm changes. `n_genes` now
+  says how many genes each row used.
+- `tests/test_phase_template.py`: what a fold learns does not change when the held-out subject's
+  samples are replaced by noise; on a cohort of pure noise the error is that of chance, and the
+  previous procedure, reimplemented in the test, is shown to do much better than chance there;
+  on a rhythmic cohort the nested validation recovers the phase.
+
 ## v2.2.1: answers to an external review of the repository
 
 No reported number changes. The lists that moved into the registry are identical in content and

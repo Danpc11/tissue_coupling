@@ -90,11 +90,12 @@ simulated phases).
 | `tests/verify_inputs.py` | every file a script reads has a producer that runs earlier, is versioned, or is a declared download. Static analysis: see its header for what it cannot see | no |
 | `tests/test_gene_lists.py` | no gene set is defined outside the registry | no |
 | `tests/test_phase_statistic.py` | what the phase-coherence statistic measures, on simulated phases | no |
+| `tests/test_phase_template.py` | the validation of the phase template uses nothing from the held-out subject: on pure noise its error is that of chance | no |
 | `tests/test_clamp_vs_saline.py` | runs step 14b on a small simulated series with a known answer and checks the contents of its output | no |
 | `tests/smoke_test.py` | the phase estimator recovers a known phase | no |
 | `tests/verify_package.py` | arithmetic and consistency of the tables of a real run | yes |
 
-The first six run in continuous integration and at the end of `run_all.sh`. A passing test suite
+All but the last run in continuous integration and at the end of `run_all.sh`. A passing test suite
 means the code does what it says; it does not validate the biological interpretation.
 
 ## Citation

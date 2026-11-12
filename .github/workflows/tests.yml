@@ -41,5 +41,7 @@ jobs:
         run: python tests/test_gene_lists.py
       - name: Phase-coherence statistic on simulated phases
         run: python tests/test_phase_statistic.py
+      - name: The phase-template validation uses nothing from the held-out subject
+        run: python tests/test_phase_template.py
       - name: Integration test of step 14b on a simulated series
         run: python tests/test_clamp_vs_saline.py
