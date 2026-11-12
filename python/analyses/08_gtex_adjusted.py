@@ -19,7 +19,14 @@ def pres(y,cv):
 TIS={"adiposo sc":("GTEx_adipose_sc","Adipose - Subcutaneous"),"visceral":("GTEx_adipose_visc","Adipose - Visceral (Omentum)"),"músculo":("GTEx_muscle","Muscle - Skeletal")}
 for lab,(fn,smtsd) in TIS.items():
     X=pd.read_pickle(f"{_OUT}/new/{fn}.pkl")
-    sa=SA[SA.SMTSD==smtsd].drop_duplicates("donor").set_index("donor").reindex(X.columns)
+    # RIN e isquemia de la MUESTRA cuya expresion esta en la matriz. 00b guarda cual es en
+    # <tejido>_samples.tsv; la primera que lista la anotacion para ese donante no siempre es esa.
+    _sm=f"{_OUT}/new/{fn}_samples.tsv"
+    if _os.path.exists(_sm):
+        used=pd.read_csv(_sm,sep="\t",index_col=0).iloc[:,0].reindex(X.columns)
+        sa=SA.set_index("SAMPID").reindex(used.values); sa.index=X.columns
+    else:
+        sa=SA[SA.SMTSD==smtsd].drop_duplicates("donor").set_index("donor").reindex(X.columns)
     p=PH.reindex(X.columns)
     H=pd.get_dummies(p.DTHHRDY.fillna(-1).astype(int),prefix="h").values.astype(float)
     base=[(p.SEX==1).astype(float).values,p.AGE.map(agemid).values.astype(float)]+[H[:,k] for k in range(H.shape[1])]

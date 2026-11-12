@@ -394,7 +394,7 @@ def response_by_sensitivity(rng):
     R = pd.DataFrame(rows)
     os.makedirs(f"{OUT}/new", exist_ok=True)
     R.to_csv(f"{OUT}/new/clamp_response_by_sensitivity.tsv", sep="\t", index=False, float_format="%.4f")
-    print("\n== E. respuesta al clamp por sensibilidad a la insulina (manuscrito: P = 0.42) ==")
+    print("\n== E. respuesta al clamp por sensibilidad a la insulina ==")
     print(R.round(3).to_string(index=False))
 
 

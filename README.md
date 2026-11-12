@@ -49,6 +49,23 @@ at the end of the pipeline. `T2D_REQUIRE_CHIRAL=1` makes its absence an error.
 
 Stochastic routines use NumPy `default_rng` with seed 0. Continuous integration runs on Python 3.11.
 
+**All thirteen estimates or none.** The meta-analysis lists the thirteen cohort and tissue
+estimates of the manuscript and stops if one is missing, instead of pooling whatever is there.
+`T2D_ALLOW_PARTIAL=1` lets it continue, and the tables then say that they are incomplete.
+
+## Which script draws which figure
+
+The file names date from earlier numberings of the figures.
+
+| manuscript | script | output in `results/figs/` |
+|---|---|---|
+| Figures 1, 3 and 4 | `python/figures/paper_figures.py` | `F1`, `F3`, `F4` |
+| Figure 2 | `python/figures/fig3_eje.py`, called by `paper_figures.py` | `F2` (also written as `F3_eje`) |
+| Figure 5 | `python/figures/fig7_modelo.py`, called by `paper_figures.py` | `F5` (also written as `F7_modelo`) |
+| Supplementary Figures 1 to 3 and 5 to 7 | `python/figures/supplementary_figures.py` | `ED1` to `ED3`, `ED5` to `ED7` |
+| Supplementary Figure 4 | `python/figures/ed4_gc_architecture.py` | `ED4` |
+| not in the manuscript | `python/figures/fig_clamp_vs_saline.py` | `clamp_vs_saline` |
+
 ## Layout
 
 | path | contents |
@@ -75,6 +92,13 @@ a random gene with the clock-output score is 0.44 rather than zero without it). 
 compares differences between groups and is built without centring. Mixing the two conventions
 changes results.
 
+**"Single sample" means one sample per person, not a sample without a cohort.** The estimators
+standardise each gene across the samples they are given and learn the waveform from them, so
+they are relative to a cohort. A sample that is not part of it is scored against a reference
+fitted beforehand (`fit_reference` and `infer_from_reference` in `python/lib/phase.py`), which is
+how the leave-one-out validation works. The amplitude is a transcriptomic proxy: it does not
+separate lower amplitude in each cell from wider dispersion of phase between cells.
+
 **"Coupling" is a statistical statement here.** The repository name refers to the relationship
 between glucocorticoid signalling and clock output. Where two tissues of one person are compared,
 the quantity is the coherence of their phase difference across donors. It is high when both
@@ -91,6 +115,8 @@ simulated phases).
 | `tests/test_gene_lists.py` | no gene set is defined outside the registry | no |
 | `tests/test_phase_statistic.py` | what the phase-coherence statistic measures, on simulated phases | no |
 | `tests/test_phase_template.py` | the validation of the phase template uses nothing from the held-out subject: on pure noise its error is that of chance | no |
+| `tests/test_single_sample.py` | "single sample" means one sample per person scored against a fixed reference: a lone sample is refused, and its value does not depend on which others accompany it | no |
+| `tests/test_model_null.py` | on simulated cohorts the estimator recovers the effect of the receptor gain when the model has one and finds none when it has none | no |
 | `tests/test_clamp_vs_saline.py` | runs step 14b on a small simulated series with a known answer and checks the contents of its output | no |
 | `tests/smoke_test.py` | the phase estimator recovers a known phase | no |
 | `tests/verify_package.py` | arithmetic and consistency of the tables of a real run | yes |

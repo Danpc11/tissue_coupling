@@ -116,4 +116,4 @@ if __name__ == "__main__":
         print(res.round(2).to_string(index=False))
     main = res[(res.genes == "clock_19_2harm") & (res.reference == "clock")].iloc[0]
     print(f"\nGenes reloj, dos armonicos: error absoluto medio {main.mae_h:.2f} h, mediana {main.median_h:.2f} h, R {main.R:.2f} "
-          f"(manuscrito: 'to within 1.7 h'; nulo {np.mean(null):.2f} h)")
+          f"(fases al azar: {np.mean(null):.2f} h)")
