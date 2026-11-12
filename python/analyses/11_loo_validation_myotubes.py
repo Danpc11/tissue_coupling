@@ -25,17 +25,10 @@ def cosinor(y,t,per=24.0):
     w=2*np.pi/per; D=np.column_stack([np.ones(len(t)),np.cos(w*t),np.sin(w*t)])
     b,*_=np.linalg.lstsq(D,y,rcond=None); return np.hypot(b[1],b[2])
 def base(others):
-    """Ordenamiento, plantilla y parametros de estandarizacion, solo con las muestras `others`."""
-    Z=Xc.loc[g,others]; Z=((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T
-    ang=ph.unsup(Z.values)
-    a=np.array([np.mean(Z.loc[gg].values*np.cos(ang)) for gg in g])
-    b=np.array([np.mean(Z.loc[gg].values*np.sin(ang)) for gg in g])
-    return a,b,Xc.loc[g,others].mean(1).values,Xc.loc[g,others].std(1).values+1e-9
+    """Referencia fija (python/lib/phase.py) construida solo con las muestras `others`."""
+    return ph.fit_reference(Xc[others], g)
 def infer(held,B):
-    a,b,mu,sd=B
-    z=(np.asarray(Xc.loc[g,held],float)-mu)/sd
-    th=np.arctan2(np.dot(z,b),np.dot(z,a))
-    return np.dot(z,a*np.cos(th)+b*np.sin(th))/np.sqrt(len(g))
+    return ph.infer_from_reference(Xc[held], B)[1]
 rows=[]
 for (ind,trt),q in md.groupby(["ind","trt"]):
     cols=list(q.index); t=q.t.values

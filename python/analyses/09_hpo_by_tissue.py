@@ -34,7 +34,8 @@ RK["islets"]=rank_vs(islets())
 syn=pd.read_csv(f"{_OUT}/new/ncbi_synonym_map.tsv",sep="\t",index_col=0)["current"].to_dict()
 rng=np.random.default_rng(0); rows=[]
 gmt={}
-for l in open("data/msigdb/c5_hpo_v2026_2_Hs_symbols.gmt"):
+_hpo=f"{_RAW}/msigdb/c5.hpo.v2026.2.Hs.symbols.gmt"      # donde lo deja download_public.sh
+for l in open(_hpo if _os.path.exists(_hpo) else "data/msigdb/c5_hpo_v2026_2_Hs_symbols.gmt"):
     p=l.rstrip("\n").split("\t"); gmt[p[0]]=set(p[2:])
 WANT=["HP_TRUNCAL_OBESITY","HP_INCREASED_URINARY_CORTISOL_LEVEL","HP_INSULIN_RESISTANCE",
       "HP_HYPERGLYCEMIA","HP_TYPE_II_DIABETES_MELLITUS","HP_OBESITY","HP_ABNORMAL_CIRCULATING_CORTISOL_CONCENTRATION",

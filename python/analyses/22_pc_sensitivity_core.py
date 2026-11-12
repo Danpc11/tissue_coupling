@@ -51,16 +51,17 @@ if __name__=="__main__":
     rows=[]
     with gzip.open(f"{RAW}/GSE95674_series_matrix.txt.gz","rt",errors="ignore") as f:
         for l in f:
-            if l.startswith("!Sample_geo_accession"): ids=[x.strip('"') for x in l.rstrip().split("\t")[1:]]
+            # las columnas de las matrices de AAGMEx son el donante (titulo de la muestra), no el GSM
+            if l.startswith("!Sample_title"): ids=[x.strip('"') for x in l.rstrip().split("\t")[1:]]
             if l.startswith("!Sample_characteristics") and "gender" in l: sx=[x.strip('"').split(": ")[1] for x in l.rstrip().split("\t")[1:]]
             if l.startswith("!Sample_characteristics") and "age" in l: ag=[float(x.strip('"').split(": ")[1]) for x in l.rstrip().split("\t")[1:]]
     cov0=pd.DataFrame({"sex":sx,"age":ag},index=ids)
     for pk,lab in (("AAGMEx_adipose_log2","AAGMEx adipose"),("AAGMEx_muscle_log2","AAGMEx muscle")):
         X=pd.read_pickle(f"{OUT}/new/{pk}.pkl"); X=X.sub(X.mean(0),axis=1)
         c=cov0.reindex(X.columns)
-        # las columnas de AAGMEx no siempre son GSM: si no casan, se corre sin covariables
+        # sin covariables no es el mismo analisis que el del metaanalisis: se detiene en vez de seguir
         if c.sex.isna().all():
-            cv=[]; print(f"  [{lab}] sin covariables: los identificadores no casan con la serie matriz")
+            sys.exit(f"[{lab}] las covariables no casan con las columnas de la matriz")
         else:
             cv=[(c.sex=="M").astype(float).values, c.age.values.astype(float)]
             cv=[np.nan_to_num(v, nan=np.nanmean(v)) for v in cv]

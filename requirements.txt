@@ -3,7 +3,7 @@
 #
 # Python 3.11 o posterior (el lock fija numpy 2.4 y pandas 3.0, que no existen para 3.9).
 numpy>=1.26
-pandas>=2.2
+pandas>=2.2,<4            # el codigo llama a mean() y std() con el eje por posicion, que pandas 4 dejara de aceptar
 scipy>=1.13
 scikit-learn>=1.5
 matplotlib>=3.9

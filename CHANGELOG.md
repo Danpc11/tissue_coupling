@@ -1,5 +1,64 @@
 # Changelog
 
+## v2.3.0: a full review of every script, run on the real data
+
+The published code was run here on the real downloads, as far as they reach, on a different
+machine and with a different source of annotation. GTEx, the cross-tissue axis, the
+transcription-factor activities, the clamp scores, the cross-tissue prediction and the sleep-delay
+control come out identical to the third decimal; of the eleven cohort estimates of the
+meta-analysis that could be built, nine are identical and two differ by 0.002 and 0.003.
+
+### Fixed
+- **The sensitivity to principal components ran without covariates in AAGMEx.** It indexed sex
+  and age by GEO accession while the matrix columns are donors, found no match, printed a notice
+  and went on. Its first row is now 0.345, the value of the meta-analysis, instead of 0.401; the
+  conclusion (the association disappears when two components are removed) is the same.
+- **The meta-analysis pooled whatever estimates it found.** Four of the thirteen were added only
+  if their matrix existed, so a run could silently pool eleven. The thirteen are now a manifest:
+  a missing one stops the step, `T2D_ALLOW_PARTIAL=1` lets it continue and marks every table as
+  incomplete.
+- **GTEx RIN and ischaemic time came from another sample** of the same donor and tissue in 57, 27
+  and 81 donors, the first one the annotation lists rather than the one whose expression is in the
+  matrix. With the right sample the adjusted estimates are 0.277, 0.352 and 0.277 instead of
+  0.276, 0.354 and 0.274.
+- **`verify_package` could not have passed on a real run.** Its check of the meta-analysis had
+  never been executed against real output: it crashed on the pooled table and treated a standard
+  error already on Fisher's scale as if it were not; and it looked for the out-of-fold predictions
+  in the wrong directory. Rewritten and run against real tables.
+- The step for phenotype terms read MSigDB from a fixed path, and one module was loaded by a path
+  relative to the working directory: both would fail with the data in another location.
+- A heterogeneity of "84%" was written by hand in a message (it is computed now), two messages
+  quoted values from the manuscript, and a docstring carried a table of results.
+- `is_clock()` tested a separation "between 8 and 16 h" that can never exceed 12. It now says
+  what it does, within 4 h of antiphase, with the same result, and finds BMAL1 under ARNTL.
+- The dispersion analysis called a permutation test a bootstrap, could divide by a dispersion of
+  zero, and printed Anderson-Darling values of 0.25 that are scipy's upper bound. It writes a table.
+- Two library modules that nothing imported are gone. `pandas` is capped below 4, which will
+  refuse the positional axis the code passes to `mean()` and `std()`.
+
+### Added
+- **"Single sample" has a precise meaning in the code.** The estimators are relative to a cohort;
+  a sample outside it is scored against a fixed reference. `fit_reference()` and
+  `infer_from_reference()` in `python/lib/phase.py` do that, the leave-one-out validation uses
+  them (its output is identical to the last bit), and `order_anchored()` refuses a lone sample
+  instead of returning NaN.
+- **Meta-analysis, step 11.** Intervals with the t distribution on cohorts minus one degrees of
+  freedom beside the normal ones; leaving each cohort out; one estimate per cohort; bootstrap
+  standard errors; expression not centred per sample; and the prediction interval for a new
+  cohort. Step 10 writes the bootstrap standard error and the uncentred correlation of each
+  estimate. All in `meta_three_level.tsv`.
+- **Cross-tissue prediction, step 11b.** Two specificity nulls, random predictor genes and random
+  outcome genes, and the variant with per-sample centring. The published rows are unchanged.
+- Cross-tissue axis: the same concordances without the pair whose inferred sex differs between
+  tissues.
+- `tests/test_single_sample.py` and `tests/test_model_null.py`. The second applies the estimator
+  to simulated cohorts in which the receptor gain varies but does not act: it finds no relation
+  there, and finds it when the forcing is on.
+
+### Not changed, and why
+The figures still carry hand-written statements in panel titles, and Fig. 5c compares the model in
+its own units with observed log2 differences. Both belong to decisions about the manuscript.
+
 ## v2.2.2: the validations use nothing from what they are tested on
 
 A second external review found information leaking from the test subject into the validation of

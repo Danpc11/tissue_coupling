@@ -11,7 +11,7 @@ Devuelve codigo 1 si alguna comprobacion falla.
 import os, sys, glob
 import numpy as np, pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../python/lib"))
-RES = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("T2D_OUT", "results_clean")
+RES = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("T2D_OUT", "results")
 FAIL = []
 
 def check(name, ok, detail=""):
@@ -55,21 +55,24 @@ for f in glob.glob(f"{RES}/ci_*.tsv"):
 print("\n4. Aritmetica del metaanalisis")
 fci, fme = f"{RES}/new/meta_per_cohort.tsv", f"{RES}/new/meta_pooled.tsv"
 if os.path.exists(fci) and os.path.exists(fme):
-    ci = pd.read_csv(fci, sep="\t").rename(columns={"rho": "r", "contraste": "set"})
-    me = pd.read_csv(fme, sep="\t")
-    me = me[me.get("tejido", "todos").astype(str).eq("todos")] if "tejido" in me.columns else me
-    me = me.rename(columns={"rho": "r", "contraste": "set"}).set_index("set")
+    ci = pd.read_csv(fci, sep="\t"); me = pd.read_csv(fme, sep="\t")
+    me = me[me.grupo == "todos"].set_index("contraste")          # el agrupado de todas las estimaciones
     worst = 0.0
     for s in me.index:
-        sub = ci[ci.set == s]
+        sub = ci[ci.contraste == s]
         if len(sub) < 2: continue
-        z = np.arctanh(sub.r.values); se = sub.se.values / (1 - sub.r.values ** 2)
+        z, se = sub.z.values, sub.se.values                         # se ya esta en la escala z de Fisher
         w = 1 / se ** 2; Q = np.sum(w * (z - np.sum(w * z) / np.sum(w)) ** 2); k = len(z)
         C = np.sum(w) - np.sum(w ** 2) / np.sum(w)
         tau2 = max(0.0, (Q - (k - 1)) / C) if C > 0 else 0.0
         wr = 1 / (se ** 2 + tau2)
-        worst = max(worst, abs(np.tanh(np.sum(wr * z) / np.sum(wr)) - me.loc[s, "r"]))
-    check("el pooled se reproduce desde los exports por cohorte", worst < 1e-9, f"max dif {worst:.2e}")
+        worst = max(worst, abs(np.tanh(np.sum(wr * z) / np.sum(wr)) - float(me.loc[s, "rho"])))
+        check(f"{s}: el numero de estimaciones agrupadas es el de la tabla por cohorte", int(me.loc[s, "k"]) == k, f"k = {k}")
+    check("el agrupado se reproduce desde la tabla por cohorte", worst < 1e-9, f"max dif {worst:.2e}")
+    check("z es la transformada de Fisher de rho en cada fila", bool(np.allclose(np.arctanh(ci.rho.clip(-.999, .999)), ci.z, atol=1e-9)))
+    if "complete" in ci.columns:
+        check("estan las trece estimaciones del articulo", bool(ci.complete.all()) and ci[ci.contraste == "NR3C1~reloj"].shape[0] == 13,
+              f"{ci[ci.contraste == 'NR3C1~reloj'].shape[0]} estimaciones")
 else:
     check("existen los exports del metaanalisis", False,
           "corra el pipeline: pasos 10 y 11 escriben meta_per_cohort.tsv y meta_pooled.tsv")
@@ -90,11 +93,11 @@ if os.path.exists(fp):
     d = pd.read_csv(fp, sep="\t")
     check("la prediccion declara n, pliegues y semilla", {"n", "folds", "seed"} <= set(d.columns))
     check("existen predicciones fuera de pliegue auditables",
-          len(glob.glob(f"{RES}/oof_predictions_*.tsv")) > 0)
+          len(glob.glob(f"{RES}/new/oof_predictions_*.tsv")) > 0)
     if G is not None:
         import importlib; importlib.reload(G)
         # predictor y resultado deben ser disjuntos: se comprueba en el propio script con assert
-        check("predictor y resultado son disjuntos (assert en 22_meta_and_validation.py)", True)
+        check("predictor y resultado son disjuntos (assert en 27_crosstissue_prediction.py)", True)
 else:
     check("existe el export de la prediccion", False,
           "corra el pipeline: el paso 11b escribe results/new/crosstissue_prediction.tsv")

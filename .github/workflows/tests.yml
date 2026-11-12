@@ -43,5 +43,9 @@ jobs:
         run: python tests/test_phase_statistic.py
       - name: The phase-template validation uses nothing from the held-out subject
         run: python tests/test_phase_template.py
+      - name: A single sample is scored against a fixed reference
+        run: python tests/test_single_sample.py
+      - name: The estimator finds no effect where the model has none
+        run: python tests/test_model_null.py
       - name: Integration test of step 14b on a simulated series
         run: python tests/test_clamp_vs_saline.py

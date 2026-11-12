@@ -82,16 +82,24 @@ def coupling(pa,pb,nperm=2000,seed=0):
     r=abs(rho_js(pa,pb)); rng=np.random.default_rng(seed)
     null=np.array([abs(rho_js(pa,pb[rng.permutation(len(pb))])) for _ in range(nperm)])
     return r,(np.sum(null>=r)+1)/(nperm+1),null.mean()
-def is_clock(E,ang,genes=None):
-    """Verifica que la estructura ciclica recuperada ES el reloj: BMAL1 y DBP deben quedar
-    en antifase (8-16 h). Sin esta comprobacion, sangre e hipotalamo pasan por relojes."""
+def is_clock(E,ang,genes=None,tolerance_h=4.0):
+    """Verifica que la estructura ciclica recuperada ES el reloj: BMAL1 y DBP deben quedar en
+    antifase. Sin esta comprobacion, sangre e hipotalamo pasan por relojes.
+
+    Devuelve (cumple, separacion en horas). La separacion entre dos fases en un ciclo de 24 h va
+    de 0 a 12 h, y 12 h es la antifase exacta; el criterio es que diste de ella como mucho
+    `tolerance_h`, es decir, separacion >= 8 h con el valor por defecto. BMAL1 se busca tambien
+    por su simbolo anterior, ARNTL, que es el que llevan las plataformas antiguas."""
+    from gene_sets import resolve
     g=[x for x in (genes or CLK) if x in E.index]
-    if "BMAL1" not in g or "DBP" not in g: return False,np.nan
+    names={k: resolve(k if k!="BMAL1" else "ARNTL",E.index) or (k if k in E.index else None) for k in ("BMAL1","DBP")}
+    if names["BMAL1"] is None or names["DBP"] is None: return False,np.nan
+    g=list(dict.fromkeys(g+[names["BMAL1"],names["DBP"]]))
     Z=E.loc[g]; Z=((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T
     D=np.column_stack([np.cos(ang),np.sin(ang)]); B,*_=np.linalg.lstsq(D,Z.values.T,rcond=None)
     ph=np.arctan2(B[1],B[0]); gi={x:i for i,x in enumerate(g)}
-    sep=abs(np.angle(np.exp(1j*(ph[gi["DBP"]]-ph[gi["BMAL1"]]))))*24/(2*np.pi)
-    return (8<=sep<=16), sep
+    sep=abs(np.angle(np.exp(1j*(ph[gi[names["DBP"]]]-ph[gi[names["BMAL1"]]]))))*24/(2*np.pi)
+    return bool(12-sep<=tolerance_h), sep
 
 
 # ---------------------------------------------------------------------------
@@ -144,6 +152,10 @@ def order_anchored(E, template, genes=None, n_template=60, grid=721):
     if genes is None:
         genes = select_template(template, n_template)
     g = [x for x in genes if x in E.index and x in template.index]
+    if E.shape[1] < 3:
+        raise ValueError("order_anchored estandariza cada gen entre las muestras de la cohorte: no se puede "
+                         "aplicar a una muestra aislada. Para una muestra nueva use fit_reference() e "
+                         "infer_from_reference(), que fijan esos parametros en una cohorte de referencia.")
     Z = E.loc[g]; Z = ((Z.T - Z.mean(1)) / (Z.std(1) + 1e-9)).T.values
     ph = template.phase_h[g].values * 2 * np.pi / 24
     amp = template.amp[g].values
@@ -168,3 +180,38 @@ def double_angle(a, b):
     Un valor alto delata que persiste la ambiguedad de periodo; con el periodo anclado debe
     quedar por debajo de ~0.12."""
     return abs(rho_js(2 * np.asarray(a), 2 * np.asarray(b)))
+
+
+# ---------------------------------------------------------------------------
+# UNA MUESTRA NUEVA
+#
+# Los estimadores de arriba son RELATIVOS A UNA COHORTE: estandarizan cada gen entre las muestras
+# que reciben y, en el ordenamiento libre, aprenden de ellas la forma de onda. "Muestra unica"
+# significa una muestra por persona, no una muestra sin cohorte. Para inferir la amplitud de una
+# muestra que no forma parte de la cohorte hay que fijar antes, en una cohorte de referencia, todo
+# lo que el estimador aprende: los genes, la media y la desviacion de cada gen, y los coeficientes
+# de la forma de onda. Es lo que hace la validacion dejando uno fuera (pasos 04 y 05), y asi el
+# valor de una muestra no cambia cuando se anaden o se quitan otras.
+# ---------------------------------------------------------------------------
+
+def fit_reference(E, genes=None):
+    """Aprende de la cohorte E (genes x muestras, ya centrada por muestra) lo necesario para
+    puntuar muestras nuevas: genes, media y desviacion por gen, y coeficientes de la forma de onda
+    obtenidos por ordenamiento libre."""
+    g = [x for x in (genes or CLK) if x in E.index]
+    X = E.loc[g]
+    Z = ((X.T - X.mean(1)) / (X.std(1) + 1e-9)).T
+    ang = unsup(Z.values)
+    a = np.array([np.mean(Z.loc[gg].values * np.cos(ang)) for gg in g])
+    b = np.array([np.mean(Z.loc[gg].values * np.sin(ang)) for gg in g])
+    return dict(genes=g, mu=X.mean(1).values, sd=X.std(1).values + 1e-9, a=a, b=b, n=X.shape[1])
+
+
+def infer_from_reference(x, ref):
+    """Fase y amplitud de UNA muestra con una referencia fija. `x` es la expresion de la muestra
+    (Serie indexada por gen, centrada por muestra igual que la referencia). Devuelve
+    (fase en radianes, amplitud). No usa ninguna otra muestra."""
+    z = (np.asarray(x.loc[ref["genes"]], float) - ref["mu"]) / ref["sd"]
+    th = np.arctan2(np.dot(z, ref["b"]), np.dot(z, ref["a"]))
+    amp = np.dot(z, ref["a"] * np.cos(th) + ref["b"] * np.sin(th)) / np.sqrt(len(ref["genes"]))
+    return th % (2 * np.pi), amp
