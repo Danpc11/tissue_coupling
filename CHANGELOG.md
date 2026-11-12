@@ -1,5 +1,32 @@
 # Changelog
 
+## v2.1.0 — a reviewer can clone this and run it
+
+Nothing here changes a result. These are the things that stopped a clean clone from running.
+
+### Fixed
+- **`requirements.txt` did not list what the pipeline imports.** `pydeseq2` (islets),
+  `statsmodels` (heterogeneity moderators) and `anndata` were missing, so a reviewer installing
+  from it hit an ImportError three steps in. The file now lists every runtime dependency with
+  minimum versions, says that Python 3.11 or later is required (the lock pins numpy 2.4 and
+  pandas 3.0, which do not exist for 3.9), and names the optional ones.
+- **`download_public.sh` did not fetch two files the pipeline reads.** `sra.recount_qc.*` for
+  SRP127581 and SRP055749 carry the average read length that converts recount3 base coverage into
+  reads; without them the Cushing and phase-template steps failed. No test caught this, because
+  the tests check that every input has a producer, not that the download script fetches everything
+  the producers read.
+- **NCBI's CAPTCHA aborted the islet step.** The counts for GSE159984 are not optional. The script
+  now retries five times with increasing waits, deletes any HTML it receives, and prints the ARCHS4
+  fallback if it still fails.
+- **CHIRAL silently reported the wrong cause.** Step 06 said `python/lib/chiral_backend.py` was
+  missing when the file was there and scRITMO, which is not on PyPI, was not. The script is now
+  cloned by `download_public.sh` and the message names the real cause.
+- **`verify_package` failed two checks by design**, looking for exports of a script that is not a
+  pipeline step. It now reads `meta_per_cohort.tsv`, `meta_pooled.tsv` and
+  `new/crosstissue_prediction.tsv`, which the pipeline does produce, and says which step writes
+  them when they are absent.
+
+
 ## v2.0.0 — the version behind the Nature Communications submission
 
 ### Added

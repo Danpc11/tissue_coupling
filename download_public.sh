@@ -107,13 +107,26 @@ for c in c2.cp.reactome c2.cp.wikipathways c2.cp.kegg_medicus c2.cgp c2.cp.pid c
 done
 # cuentas generadas por NCBI (www.ncbi.nlm.nih.gov; si responde con una pagina HTML, reintentar mas tarde)
 N='https://www.ncbi.nlm.nih.gov/geo/download/?type=rnaseq_counts'
+# El CAPTCHA de NCBI es intermitente: se reintenta unas cuantas veces antes de rendirse, porque
+# sin estas cuentas el paso 02c (islotes) no corre.
 for a in GSE159984 GSE108539; do
-  get "$N&acc=$a&format=file&file=${a}_raw_counts_GRCh38.p13_NCBI.tsv.gz" ${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz
-  if [ -s ${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz ] && ! gzip -t ${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz 2>/dev/null; then
-    rm -f ${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz; echo "  [FALLO] $a: NCBI devolvio HTML (CAPTCHA); reintentar"
+  f=${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz
+  for intento in 1 2 3 4 5; do
+    [ -s "$f" ] && gzip -t "$f" 2>/dev/null && break
+    rm -f "$f"
+    get "$N&acc=$a&format=file&file=${a}_raw_counts_GRCh38.p13_NCBI.tsv.gz" "$f"
+    if [ -s "$f" ] && ! gzip -t "$f" 2>/dev/null; then
+      rm -f "$f"
+      echo "  [reintento $intento] $a: NCBI devolvio HTML (CAPTCHA)"
+      sleep $((intento * 20))
+    fi
+  done
+  if [ -s "$f" ] && gzip -t "$f" 2>/dev/null; then :; else
+    echo "  [FALLO] $a: NCBI sigue devolviendo HTML. Reintente mas tarde, o para GSE159984 use"
+    echo "          T2D_ARCHS4_DL=1 bash download_public.sh && python python/analyses/00c_archs4_counts.py"
   fi
 done
-[ -s GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz ] && ln -sfn GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz GSE159984_raw_counts.tsv.gz
+[ -s GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz ] && ln -sfn GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz GSE159984_raw_counts.tsv.gz || true
 get "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE66nnn/GSE66446/suppl/GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt.gz" GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt.gz
 # la serie tiene dos plataformas; 00_prepare_data.py busca el nombre sin sufijo
 [ -s GSE159984-GPL16791_series_matrix.txt.gz ] && ln -sfn GSE159984-GPL16791_series_matrix.txt.gz GSE159984_series_matrix.txt.gz
@@ -124,8 +137,10 @@ mkdir -p recount3
 R=https://duffel.rail.bio/recount3/human/data_sources/sra
 get $R/gene_sums/81/SRP127581/sra.gene_sums.SRP127581.G026.gz recount3/sra.gene_sums.SRP127581.G026.gz
 get $R/metadata/81/SRP127581/sra.sra.SRP127581.MD.gz          recount3/sra.sra.SRP127581.MD.gz
+get $R/metadata/81/SRP127581/sra.recount_qc.SRP127581.MD.gz recount3/sra.recount_qc.SRP127581.MD.gz
 get $R/gene_sums/49/SRP055749/sra.gene_sums.SRP055749.G026.gz recount3/sra.gene_sums.SRP055749.G026.gz
 get $R/metadata/49/SRP055749/sra.sra.SRP055749.MD.gz          recount3/sra.sra.SRP055749.MD.gz
+get $R/metadata/49/SRP055749/sra.recount_qc.SRP055749.MD.gz recount3/sra.recount_qc.SRP055749.MD.gz
 
 if [ -n "${T2D_ARCHS4_DL:-}" ]; then
   echo "## 10. ARCHS4 human_gene_v2 (62 GB), para GSE159984 (sin cuentas de autor ni en recount3)"
@@ -136,6 +151,12 @@ fi
 
 # fuentes sin version (gene_info cambia a diario, OmniPath es una consulta en vivo): se registra fecha y sha256
 { echo "# $(date -u +%Y-%m-%dT%H:%MZ)"; sha256sum _soft/Homo_sapiens.gene_info.gz dorothea_ABC.tsv Human_GRCh38_p13_annot_tsv.gz 2>/dev/null; } >> CHECKSUMS.txt
+
+echo "## 11. scRITMO (CHIRAL), para el paso 06 de concordancia de fase"
+if [ -d scritmo/.git ]; then echo "  [ya]    scritmo"; else
+  git clone --depth 1 -q https://github.com/AndreaSalati/scRITMO.git scritmo \
+    && echo "  [ok]    scritmo" || echo "  [FALLO] scRITMO: el paso 06 omitira CHIRAL"
+fi
 
 echo "### $(date)  fin"
 echo "## Informe de 00_prepare_data.py:"

@@ -68,3 +68,18 @@ Substitutes for files that are only served by `www.ncbi.nlm.nih.gov`, which answ
 
 `GSE148640_processed.txt.gz`, the processed supplement of that series, is also read directly by
 `00b_build_matrices.py` and placed under `data/raw/` by `download_public.sh`.
+
+## Software that is cloned rather than installed
+
+CHIRAL (step 06, phase concordance) comes from the scRITMO package, which is not on PyPI.
+`download_public.sh` clones it into `data/raw/scritmo`; set `PYCHIRAL_SRC` to use another copy.
+If it is absent, step 06 reports our own estimator and skips CHIRAL rather than failing.
+
+## If NCBI answers with a CAPTCHA
+
+The NCBI-generated counts are served by `www.ncbi.nlm.nih.gov`, which intermittently replies with
+an HTML challenge page instead of the file. `download_public.sh` now retries five times with
+increasing waits and deletes any HTML it receives. GSE159984 is the one series that the pipeline
+cannot do without: if NCBI keeps refusing, `T2D_ARCHS4_DL=1 bash download_public.sh` followed by
+`python python/analyses/00c_archs4_counts.py` builds the same counts from ARCHS4 (a 62 GB
+download).
