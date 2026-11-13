@@ -96,7 +96,7 @@ a.invert_yaxis(); a.axvline(0,color="k",lw=.8); a.set_xlim(-0.45,0.78)
 a.set_xlabel("ρ with the glucocorticoid signalling score",fontsize=8.5)
 a.spines[["top","right"]].set_visible(False)
 a.text(-0.42,1.02,"B",transform=a.transAxes,fontsize=13,fontweight="bold")
-a.text(0,1.02,"FOXO3 regulon, 38 targets",transform=a.transAxes,fontsize=8,color="#666666",style="italic")
+a.text(0,1.02,f"FOXO3 regulon, {len(R)} targets measured",transform=a.transAxes,fontsize=8,color="#666666",style="italic")
 for g,lab in (("TXNIP","insulin core"),("FBXO32","atrophy")):
     if g in list(R.target):
         k=list(R.target).index(g)

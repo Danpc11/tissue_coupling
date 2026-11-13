@@ -97,6 +97,16 @@ PANELS = {
         used_by="python/analyses/27_crosstissue_prediction.py, 02_meta_and_validation.py",
         source="Glucocorticoid-receptor targets that share no gene with the 'Glucocorticoid' set, used as "
                "the outcome of the cross-tissue prediction so that no gene sits on both sides."),
+    "Nuclear receptors": dict(
+        genes=["THRA", "THRB", "RARA", "RARB", "RARG", "PPARA", "PPARD", "PPARG", "NR1D1", "NR1D2", "RORA", "RORB", "RORC",
+               "NR1H4", "NR1H3", "NR1H2", "VDR", "NR1I2", "NR1I3", "HNF4A", "HNF4G", "RXRA", "RXRB", "RXRG", "NR2C1", "NR2C2",
+               "NR2E1", "NR2E3", "NR2F1", "NR2F2", "NR2F6", "ESR1", "ESR2", "ESRRA", "ESRRB", "ESRRG", "NR3C1", "NR3C2", "PGR",
+               "AR", "NR4A1", "NR4A2", "NR4A3", "NR5A1", "NR5A2", "NR6A1", "NR0B1", "NR0B2"],
+        used_by="python/analyses/30_receptor_specificity.py",
+        source="The 48 members of the human nuclear receptor superfamily (HGNC gene group 'Nuclear hormone "
+               "receptors'). Comparators for NR3C1: whether the association with clock output is a property "
+               "of the glucocorticoid receptor or of nuclear receptors, or of expressed genes, in general. "
+               "NR1D1 and NR1D2 belong to the clock-output set and are left out of the comparison."),
     "Model signature": dict(
         genes=["PER3", "DBP", "HLF", "TEF", "NR1D1", "NR1D2", "PER2", "CIART"],
         used_by="python/model/make_fig7_data.py, python/figures/supplementary_figures.py",

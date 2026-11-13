@@ -77,8 +77,13 @@ an error.
 
 These tables were shipped with the earlier releases, which had no code to produce most of them.
 Step 02d now regenerates every one from the public data and compares it with the versioned copy.
-The pipeline uses the regenerated tables; the copies stay here as the reference for that
-comparison and so that a figure can be redrawn without rerunning everything.
+The pipeline uses the regenerated tables, with one exception stated here so that nobody has to
+find it in the code: the signature table of Fig. 3h and 3i starts from the versioned copy of
+`signatures_reference.tsv` and replaces three of its twelve columns (hydrocortisone, Cushing,
+thiazolidinedione) by their regeneration, after checking that they agree. The other nine,
+including the insulin-resistance contrast, are the versioned ones. Step 16 computes the same
+statistics on the fully regenerated table as well and writes both to `signature_correlations.tsv`.
+The copies also stay here as the reference for the comparison below.
 
 The comparison of a complete run (11 November 2026, public data as downloaded that week) is below.
 The correlation is between the versioned and the regenerated values over the rows they share. It

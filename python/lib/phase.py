@@ -167,7 +167,12 @@ def order_anchored(E, template, genes=None, n_template=60, grid=721):
 
 def amplitude(E, ang, genes=None):
     """Amplitud por individuo: norma de la proyeccion sobre la base ortonormal de la forma de
-    onda de la cohorte. Independiente de la fase por construccion. Usar con ordenamiento LIBRE."""
+    onda de la cohorte. Independiente de la fase por construccion. Usar con ordenamiento LIBRE.
+
+    Es RELATIVA A LA COHORTE: la estandarizacion y la base se aprenden de las muestras de E, asi que
+    el valor de una muestra depende de las demas. Para una muestra que no esta en la cohorte, usar
+    fit_reference() e infer_from_reference(). Es una magnitud transcriptomica: no distingue menos
+    amplitud en cada celula de mas dispersion de fase entre celulas."""
     g = [x for x in (genes or CLK) if x in E.index]
     Z = E.loc[g]; Z = ((Z.T - Z.mean(1)) / (Z.std(1) + 1e-9)).T.values
     D = np.column_stack([np.cos(ang), np.sin(ang)])
@@ -215,3 +220,25 @@ def infer_from_reference(x, ref):
     th = np.arctan2(np.dot(z, ref["b"]), np.dot(z, ref["a"]))
     amp = np.dot(z, ref["a"] * np.cos(th) + ref["b"] * np.sin(th)) / np.sqrt(len(ref["genes"]))
     return th % (2 * np.pi), amp
+
+
+def fit_anchored_reference(E, template, genes=None, n_template=60, grid=721):
+    """Lo mismo para la FASE anclada: fija en la cohorte E los genes, la media y la desviacion de
+    cada gen, y deja preparada la forma de onda de la plantilla, de modo que la fase de una muestra
+    nueva se obtenga sin usar ninguna otra (ver order_anchored, que es relativa a la cohorte)."""
+    if genes is None:
+        genes = select_template(template, n_template)
+    g = [x for x in genes if x in E.index and x in template.index]
+    X = E.loc[g]
+    ph = template.phase_h[g].values * 2 * np.pi / 24; amp = template.amp[g].values
+    gr = np.linspace(0, 2 * np.pi, grid, endpoint=False)
+    T = np.array([amp * np.cos(t - ph) for t in gr])
+    T = (T - T.mean(1, keepdims=True)) / (T.std(1, keepdims=True) + 1e-9)
+    return dict(genes=g, mu=X.mean(1).values, sd=X.std(1).values + 1e-9, T=T, grid=gr, n=X.shape[1])
+
+
+def phase_from_anchored_reference(x, ref):
+    """Fase (radianes) de UNA muestra contra una referencia anclada fija."""
+    z = (np.asarray(x.loc[ref["genes"]], float) - ref["mu"]) / ref["sd"]
+    o = (z - z.mean()) / (z.std() + 1e-9)
+    return float(ref["grid"][np.argmax(ref["T"] @ o)])

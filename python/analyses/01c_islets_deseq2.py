@@ -5,7 +5,8 @@ Produce results/new/GSE159984_islets_T2D_vs_ND.tsv, que leen la Fig. 1b-c (fila 
 01b_fig1_signature_test.py. Methods: cuentas crudas, genes con mas de 5 cuentas en al menos 10
 muestras, PyDESeq2 con las covariables de la cohorte en el diseno y log fold changes encogidos.
 La matriz de serie de los donantes solo declara tejido y diagnostico, asi que el diseno es
-~ diagnostico. Las 44 preparaciones cultivadas (GPL16791) no entran.
+~ diagnostico. Las preparaciones cultivadas (GPL16791) no entran: se separan leyendo las dos
+matrices de serie (python/lib/islets.py).
 
 Columnas: las de PyDESeq2 (baseMean, log2FoldChange, lfcSE, stat, pvalue, padj) mas t, logFC, P
 y FDR con los nombres que usa 01b para las demas cohortes.
@@ -18,7 +19,6 @@ import numpy as np, pandas as pd
 
 RAW = os.environ.get("T2D_RAW", "data/raw")
 OUT = os.environ.get("T2D_OUT", "results")
-CULTURE_FROM = 4852119      # GSM a partir del cual son cultivos (criterio de 22_pc_sensitivity_core.py)
 
 
 def donor_metadata():

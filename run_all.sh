@@ -41,13 +41,13 @@ step "09 GTEx adjusted for ischaemia and RIN"  "${PY:-python3}" python/analyses/
 step "10 meta-analysis, two-level"             "${PY:-python3}" python/analyses/06_meta_analysis.py
 step "11 meta-analysis, three-level"           "${PY:-python3}" python/analyses/13_meta_three_level.py
 step "12 heterogeneity moderators"             "${PY:-python3}" python/analyses/25_meta_moderators.py
+step "12b is the association specific to the receptor" "${PY:-python3}" python/analyses/30_receptor_specificity.py
 step "11b cross-tissue prediction"            "${PY:-python3}" python/analyses/27_crosstissue_prediction.py
 step "13 sensitivity to principal components"  "${PY:-python3}" python/analyses/22_pc_sensitivity_core.py
 
 # --- perturbations (Fig. 3) ----------------------------------------------------------------
 step "14 within-person clamp and TZD"          "${PY:-python3}" python/analyses/05_clamp_within_person.py
 step "14b clamp vs saline at the same clock times" "${PY:-python3}" python/analyses/28_clamp_vs_saline.py
-step "15 hydrocortisone, dexamethasone, Cushing" "${PY:-python3}" python/analyses/04_perturbations.py
 step "16 assemble the signature table"         "${PY:-python3}" python/analyses/23_build_signatures_table.py
 
 # --- transcriptional context (Fig. 4) --------------------------------------------------------
@@ -57,6 +57,7 @@ step "18 phenotype ontology by tissue"         "${PY:-python3}" python/analyses/
 # --- the model and its prediction (Fig. 5) -----------------------------------------------------
 step "19 entrainment tongue"                   "${PY:-python3}" python/model/make_tongue.py
 step "20 synthetic single-biopsy cohorts"      "${PY:-python3}" python/model/make_fig7_data.py
+step "20b the model's prediction with measured phases" "${PY:-python3}" python/analyses/29_signature_from_phases.py
 step "21 amplitude dispersion"                 "${PY:-python3}" python/analyses/10_amplitude_dispersion.py
 step "22 estimator noise by group"             "${PY:-python3}" python/analyses/15_dispersion_noise_by_group.py
 

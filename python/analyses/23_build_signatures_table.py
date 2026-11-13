@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
-"""Ensambla signatures_log2_common_genes.tsv, la tabla que leen los paneles H e I de la Figura 3.
+"""Ensambla signatures_log2_common_genes.tsv, la tabla que leen los paneles H e I de la Figura 3,
+y calcula la semejanza entre la firma de resistencia a la insulina y las de exposicion a
+glucocorticoides.
 
 Cada columna es el cambio en log2 de un contraste y las filas son los genes medidos en todos, de
-modo que las correlaciones entre columnas son comparables. Procedencia de cada columna:
+modo que las correlaciones entre columnas son comparables.
 
-  hydrocortisone  delta por gen de hydrocortisone() en 02_meta_and_validation.py: brazos leidos de
-                  la matriz de serie y media tratamiento menos media placebo sobre el fichero
-                  procesado del deposito.
-  Cushing         mediana Cushing menos mediana control sobre log2 CPM, 5 frente a 11.
-  TZD             median_log2fc del contraste tzd_adipose de clamp_genes_change.tsv.
-  IR              contraste resistente frente a sensible de GSE13070. Esa comparacion esta
-                  desbalanceada (35 frente a 6 en adiposo) y no se pudo regenerar de forma
-                  consistente, de modo que se versiona como dato de entrada en
-                  data/reference/GSE13070_IR_vs_sensitive_log2.tsv y se declara asi en Metodos.
+DE DONDE SALE CADA COLUMNA, sin ambiguedad. La tabla que usan las figuras parte de la copia
+VERSIONADA (data/reference/signatures_reference.tsv) y sustituye tres columnas por su regeneracion
+de esta corrida, comprobando antes que coinciden (r > 0.95): hidrocortisona, Cushing y
+tiazolidindiona. Las otras nueve, entre ellas la de resistencia a la insulina, son las de la copia
+versionada. El paso 02d regenera las doce desde los datos publicos y mide cuanto coincide cada una
+con la versionada (reference_tables_check.tsv); la de resistencia a la insulina coincide exactamente.
+
+Para que el resultado no dependa de esa mezcla, las mismas estadisticas se calculan ademas sobre
+la tabla regenerada entera (results/new/signatures_reference.tsv) cuando existe, y las dos van a
+signature_correlations.tsv.
+
+LA CORRELACION ENTRE FIRMAS SE CALCULA SOBRE OCHO GENES. Tres comprobaciones la acompanan:
+  - frente a conjuntos de ocho genes al azar de la misma tabla: dos perfiles de expresion pueden
+    correlacionar en cualquier conjunto de genes, y eso es el fondo contra el que hay que medir;
+  - la correlacion de los dos perfiles en todos los genes de la tabla;
+  - el intervalo al quitar cada gen, porque con ocho puntos uno solo puede sostener el resultado.
+El P de Spearman sobre ocho genes trata los genes como independientes y no lo son.
 
 AVISO de convencion: esta tabla NO usa el centrado por muestra. El centrado corresponde a las
 puntuaciones entre individuos; aqui se comparan diferencias entre grupos y centrar cambiaria las
@@ -56,10 +66,46 @@ def reference():
     regeneran aqui (contrastes de musculo, manana, dexametasona y miotubos)."""
     return pd.read_csv(f"{REF}/signatures_reference.tsv", sep="\t", index_col=0)
 
+IR = "IR adipose (GSE13070, 35 vs 6)"
+COMPARE = (("hydrocortisone adipose (GSE148640)", "hydrocortisone"), ("Cushing adipose (GSE66446)", "Cushing"),
+           ("TZD 3mo adipose (GSE13070)", "TZD"))
+
+def signature_stats(S, table, nnull=5000, seed=0):
+    """Correlacion de la firma de resistencia con cada perfil, sobre los genes de salida del reloj,
+    con su fondo (conjuntos al azar y todos los genes) y su estabilidad al quitar un gen."""
+    from scipy import stats
+    clk = [g for g in SETS["Clock output"]["genes"] if g in S.index]
+    ir = S.loc[clk, IR]; rng = np.random.default_rng(seed); rows = []
+    print(f"[{table}] {S.shape[0]} genes medidos en los {S.shape[1]} contrastes; {len(clk)} del brazo de salida: {', '.join(clk)}")
+    for c, lab in COMPARE:
+        if c not in S.columns: continue
+        r = stats.spearmanr(ir, S.loc[clk, c])
+        A, B = S[IR].values, S[c].values
+        null = np.array([stats.spearmanr(A[i], B[i]).statistic
+                         for i in (rng.choice(len(S), len(clk), replace=False) for _ in range(nnull))])
+        p_null = (np.sum(null >= r.statistic) + 1) / (nnull + 1)
+        allg = stats.spearmanr(A, B).statistic
+        loo = [stats.spearmanr(ir.drop(g), S.loc[[x for x in clk if x != g], c]).statistic for g in clk]
+        rows.append(dict(table=table, comparison=f"IR vs {lab}", n_genes=len(clk), rho=r.statistic, p_spearman=r.pvalue,
+                         rho_all_genes=allg, null_median=np.median(null), null_p95=np.percentile(null, 95), p_vs_random_sets=p_null,
+                         rho_leave_one_gene_min=min(loo), rho_leave_one_gene_max=max(loo),
+                         gene_whose_removal_lowers_most=clk[int(np.argmin(loo))]))
+        print(f"  IR vs {lab:15s} rho {r.statistic:+.2f} (P {r.pvalue:.3f}) | todos los genes {allg:+.2f} | "
+              f"conjuntos al azar: mediana {np.median(null):+.2f}, percentil 95 {np.percentile(null, 95):+.2f}, P = {p_null:.4f} | "
+              f"quitando un gen: {min(loo):+.2f} a {max(loo):+.2f} (el que mas baja: {clk[int(np.argmin(loo))]})")
+    tzd = "TZD 3mo adipose (GSE13070)"
+    if tzd in S.columns:
+        tz = S.loc[clk, tzd]; dep = [g for g in clk if ir[g] < 0]
+        slope = np.polyfit(ir, tz, 1)[0]; rec = np.median([tz[g]/(-ir[g]) for g in dep])*100 if dep else np.nan
+        rows.append(dict(table=table, comparison="TZD slope on IR", n_genes=len(clk), rho=slope, genes_depressed=len(dep), recovered_fraction_pct=rec))
+        print(f"  pendiente TZD sobre IR {slope:+.3f}; {len(dep)}/{len(clk)} genes deprimidos; fraccion recuperada mediana {rec:.1f}%")
+    return rows
+
+
 if __name__ == "__main__":
     R = reference()
-    # Se regeneran las tres columnas reproducibles y se comprueban contra la referencia; el resto
-    # se arrastra de la referencia, que es dato de entrada versionado.
+    # Se regeneran tres columnas y se comprueban contra la referencia; el resto se toma de la
+    # referencia versionada (ver la cabecera).
     regen = {c.name: c for c in (col_tzd(), col_hydrocortisone(), col_cushing())}
     for name, v in regen.items():
         com = [g for g in R.index if g in v.index]
@@ -71,17 +117,14 @@ if __name__ == "__main__":
         R.loc[com, name] = v[com].values
     S = R.dropna()
     S.to_csv(f"{OUT}/new/signatures_log2_common_genes.tsv", sep="\t")
-    clk = [g for g in SETS["Clock output"]["genes"] if g in S.index]
-    from scipy import stats
-    ir = S.loc[clk, "IR adipose (GSE13070, 35 vs 6)"]
-    print(f"{S.shape[0]} genes medidos en los {S.shape[1]} contrastes; {len(clk)} del brazo de salida")
-    for c, lab in (("hydrocortisone adipose (GSE148640)", "hydrocortisone"),
-                   ("Cushing adipose (GSE66446)", "Cushing"),
-                   ("TZD 3mo adipose (GSE13070)", "TZD")):
-        r = stats.spearmanr(ir, S.loc[clk, c])
-        print(f"  IR vs {lab:15s} rho {r.statistic:+.2f} (P {r.pvalue:.3f})")
-    tz = S.loc[clk, "TZD 3mo adipose (GSE13070)"]
-    dep = [g for g in clk if ir[g] < 0]
-    print(f"  pendiente TZD sobre IR {np.polyfit(ir, tz, 1)[0]:+.3f}; "
-          f"{len(dep)}/{len(clk)} genes deprimidos; "
-          f"fraccion recuperada mediana {np.median([tz[g]/(-ir[g]) for g in dep])*100:.1f}%")
+    rows = signature_stats(S, "versioned reference, three columns regenerated")
+    full = f"{OUT}/new/signatures_reference.tsv"
+    if os.path.exists(full):
+        F = pd.read_csv(full, sep="\t", index_col=0)
+        if IR in F.columns:
+            rows += signature_stats(F.dropna(), "all twelve columns regenerated")
+        else:
+            print(f"  (aviso) {full} no lleva la columna de resistencia a la insulina; no se calcula la variante regenerada")
+    else:
+        print("  (aviso) falta la tabla regenerada por el paso 02d: solo se calcula sobre la referencia versionada")
+    pd.DataFrame(rows).to_csv(f"{OUT}/new/signature_correlations.tsv", sep="\t", index=False)

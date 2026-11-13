@@ -20,9 +20,9 @@ AD, MU, IS, GC, GR = "#2a9d8f", "#d95f02", "#6a3d9a", "#1f77b4", "#9a9a9a"
 plt.rcParams.update({"font.size": 8, "axes.labelsize": 8, "xtick.labelsize": 7,
                      "ytick.labelsize": 7, "legend.fontsize": 6.5, "axes.titlesize": 8.5})
 
-def panel(ax, letter, _title=None):
-    """Solo la letra del panel. La descripcion va en el pie de figura (FIGURE_CAPTIONS.md),
-    que es la convencion de Nature: los paneles no llevan titulo."""
+def panel(ax, letter):
+    """Solo la letra del panel. La descripcion va en el pie de figura, que es la convencion de
+    Nature: los paneles no llevan titulo."""
     ax.text(-0.17, 1.13, letter, transform=ax.transAxes, fontsize=11, fontweight="bold", va="top")
 
 def frame(ax, letter, txt):
@@ -33,8 +33,13 @@ def frame(ax, letter, txt):
             transform=ax.transAxes, style="italic")
     ax.text(-0.05, 1.06, letter, transform=ax.transAxes, fontsize=11, fontweight="bold", va="top")
 
+def n_aagmex():
+    """Individuos de AAGMEx en la matriz que usan los paneles: se lee, no se escribe a mano."""
+    return pd.read_pickle(f"{OUT}/new/AAGMEx_adipose_log2.pkl").shape[1]
+
 def src(ax, txt, y=1.03, x=0.0):
-    """Procedencia del panel: cohorte, tejido, n y metrica, dentro del area del panel."""
+    """Procedencia del panel: cohorte, tejido, n y metrica, dentro del area del panel. Describe
+    que se dibuja; no afirma un resultado, y toda cifra sale de los datos del panel."""
     ax.text(x, y, txt, transform=ax.transAxes, fontsize=6.3, color="#666666",
             style="italic", va="bottom", ha="left")
 
@@ -65,7 +70,7 @@ def fig1():
     # B  classic differential expression, by tissue and cohort
     ax = fig.add_subplot(gs[0, 1])
     d = D.copy(); d["tis"] = d.tejido.map({"músculo": "muscle", "adiposo": "adipose", "islotes": "islets"})
-    # la fila de islotes la escribe 01b (rama repro-hugo); antes se anadia aqui una segunda vez
+    # la fila de islotes la escribe 01b; antes se anadia aqui una segunda vez
     d = d.sort_values(["tis", "genes_FDR01"])
     col = {"muscle": MU, "adipose": AD, "islets": IS}
     ax.barh(range(len(d)), d.genes_FDR01.clip(lower=.25), color=[col[t] for t in d.tis])
@@ -78,7 +83,7 @@ def fig1():
     h = [plt.Line2D([], [], color=col[t], lw=5) for t in ("muscle", "adipose", "islets")]
     ax.legend(h, ["muscle", "adipose", "islets"], frameon=False, loc="lower right")
     src(ax, "case vs control within each cohort; moderated t, Benjamini-Hochberg")
-    panel(ax, "B", "Classic differential expression\nby tissue and cohort")
+    panel(ax, "B")
     # C  dot plot of the 18 signature genes
     ax = fig.add_subplot(gs[0, 2:4])
     cohs = list(d.cohorte); genes = [g for g in SETS["Clock output"]["genes"] + SETS["Glucocorticoid"]["genes"]
@@ -99,8 +104,8 @@ def fig1():
     ax.set_ylim(-1.5, len(cohs) - .4)
     ax.text(1.5, -1.0, "clock output", fontsize=7, ha="center", style="italic")
     ax.text(len(genes) - 4.5, -1.0, "glucocorticoid", fontsize=7, ha="center", style="italic")
-    src(ax, "five cohorts \u00b7 muscle, adipose and islets")
-    panel(ax, "C", "No signature gene reaches FDR < 0.1 in any cohort   (dot size: −log$_{10}$ P, uncorrected)")
+    src(ax, f"{len(cohs)} cohorts \u00b7 muscle, adipose and islets")
+    panel(ax, "C")
     # D  set-level enrichment
     Z = pd.read_csv(f"{OUT}/fig1_set_enrichment.tsv", sep="\t")
     p = Z.pivot_table(index="cohorte", columns="conjunto", values="z").reindex(
@@ -117,7 +122,7 @@ def fig1():
                     color="w" if (not np.isnan(v) and abs(v) > 4) else "k")
     cb = plt.colorbar(im, ax=ax, shrink=.75, pad=.03); cb.set_label("z", fontsize=7)
     src(ax, "set-level z against 2,000 size-matched random sets")
-    panel(ax, "D", "The clock set is already altered;\nthe glucocorticoid set never is")
+    panel(ax, "D")
     frame(fig.add_subplot(gs[1, 1]), "E",
           "Single-sample estimator\n\none biopsy → phase and amplitude,\nvalidated against the time series\nof the same person\n\n(hand-drawn)")
     # F  myotubes: validacion leave-one-out, la misma tabla que cita el texto
@@ -134,7 +139,7 @@ def fig1():
     ax.legend(frameon=False, loc="upper left",
               title=f"per donor \u03c1 = {rd.statistic:.2f}", title_fontsize=7)
     src(ax, f"GSE182117 \u00b7 human myotubes \u00b7 {M.ind.nunique()} donors \u00d7 2 conditions \u00b7 leave-one-out")
-    panel(ax, "F", "Synchronised myotubes:\ninferred amplitude tracks the measured one")
+    panel(ax, "F")
     # G  in vivo: leave-one-out
     ax = fig.add_subplot(gs[1, 3])
     G = pd.read_csv(f"{REF}/GSE129843_loo_validation.tsv", sep="\t")
@@ -149,7 +154,7 @@ def fig1():
               title=f"\u03c1 = {r.statistic:.2f}, P = {r.pvalue:.2f}\nper series \u03c1 = {rs.statistic:.2f}",
               title_fontsize=7)
     src(ax, f"GSE129843 \u00b7 skeletal muscle in vivo \u00b7 {len(S)} series \u00b7 leave-one-out")
-    panel(ax, "G", f"Skeletal muscle in vivo:\nper sample \u03c1 = {r.statistic:.2f}, per series {rs.statistic:.2f}")
+    panel(ax, "G")
     # H  per-person distributions
     ax = fig.add_subplot(gs[2, 0]); rng = np.random.default_rng(0)
     COH = []
@@ -173,7 +178,7 @@ def fig1():
     ax.legend([plt.Line2D([], [], marker="s", ls="", color="k"), plt.Line2D([], [], marker="o", ls="", color="k")],
               ["control", "case"], frameon=False, loc="lower right")
     src(ax, "clock-output score per person, sample-centred expression")
-    panel(ax, "H", "Per person: the distributions\noverlap almost completely")
+    panel(ax, "H")
     # I  P-value distribution
     ax = fig.add_subplot(gs[2, 1])
     for c, col_, lab in (("GSE25462_músculo", MU, "GSE25462 muscle"), ("GSE78721_adiposo", AD, "GSE78721 adipose"),
@@ -187,7 +192,7 @@ def fig1():
     ax.set(xlabel="uncorrected P, all genes", ylabel="density")
     ax.legend(frameon=False, loc="upper right")
     src(ax, "all genes, uncorrected P from the moderated t")
-    panel(ax, "I", "Only the largest cohort departs from a\nuniform P distribution, and still yields 3 genes")
+    panel(ax, "I")
     # J  rho between individuals
     ax = fig.add_subplot(gs[2, 2])
     R = pd.read_csv(f"{OUT}/new/meta_per_cohort.tsv", sep="\t")
@@ -202,7 +207,7 @@ def fig1():
                         for _, r in s2.iterrows()], fontsize=6.5)
     ax.set_xlabel("\u03c1  receptor ~ clock output"); ax.set_xlim(-.05, .8); ax.set_ylim(-.6, len(s2) - .4)
     src(ax, "NR3C1 vs clock-output score, across individuals; 95% CI")
-    panel(ax, "J", "The missing signal lies between\nindividuals, not between groups")
+    panel(ax, "J")
     # K  external control: a 10-h delay of the sleep period dampens amplitude (GSE107537)
     ax = fig.add_subplot(gs[2, 3])
     SH = pd.read_csv(f"{OUT}/new/GSE107537_shift_response.tsv", sep="\t")
@@ -213,9 +218,9 @@ def fig1():
     pw = stats.wilcoxon(SH.amp_night, SH.amp_day).pvalue
     ax.set_ylim(SH[["amp_day", "amp_night"]].min().min() * .92,
                 SH[["amp_day", "amp_night"]].max().max() * 1.16)
-    ax.text(.5, .97, f"8/8 down, median $-${abs(SH.pct.median()):.0f}%, P = {pw:.3f}",
+    ax.text(.5, .97, f"{int((SH.amp_night < SH.amp_day).sum())}/{len(SH)} down, median $-${abs(SH.pct.median()):.0f}%, P = {pw:.3f}",
             transform=ax.transAxes, ha="center", va="top", fontsize=7)
-    src(ax, "GSE107537 \u00b7 PBMC \u00b7 8 subjects \u00b7 recorded sampling times")
+    src(ax, f"GSE107537 \u00b7 PBMC \u00b7 {len(SH)} subjects \u00b7 recorded sampling times")
     panel(ax, "K")
     tidy(fig)
     fig.savefig(f"{OUT}/figs/F1.png", dpi=400, bbox_inches="tight")
@@ -235,7 +240,7 @@ def fig3():
     ax.axhline(0, color="k", lw=.8); ax.set_xticks(x); ax.set_xticklabels(gl, rotation=45, fontsize=7)
     ax.set_ylabel("change (log$_2$)"); ax.legend(frameon=False, loc="lower right")
     src(ax, "clock genes \u00b7 clamp vs cohorts with recorded times", y=1.06)
-    panel(ax, "B", "Three hours of clamp equal\nthree hours of morning")
+    panel(ax, "B")
     D = pd.read_csv(f"{OUT}/new/GSE26637_clamp_adipose_per_person.tsv", sep="\t", index_col=0) \
         if os.path.exists(f"{OUT}/new/GSE26637_clamp_adipose_per_person.tsv") \
         else pd.read_csv(f"{OUT}/new/GSE26637_clamp_adipose_per_person.tsv.gz", sep="\t", index_col=0)
@@ -248,8 +253,8 @@ def fig3():
             ax.hlines(np.median(v), i - .28, i + .28, color="k", lw=1.5)
     ax.axhline(0, color="k", lw=.8); ax.set_xticks(range(len(gl2))); ax.set_xticklabels(gl2, rotation=45, fontsize=7)
     ax.set_ylabel("hyperinsulinaemia − fasting (log$_2$)")
-    src(ax, "GSE26637 \u00b7 adipose \u00b7 10 people, paired", y=1.06)
-    panel(ax, "C", "Adipose, paired clamp (n = 10):\nthe output arm falls in 10/10")
+    src(ax, f"GSE26637 \u00b7 adipose \u00b7 {D.shape[1]} people, paired", y=1.06)
+    panel(ax, "C")
     ax = fig.add_subplot(gs[1, 0])
     H = pd.read_csv(f"{OUT}/new/GSE148640_HC_response_stats.tsv", sep="\t", index_col=0)
     HC = pd.read_pickle(f"{OUT}/GSE148640_diff_genes.pkl"); rng = np.random.default_rng(3)
@@ -259,8 +264,8 @@ def fig3():
         ax.text(i, max(v) + .22, f"{int((v > 0).sum())}/{len(v)} up", ha="center", fontsize=6.5)
     ax.set_xticks([0, 1]); ax.set_xticklabels(["hydrocortisone\nvs placebo", "clamp\nvs fasting"], fontsize=7)
     ax.axhline(0, color="k", lw=.8); ax.set_ylabel("PER1, per-person change (log$_2$)")
-    src(ax, "PER1 \u00b7 adipose \u00b7 GSE148640 and GSE26637, n = 10 each", y=1.06)
-    panel(ax, "D", "Two opposite perturbations\nof the same gene")
+    src(ax, f"PER1 \u00b7 adipose \u00b7 GSE148640 (n = {HC.shape[1]}) and GSE26637 (n = {D.shape[1]})", y=1.06)
+    panel(ax, "D")
     ax = fig.add_subplot(gs[1, 1])
     gl3 = [g for g in ["PER1", "PER3", "BMAL1", "CIART", "NR1D1", "DBP", "TEF", "ZBTB16", "FKBP5", "KLF15"] if g in HC.index]
     rng2 = np.random.default_rng(7)
@@ -269,12 +274,12 @@ def fig3():
         ax.scatter(np.full(v.shape, i) + rng2.uniform(-.15, .15, len(v)), v, s=11,
                    color=AD, alpha=.75)   # un solo color: el signo lo da la posicion respecto al cero
         ax.hlines(np.median(v), i - .28, i + .28, color="k", lw=1.5)
-        ax.text(i, 3.45, f"{int((v > 0).sum())}/10", ha="center", fontsize=6)
+        ax.text(i, 3.45, f"{int((v > 0).sum())}/{len(v)}", ha="center", fontsize=6)
     ax.axhline(0, color="k", lw=.8); ax.set_xticks(range(len(gl3)))
     ax.set_xticklabels(gl3, rotation=45, fontsize=7)
     ax.set_ylabel("hydrocortisone \u2212 placebo (log$_2$)"); ax.set_ylim(-1.8, 3.9)
     src(ax, "GSE148640 \u00b7 adipose \u00b7 both biopsies at 07:00", y=1.06)
-    panel(ax, "E", "Same time of day: the action is\ngene-specific, not a clock rotation")
+    panel(ax, "E")
     ax = fig.add_subplot(gs[1, 2])
     L = pd.read_csv(f"{OUT}/new/GSE17992_dex_log2ratio_muscle.tsv", sep="\t", index_col=0) \
         if os.path.exists(f"{OUT}/new/GSE17992_dex_log2ratio_muscle.tsv") \
@@ -286,8 +291,8 @@ def fig3():
         ax.hlines(np.median(v), i - .28, i + .28, color="k", lw=1.5)
     ax.axhline(0, color="k", lw=.8); ax.set_xticks(range(len(gl4))); ax.set_xticklabels(gl4, rotation=45, fontsize=7)
     ax.set_ylabel("dexamethasone, 4 days (log$_2$)")
-    src(ax, "GSE17992 \u00b7 muscle \u00b7 10 men \u00b7 4 d dexamethasone", y=1.06)
-    panel(ax, "F", "Dexamethasone in muscle (n = 10)")
+    src(ax, f"GSE17992 \u00b7 muscle \u00b7 {L.shape[1]} men \u00b7 4 d dexamethasone", y=1.06)
+    panel(ax, "F")
     ax = fig.add_subplot(gs[2, 0])
     Xc_ = pd.read_pickle(f"{OUT}/new/GSE66446_log2cpm.pkl"); Xc_.index = [{"ARNTL": "BMAL1"}.get(i, i) for i in Xc_.index]
     mdc = pd.read_pickle(f"{OUT}/new/GSE66446_meta.pkl").set_index("gsm").reindex(Xc_.columns)
@@ -302,8 +307,8 @@ def fig3():
     ax.set_ylabel("log$_2$ (centred on control)")
     ax.legend([plt.Line2D([], [], marker="s", ls="", color=GR), plt.Line2D([], [], marker="o", ls="", color=IS)],
               ["control (n = 11)", "Cushing (n = 5)"], frameon=False, loc="upper left")
-    src(ax, "GSE66446 \u00b7 adipose \u00b7 5 Cushing vs 11 control", y=1.06)
-    panel(ax, "G", "Cushing syndrome, adipose")
+    src(ax, f"GSE66446 \u00b7 adipose \u00b7 {int(cu.sum())} Cushing vs {int((~cu).sum())} control", y=1.06)
+    panel(ax, "G")
     ax = fig.add_subplot(gs[2, 1])
     S = pd.read_csv(f"{OUT}/new/signatures_log2_common_genes.tsv", sep="\t", index_col=0) \
         if os.path.exists(f"{OUT}/new/signatures_log2_common_genes.tsv") \
@@ -317,7 +322,7 @@ def fig3():
     ax.axhline(0, color="k", lw=.8); ax.set_xticks(x); ax.set_xticklabels(gl6, rotation=45, fontsize=7)
     ax.set_ylabel("log$_2$"); ax.legend(frameon=False, loc="upper left", ncol=1)
     r1 = stats.spearmanr(T["insulin-resistant adipose"], T["Cushing"]).statistic
-    src(ax, "adipose \u00b7 four contrasts, same nine clock genes", y=1.06)
+    src(ax, f"adipose \u00b7 four contrasts, the same {len(gl6)} clock-output genes", y=1.06)
     panel(ax, "H")
     # I  la TZD frente a la firma, panel movido desde la Fig. 4
     ax = fig.add_subplot(gs[2, 2])
@@ -336,7 +341,7 @@ def fig3():
 # ------------------------------------------------------------------ F4
 def fig4():
     fig = plt.figure(figsize=(17, 12.5)); gs = fig.add_gridspec(3, 3, hspace=.62, wspace=.72)
-    T = pd.read_csv(f"{OUT}/new/AAGMEx_TF_activity_vs_clock.tsv", sep="\t")
+    T = pd.read_csv(f"{OUT}/new/AAGMEx_TF_activity_vs_clock.tsv", sep="\t"); NA = n_aagmex()
     ax = fig.add_subplot(gs[0, 0])
     P = pd.concat([T.nsmallest(8, "rho"), T.nlargest(8, "rho")])
     # lollipop: el segmento ancla cada valor al cero, que es lo que una nube de puntos pierde
@@ -352,8 +357,8 @@ def fig4():
     ax.legend(hs, [f"{int(P.n_dianas.min())} targets", f"{int(P.n_dianas.max())} targets"],
               frameon=False, loc="upper left", handletextpad=1.0, labelspacing=1.3,
               borderpad=.2, bbox_to_anchor=(.55, .42))
-    src(ax, "AAGMEx \u00b7 adipose \u00b7 n = 232 \u00b7 134 TFs with a DoRothEA A\u2013C regulon")
-    panel(ax, "A", "TF activity (DoRothEA A–C regulons):\nFOXO3 leads 134 factors, NF-κB trails")
+    src(ax, f"AAGMEx \u00b7 adipose \u00b7 n = {NA} \u00b7 {len(T)} TFs with a DoRothEA A\u2013C regulon")
+    panel(ax, "A")
     H = pd.read_csv(f"{OUT}/new/AAGMEx_NR3C1_enrichment_extra.tsv", sep="\t"); Hh = H[H.lib == "h_all"].copy()
     Hh["lab"] = Hh.set.str.replace("HALLMARK_", "").str.replace("_", " ").str.capitalize()
     Hh = pd.concat([Hh.nlargest(3, "z"), Hh.nsmallest(11, "z")]).sort_values("z")
@@ -363,8 +368,8 @@ def fig4():
     ax.set_yticks(range(len(Hh))); ax.set_yticklabels(Hh.lab, fontsize=6.5); ax.axvline(0, color="k", lw=.8)
     cb = plt.colorbar(s_, ax=ax, shrink=.75, pad=.03); cb.set_label("z", fontsize=7)
     ax.set_xlabel("z vs size-matched random sets")
-    src(ax, "AAGMEx \u00b7 adipose \u00b7 n = 232 \u00b7 genome-wide ranking by partial \u03c1 with NR3C1")
-    panel(ax, "B", "Hallmark: the receptor axis is anti-inflammatory\nand runs against OXPHOS and adipogenesis")
+    src(ax, f"AAGMEx \u00b7 adipose \u00b7 n = {NA} \u00b7 genome-wide ranking by partial \u03c1 with NR3C1")
+    panel(ax, "B")
     # C  HPO x tissue: aqui si hay matriz, de modo que el mapa de calor es la representacion
     # correcta; con un solo ranking seria una columna unica y se usaria un lollipop.
     HP = pd.read_csv(f"{OUT}/new/HPO_by_tissue.tsv", sep="\t")
@@ -390,7 +395,7 @@ def fig4():
     ax.bar(x + w / 2, G.rho_vs_clock, w, color=AD, label="ρ with clock output")
     ax.axhline(0, color="k", lw=.8); ax.set_xticks(x); ax.set_xticklabels(G.gene, rotation=45, fontsize=7)
     ax.set_ylabel("ρ"); ax.legend(frameon=False, loc="lower left")
-    src(ax, "AAGMEx \u00b7 adipose \u00b7 n = 232 \u00b7 adjusted for sex and age")
+    src(ax, f"AAGMEx \u00b7 adipose \u00b7 n = {NA} \u00b7 adjusted for sex and age")
     panel(ax, "D")
     ax = fig.add_subplot(gs[1, 1])
     R = pd.read_csv(f"{OUT}/new/AAGMEx_rank_vs_NR3C1.tsv", sep="\t", index_col=0)["rho"] \
@@ -401,7 +406,7 @@ def fig4():
         if g in R.index:
             ax.axvline(R[g], color=c, lw=1.5); ax.text(R[g], ax.get_ylim()[1] * .9, g, rotation=90, fontsize=6.5, color=c, ha="right", va="top")
     ax.set_xlim(-.6, .6); ax.set(xlabel="ρ with NR3C1 (adjusted)", ylabel="genes")
-    src(ax, "AAGMEx \u00b7 adipose \u00b7 34,020 genes")
+    src(ax, f"AAGMEx \u00b7 adipose \u00b7 {len(R.dropna()):,} genes")
     panel(ax, "E")
     E2 = pd.read_csv(f"{OUT}/new/AAGMEx_NR3C1_enrichment.tsv", sep="\t")
     for k, (lib, let, ttl) in enumerate(((("c2_cp_reactome"), "F", "Reactome"), (("c5_go_bp"), "G", "GO biological process"))):
@@ -413,7 +418,7 @@ def fig4():
         a.set_yticks(range(len(q))); a.set_yticklabels(q.lab, fontsize=6); a.axvline(0, color="k", lw=.8)
         cb = plt.colorbar(s3, ax=a, shrink=.75, pad=.03); cb.set_label("z", fontsize=7)
         a.set_xlabel("z vs size-matched random sets")
-        src(a, "AAGMEx \u00b7 adipose \u00b7 n = 232 \u00b7 " + ttl + " \u00b7 dot size: genes in the set")
+        src(a, f"AAGMEx \u00b7 adipose \u00b7 n = {NA} \u00b7 " + ttl + " \u00b7 dot size: genes in the set")
         panel(a, let)
     tidy(fig); fig.savefig(f"{OUT}/figs/F4.png", dpi=400, bbox_inches="tight")
     fig.savefig(f"{OUT}/figs/F4.pdf", bbox_inches="tight"); plt.close(fig)
@@ -427,7 +432,7 @@ def fig5():
     for ext in ("png", "pdf"): os.replace(f"{OUT}/figs/F7_modelo.{ext}", f"{OUT}/figs/F5.{ext}")
 
 if __name__ == "__main__":
-    # rama repro-hugo: una figura que falla no impide las siguientes; el paso termina con error
+    # una figura que falla no impide las siguientes; el paso termina con error
     # si alguna fallo, para que run_all.sh lo registre
     import traceback
     failed = []

@@ -6,7 +6,7 @@ Cohortes simuladas, sin datos.
   1. order_anchored() se niega a trabajar con una muestra aislada en vez de devolver NaN.
   2. Con una referencia fija, el valor de una muestra no depende de que otras la acompanen.
   3. La referencia es estable: dos referencias ajustadas en mitades distintas de una cohorte dan
-     casi la misma amplitud a las mismas muestras nuevas.
+     casi la misma amplitud a las mismas muestras nuevas. Lo mismo para la fase anclada.
   4. La amplitud inferida sigue a la amplitud verdadera de cada muestra.
   5. is_clock(): acepta la antifase BMAL1-DBP, rechaza la fase comun, y encuentra BMAL1 bajo su
      simbolo anterior.
@@ -55,6 +55,18 @@ ref2 = ph.fit_reference(E.iloc[:, 100:200])
 other = np.array([ph.infer_from_reference(new[c], ref2)[1] for c in new.columns])
 r = stats.spearmanr(alone, other).statistic
 check("dos referencias de cohortes distintas ordenan igual a las muestras nuevas", r > 0.9, f"rho = {r:.3f}")
+
+print("3b. Fase anclada con referencia fija")
+aref = ph.fit_anchored_reference(E.iloc[:, :200], tpl, genes=genes)
+one = np.array([ph.phase_from_anchored_reference(new[c], aref) for c in new.columns])
+check("fase finita para cada muestra nueva, una a una", bool(np.isfinite(one).all()))
+cohort_phase = ph.order_anchored(E, tpl, genes=genes)[0].values[200:]          # la misma muestra, dentro de la cohorte
+agree = abs(np.mean(np.exp(1j * (one - cohort_phase))))
+check("coincide con la fase que recibe dentro de la cohorte", agree > 0.95, f"R = {agree:.3f}")
+aref2 = ph.fit_anchored_reference(E.iloc[:, 100:200], tpl, genes=genes)
+two = np.array([ph.phase_from_anchored_reference(new[c], aref2) for c in new.columns])
+check("y no depende de que referencia se use", abs(np.mean(np.exp(1j * (one - two)))) > 0.95,
+      f"R = {abs(np.mean(np.exp(1j * (one - two)))):.3f}")
 
 print("4. La amplitud inferida sigue a la verdadera")
 r = stats.spearmanr(alone, amp[200:]).statistic
