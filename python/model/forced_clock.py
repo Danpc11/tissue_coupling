@@ -48,6 +48,24 @@ def simulate_population(F, K, n_cells=200, sigma_tau=1.2, lam=0.05, A=1.0,
         r = np.clip(r, 1e-3, 10)
     return phi % (2 * np.pi), r
 
+def simulate_cohort(FK, n_cells=40, sigma_tau=1.2, lam=0.05, A=1.0, days=12, dt=0.05, seed=0, tau_mean=24.0):
+    """Lo mismo que simulate_population para muchas personas a la vez: FK es el forzamiento efectivo
+    de cada persona y se integran todas juntas (personas x celulas). Mismas ecuaciones y mismos
+    parametros; solo cambia que es una matriz. Devuelve (amplitud, fase, sincronia) del ensamble de
+    cada persona."""
+    FK = np.asarray(FK, float)[:, None]; n = FK.shape[0]
+    rng = np.random.default_rng(seed)
+    omega = 2 * np.pi / rng.normal(tau_mean, sigma_tau, (n, n_cells))
+    phi = rng.uniform(0, 2 * np.pi, (n, n_cells))
+    r = np.full((n, n_cells), float(A))
+    for t in np.arange(0, days * 24, dt):
+        d = 2 * np.pi * t / TAU_Z - phi
+        phi = phi + dt * (omega + FK * np.sin(d) / np.maximum(r, 1e-3))
+        r = np.clip(r + dt * (lam * r * (A - r) + FK * np.cos(d)), 1e-3, 10)
+    z = (r * np.exp(1j * phi)).mean(1)
+    return np.abs(z), np.angle(z) % (2 * np.pi), np.abs(np.exp(1j * phi).mean(1))
+
+
 def ensemble(phi, r):
     """Lo que ve una biopsia: vector medio de la población."""
     z = np.mean(r * np.exp(1j * phi))

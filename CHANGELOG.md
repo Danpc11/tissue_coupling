@@ -1,5 +1,69 @@
 # Changelog
 
+## v2.9.0: the comparison of mechanisms, calibrated; and why GTEx looked incompatible
+
+### GTEx is not one cohort, and the sampling window is not known there
+In v2.6.0 to v2.8.1 no model reproduced GTEx. Two assumptions were behind that, and neither holds.
+
+- **The circumstances of death decide how and when tissue was obtained.** In donors on a
+  ventilator (Hardy 0) procurement is scheduled surgery; in fast deaths (Hardy 1 and 2) it happens
+  at whatever hour. Split that way, the data move in the direction the forced models predict when
+  the sampling window widens: receptor against output is 0.35 (0.27 to 0.42) in ventilator donors
+  and 0.18 (0.07 to 0.29) in fast deaths, and the concordance of output between adipose tissue and
+  muscle is 0.46 (0.38 to 0.55) and 0.71 (0.64 to 0.78). GTEx as a whole is the mixture.
+- **The hours of collection are not public, and there is no reason to assume them uniform.** Where
+  the design does not fix the sampling window it is now one more unknown of the grid (centre and
+  spread), and the result says which window each model would need. Under uniform hours no model is
+  compatible with any stratum (closest distances 45 to 650). With the window free, for adipose
+  tissue and muscle: ventilator donors are compatible with cortisol times receptor at a narrow
+  window (08:00, spread 1.5 h; distance 2.0 and 3.3 in the two adipose depots) and not with no
+  forcing or cortisol alone; fast deaths are compatible with the three forced models at a wider
+  window (spread 3 to 4.5 h). The model therefore makes a prediction that someone with access to
+  the protected GTEx data can test: collection times in ventilator donors are concentrated in a
+  few hours of the day.
+- Not everything is reproduced. The pair of two adipose depots is compatible with no model: its
+  receptor concordance (0.51) is above what the grid reaches. And compatibility is thin: one or two
+  grid points of 306 for ventilator donors.
+- The phase estimator cannot settle the window: it spreads over the whole day the samples of a
+  cohort known to be taken in the morning.
+
+### Fixed, in the comparison of mechanisms
+- **The joint region is calibrated instead of assumed.** For each cohort, cohorts of the same size
+  are drawn from the closest model and put through the same procedure as the data. The nominal 95%
+  threshold covers between 91% and 98% (thirteen cohorts); where the 95th percentile of those
+  distances is above the nominal threshold it is used instead. The covariance has full effective
+  rank, six of six, in every cohort, and the code now uses the effective rank whatever it is.
+- **No forcing is evaluated on the full grid**, like the other three. Its receptor concordance does
+  change over the grid, as the review said; it remains compatible with nothing (closest distance
+  63.5 in AAGMEx).
+- **Thirty seeds, and the answer does not depend on how many.** AAGMEx with 3, 10 and 30 seeds:
+  cortisol times receptor 3, 2 and 2 compatible grid points of 18 (closest distance 7.1, 6.3, 6.3);
+  receptor alone 4, 2 and 2 (11.0, 9.6, 8.3); cortisol alone 0 (13.9, 22.4, 22.4); no forcing 0.
+  The default is ten. `competing_models_seed_stability.tsv` has every cohort.
+- **The per-observable verdict uses the same error model as the joint criterion**: the state of a
+  prediction comes from its standard error across seeds, and a grid point counts only if the
+  prediction has the state of the observed value and falls inside its interval, both at that point.
+- The calibration computed each set of observables six times over.
+
+### With all of that, AAGMEx
+No forcing and cortisol alone are excluded. Cortisol times receptor and receptor alone are both
+compatible, at the same two grid points; the product is closer (6.3 against 8.3) because receptor
+alone falls short of the concordance between tissues (0.36 and 0.32 against 0.43 and 0.39 observed).
+The data do not separate them.
+
+### Two ways of measuring amplitude, said in one place
+Cosinor where a study has a series with recorded hours in each person; the single-sample estimator
+where there is one biopsy per person and the tissue passes the antiphase check. The sleep-delay
+control in blood is of the first kind, and its step says so instead of reading as a failed
+validation: cosinor reproduces the published effect (8 of 8, *P* = 0.008), and blood does not pass
+the antiphase check, so the single-sample estimator is not the tool there.
+
+### Changed
+- `forced_clock.simulate_cohort()` integrates a whole cohort at once, with the same equations; it
+  is six times faster than person by person and gives the same ensemble amplitude and synchrony.
+- Step 20c takes about twenty minutes on one core with the default ten seeds; integrations run in
+  parallel (`T2D_MODEL_WORKERS`), and `T2D_MODEL_REUSE=1` reuses them.
+
 ## v2.8.1: the joint criterion for the competing models
 
 The criterion introduced in v2.8.0 counted the simulations in which every observable fell inside

@@ -1,21 +1,25 @@
 """Control externo: un retraso de 10 h del periodo de sueno, en laboratorio, con horas registradas
 (GSE107537, celulas mononucleares de sangre, 8 participantes; Kervezee et al. 2018).
 
-Mide DOS cosas distintas y las informa por separado, porque no son la misma:
+DOS HERRAMIENTAS, CADA UNA DONDE CORRESPONDE. La amplitud de un ritmo se puede medir de dos maneras
+y el articulo usa las dos, segun lo que el diseno permite:
 
-  1. La amplitud por COSINOR de los genes de salida del reloj: ajuste sinusoidal de cada gen sobre
-     las horas registradas de cada persona en cada condicion. Es la medida de referencia, y la que
-     dibuja la Fig. 1k. Dice que el conjunto de genes lleva el efecto del desajuste.
-  2. La amplitud INFERIDA muestra a muestra, el estimador del articulo (ordenamiento libre y
-     proyeccion sobre el panel de genes del reloj), promediada por persona y condicion. Es la
-     pregunta que interesa para validar el estimador: recupera el mismo efecto sin usar las horas?
+  - COSINOR, cuando hay una serie con horas registradas en cada persona. Es la medida directa: se
+    ajusta una sinusoide a cada gen sobre las horas reales. Se usa en este control, y para obtener
+    la amplitud medida contra la que se valida el otro estimador (miotubos y musculo in vivo).
+  - El ESTIMADOR DE MUESTRA UNICA, cuando hay una sola biopsia por persona y ninguna hora. Infiere
+    la amplitud de la posicion de la muestra en el ciclo que forman los genes del reloj en la
+    cohorte. Se usa en las cohortes transversales, y solo en tejidos donde esos genes forman un
+    ciclo reconocible (control de antifase BMAL1-DBP).
 
-Si (2) no reproduce (1), este control valida el conjunto de genes y NO el estimador de muestra
-unica. Hay una razon para esperarlo: la sangre no supera el control de antifase BMAL1-DBP que el
-propio estimador exige a un tejido (is_clock), y eso tambien se informa.
+Este control es del primer tipo: tiene horas, y la pregunta es si el conjunto de genes de salida del
+reloj lleva el efecto del desajuste. La respuesta sale del cosinor. El estimador de muestra unica se
+aplica ademas al mismo diseno para dejar escrito donde esta su limite: la sangre no supera el
+control de antifase, de modo que alli no es la herramienta adecuada, y no reproduce el efecto.
 
 Salida: results/new/GSE107537_shift_response.tsv, una fila por participante con las dos medidas.
 """
+
 import os as _os, sys as _sys
 _RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
@@ -92,8 +96,10 @@ print("  cambio por participante (%): "+", ".join(f"{v:+.0f}" for v in R.pct_inf
 print(f"  mediana del cambio {R.pct_inferred.median():+.1f}%, {(R.pct_inferred<0).sum()}/{len(R)} bajan, Wilcoxon P = {pw:.4f}")
 print(f"  concordancia con el cambio por cosinor entre participantes: rho {rr.statistic:+.2f} (P {rr.pvalue:.2f})")
 print(f"  control de antifase BMAL1-DBP en este tejido: {'superado' if clock_ok else 'NO superado'} (separacion {sep:.1f} h; se exige 8 h o mas)")
-if pw>=0.05 or (R.pct_inferred<0).mean()<0.75:
-    print("  -> el estimador de muestra unica NO reproduce aqui el efecto que si ve el cosinor: este control\n"
-          "     respalda el conjunto de genes, no el estimador.")
+if not clock_ok:
+    print("  -> en este tejido los genes del reloj no forman un ciclo reconocible, asi que el estimador de muestra\n"
+          "     unica no es la herramienta: la medida que corresponde a este diseno, con horas, es el cosinor.")
+elif pw>=0.05 or (R.pct_inferred<0).mean()<0.75:
+    print("  -> el estimador de muestra unica no reproduce aqui el efecto que mide el cosinor.")
 R["antiphase_control_passed"]=bool(clock_ok); R["bmal1_dbp_separation_h"]=sep
 R.to_csv(f"{_OUT}/new/GSE107537_shift_response.tsv",sep="\t",index=False)

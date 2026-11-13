@@ -2,7 +2,7 @@ cff-version: 1.2.0
 title: "Glucocorticoid signalling tracks circadian output across human metabolic tissues"
 message: "If you use this software, please cite both the software and the accompanying manuscript."
 type: software
-version: 2.8.1
+version: 2.9.0
 date-released: 2026-11-12
 abstract: >-
   Code to infer circadian phase and amplitude from single transcriptomic samples, to measure the
