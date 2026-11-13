@@ -127,7 +127,12 @@ def fig1():
           "Single-sample estimator\n\none biopsy → phase and amplitude,\nvalidated against the time series\nof the same person\n\n(hand-drawn)")
     # F  myotubes: validacion leave-one-out, la misma tabla que cita el texto
     ax = fig.add_subplot(gs[1, 2])
-    M = pd.read_csv(f"{REF}/GSE182117_loo_validation.tsv", sep="\t")
+    # la validacion de ESTA corrida (pasos 04 y 05), no una tabla versionada. LOO es la columna que
+    # se dibuja: por defecto la geometria por minimos cuadrados con el donante entero fuera, que es
+    # lo que el texto describe; T2D_LOO_COLUMN=amp_inf dibuja la que se publico.
+    M = pd.read_csv(f"{OUT}/new/GSE182117_loo_validation.tsv", sep="\t")
+    LOO = os.environ.get("T2D_LOO_COLUMN", "amp_ls_donor_out"); LOO = LOO if LOO in M.columns else "amp_inf"
+    M = M.assign(amp_inf=M[LOO])
     for trt, c in (("CTL", GC), ("HGI", MU)):
         q = M[M.trt == trt]; r = stats.spearmanr(q.amp_cos, q.amp_inf)
         ax.scatter(q.amp_cos, q.amp_inf, s=14, color=c, alpha=.75,
@@ -136,13 +141,15 @@ def fig1():
     D = M.groupby(["ind", "trt"])[["amp_cos", "amp_inf"]].mean()
     rd = stats.spearmanr(D.amp_cos, D.amp_inf)
     ax.set(xlabel="measured amplitude, cosinor (log$_2$)", ylabel="inferred amplitude")
+    ax.set_ylim(top=ax.get_ylim()[1] * 1.32)                 # sitio para la leyenda, que no pise los puntos
     ax.legend(frameon=False, loc="upper left",
               title=f"per donor \u03c1 = {rd.statistic:.2f}", title_fontsize=7)
     src(ax, f"GSE182117 \u00b7 human myotubes \u00b7 {M.ind.nunique()} donors \u00d7 2 conditions \u00b7 leave-one-out")
     panel(ax, "F")
     # G  in vivo: leave-one-out
     ax = fig.add_subplot(gs[1, 3])
-    G = pd.read_csv(f"{REF}/GSE129843_loo_validation.tsv", sep="\t")
+    G = pd.read_csv(f"{OUT}/new/GSE129843_loo_validation.tsv", sep="\t")
+    G = G.assign(amp_inf=G[LOO if LOO in G.columns else "amp_inf"])
     r = stats.spearmanr(G.amp_cos, G.amp_inf)
     for cond, c in (("EXF", GC), ("TRF", AD)):
         q = G[G.cond == cond]; ax.scatter(q.amp_cos, q.amp_inf, s=16, color=c, alpha=.75, label=cond)
@@ -150,6 +157,7 @@ def fig1():
     S = G.groupby(["ind", "cond"])[["amp_cos", "amp_inf"]].mean()
     rs = stats.spearmanr(S.amp_cos, S.amp_inf)
     ax.set(xlabel="measured amplitude, cosinor (6 points)", ylabel="inferred amplitude")
+    ax.set_ylim(top=ax.get_ylim()[1] * 1.32)
     ax.legend(frameon=False, loc="upper left",
               title=f"\u03c1 = {r.statistic:.2f}, P = {r.pvalue:.2f}\nper series \u03c1 = {rs.statistic:.2f}",
               title_fontsize=7)
@@ -320,7 +328,7 @@ def fig3():
     for k, (c, col_) in enumerate(zip(T.columns, [MU, IS, GC, AD])):
         ax.bar(x + (k - 1.5) * w, T[c], w, color=col_, label=c)
     ax.axhline(0, color="k", lw=.8); ax.set_xticks(x); ax.set_xticklabels(gl6, rotation=45, fontsize=7)
-    ax.set_ylabel("log$_2$"); ax.legend(frameon=False, loc="upper left", ncol=1)
+    ax.set_ylabel("log$_2$"); ax.legend(frameon=False, loc="upper right", ncol=1)
     r1 = stats.spearmanr(T["insulin-resistant adipose"], T["Cushing"]).statistic
     src(ax, f"adipose \u00b7 four contrasts, the same {len(gl6)} clock-output genes", y=1.06)
     panel(ax, "H")

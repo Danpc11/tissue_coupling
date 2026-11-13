@@ -1,5 +1,51 @@
 # Changelog
 
+## v2.7.0: the geometry of the fixed reference, and every figure drawn from the run
+
+Answers to a further external review. One of its points referred to code already changed (Fig. 5c
+has had separate axes and no ratio of magnitudes since v2.5.0); the others were right, and looking
+into them turned up one more case of the same kind.
+
+### Fixed
+- **The fixed reference projected onto vectors that are not orthonormal.** The waveform of a
+  reference is z = a cos θ + b sin θ with one vector a and one b over genes. Phase was taken as
+  atan2(z·b, z·a) and amplitude as the projection on a cos θ + b sin θ, which is only right if a
+  and b are orthogonal and of equal norm. In the references fitted to the real data they are close
+  to orthogonal (93° and 83°) but not of equal norm (ratio 1.58 in myotubes, 1.13 in muscle in
+  vivo): the phase was biased by up to 1.7 h and the gain of the amplitude changed with phase,
+  between 0.76 and 1.21 times its mean, in myotubes. `infer_from_reference()` now solves the two
+  coefficients by least squares and takes the amplitude as the norm of the projection onto the
+  plane of a and b, the same definition as the cohort-relative `amplitude()`; it rejects a
+  degenerate reference. The published geometry is kept as an option so that the published values
+  can be regenerated.
+  **The validation holds with the corrected estimator**, and is cleaner with the whole donor
+  excluded: myotubes ρ = 0.35 and 0.34 per sample and 0.94 and 0.95 per donor (0.32, 0.34, 0.99
+  and 0.90 as published, on the same matrix); muscle in vivo ρ = 0.20 per sample (*P* = 0.033) and
+  0.81 per series (0.18, *P* = 0.053, and 0.80).
+- **Fig. 1f and 1g were drawn from versioned tables**, not from the validation computed in the run.
+  They now read the run, and plot the corrected estimator with the whole donor excluded.
+- **Fig. 3h and 3i were drawn from a table with nine versioned columns.** Step 16 now writes two
+  named tables, `signatures_published_reference.tsv` and `signatures_fully_regenerated.tsv`, their
+  difference gene by gene, and whether they lead to the same conclusion (they do: ρ = 0.71 and
+  0.70 with hydrocortisone, *P* = 0.026 and 0.016 against random gene sets). The figures read the
+  fully regenerated one, with nine output-arm genes instead of eight.
+- **The tests compared phases by the concentration of their difference**, which is 1 for two
+  phases 12 h apart. They now use the circular error: a fixed-reference phase is within 0.45 h
+  (median) of the true hour of a simulated sample, and a constant 12 h offset fails.
+- **Phases were compared with a linear correlation** in the equivalence table. They are compared
+  as circular quantities, allowing a global offset and either direction. The answer does not
+  change and is now unambiguous: for `amplitude_phase_distributions_two_cohorts.tsv` the two builds
+  give unrelated phases to the same sample (median error 4.6 to 6.3 h after removing the offset,
+  where chance gives 6 h). In cohorts biopsied at one hour of the day the true phases differ
+  little and the per-sample phase is mostly noise.
+- **Cross-tissue prediction: an R² on one scale.** Besides the R² of each fold, the model is also
+  fitted to the outcome without dividing by the fold's standard deviation, so that all samples are
+  in log2 units: 0.47 (0.44 with fold-wise standardisation; 0.43 on average per fold), against
+  0.03 with covariates alone and a 95th percentile of 0.25 for random predictor genes.
+
+### Changed
+- The README says "recomputes" and explains the difference from reproducing published numbers.
+
 ## v2.6.0: the three analyses that could refute the paper, and a full run on the real data
 
 v2.5.0 was run here from the public downloads to the last check, on another machine: 46 steps, the

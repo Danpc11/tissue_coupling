@@ -86,14 +86,18 @@ def oof(Yx, Yy, Cx, Cy, extra, Z_cov, nfold, seed):
       - los predictores, sean genes o covariables, se estandarizan igual, con el entrenamiento, antes
         de la regresion con penalizacion: asi la penalizacion pesa lo mismo en los dos modelos que
         se comparan.
-    Devuelve (R2 conjunto, observado, predicho, pliegue, R2 por pliegue)."""
+      - para tener ademas un R2 con todas las muestras en UNA escala, el mismo modelo se ajusta al
+        resultado sin dividir por la desviacion del pliegue: la media, entre los genes diana, de la
+        expresion residual en log2. Esa es la cifra de referencia (`r2_common_scale`).
+    Devuelve (R2 conjunto, observado, predicho, pliegue, R2 por pliegue, R2 en escala comun)."""
     n = Yy.shape[0]; pred = np.zeros(n); obs = np.zeros(n); fold = np.zeros(n, int); r2f = []
+    pred_c = np.zeros(n); obs_c = np.zeros(n)
     for fi, (tr, te) in enumerate(KFold(nfold, shuffle=True, random_state=seed).split(np.arange(n))):
-        def prep(Y, Cv):
+        def prep(Y, Cv, scale=True):
             C = Cv if extra is None else np.column_stack([Cv, extra])
             b, *_ = np.linalg.lstsq(C[tr], Y[tr], rcond=None); R = Y - C @ b
-            return (R - R[tr].mean(0)) / (R[tr].std(0) + 1e-9)
-        y = prep(Yy, Cy).mean(1)
+            return (R - R[tr].mean(0)) / (R[tr].std(0) + 1e-9) if scale else R - R[tr].mean(0)
+        y = prep(Yy, Cy).mean(1); yc = prep(Yy, Cy, scale=False).mean(1)
         if Z_cov is not None:
             keep = Z_cov[tr].std(0) > 0                      # sin columnas constantes en el entrenamiento
             Z = (Z_cov[:, keep] - Z_cov[tr][:, keep].mean(0)) / Z_cov[tr][:, keep].std(0)
@@ -101,9 +105,11 @@ def oof(Yx, Yy, Cx, Cy, extra, Z_cov, nfold, seed):
             Z = prep(Yx, Cx)
         m = RidgeCV(alphas=np.logspace(-2, 3, 20)).fit(Z[tr], y[tr])
         pred[te] = m.predict(Z[te]); obs[te] = y[te]; fold[te] = fi
+        pred_c[te] = RidgeCV(alphas=np.logspace(-2, 3, 20)).fit(Z[tr], yc[tr]).predict(Z[te]); obs_c[te] = yc[te]
         r2f.append(1 - ((obs[te] - pred[te]) ** 2).sum() / ((obs[te] - obs[te].mean()) ** 2).sum())
     r2 = 1 - ((obs - pred) ** 2).sum() / ((obs - obs.mean()) ** 2).sum()
-    return r2, obs, pred, fold, np.array(r2f)
+    r2c = 1 - ((obs_c - pred_c) ** 2).sum() / ((obs_c - obs_c.mean()) ** 2).sum()
+    return r2, obs, pred, fold, np.array(r2f), r2c
 
 
 def run(nfold=5, seed=0):
@@ -116,17 +122,17 @@ def run(nfold=5, seed=0):
         gx = [g for g in GC if g in E["adipose"].index]; gy = [g for g in TARGET if g in E["muscle"].index]
         Yx = E["adipose"].loc[gx].to_numpy().T; Yy = E["muscle"].loc[gy].to_numpy().T
         for label, extra, zc in (("raw", None, None), ("death-adjusted", hardy, None), ("covariates only", hardy, cov)):
-            r2, obs, pred, fold, r2f = oof(Yx, Yy, tech["adipose"], tech["muscle"], extra, zc, nfold, seed)
+            r2, obs, pred, fold, r2f, r2c = oof(Yx, Yy, tech["adipose"], tech["muscle"], extra, zc, nfold, seed)
             rho = stats.spearmanr(obs, pred)
             rows.append(dict(predictor="adipose", outcome="muscle", setting=label, centring=centring, n=len(donors),
                              n_pred_genes=len(gx), n_out_genes=len(gy), folds=nfold, seed=seed,
                              r2=r2, rho=rho.statistic, p=rho.pvalue,
-                             r2_fold_mean=r2f.mean(), r2_fold_min=r2f.min(), r2_fold_max=r2f.max()))
+                             r2_fold_mean=r2f.mean(), r2_fold_min=r2f.min(), r2_fold_max=r2f.max(), r2_common_scale=r2c))
             print(f"  adipose -> muscle, {label:16s} centrado: {centring:10s} n={len(donors)}  R2={r2:+.3f}  rho={rho.statistic:+.3f}"
-                  f"   por pliegue: media {r2f.mean():+.3f}, de {r2f.min():+.3f} a {r2f.max():+.3f}")
+                  f"   por pliegue: media {r2f.mean():+.3f}, de {r2f.min():+.3f} a {r2f.max():+.3f}   en escala comun: {r2c:+.3f}")
             if label == "death-adjusted" and centring == "none":
                 out_oof = pd.DataFrame(dict(donor=donors, fold=fold, observed=obs, predicted=pred))
-                observed_r2 = r2
+                observed_r2 = r2c                 # los nulos se comparan en la escala comun
 
     # especificidad: el mismo calculo (ajustado por causa de muerte, sin centrar) con genes al azar
     E = X; rng = np.random.default_rng(seed)
@@ -140,10 +146,10 @@ def run(nfold=5, seed=0):
         for _ in range(NNULL):
             if kind == "random predictor genes":
                 Ya = E["adipose"].loc[list(rng.choice(pool_a, len(gx), replace=False))].to_numpy().T
-                v.append(oof(Ya, Yy, tech["adipose"], tech["muscle"], hardy, None, nfold, seed)[0])
+                v.append(oof(Ya, Yy, tech["adipose"], tech["muscle"], hardy, None, nfold, seed)[5])
             else:
                 Yb = E["muscle"].loc[list(rng.choice(pool_m, len(gy), replace=False))].to_numpy().T
-                v.append(oof(Yx, Yb, tech["adipose"], tech["muscle"], hardy, None, nfold, seed)[0])
+                v.append(oof(Yx, Yb, tech["adipose"], tech["muscle"], hardy, None, nfold, seed)[5])
         v = np.array(v); pval = (np.sum(v >= observed_r2) + 1) / (NNULL + 1)
         null += [dict(null=kind, draw=i, r2=x) for i, x in enumerate(v)]
         rows.append(dict(predictor="adipose", outcome="muscle", setting=f"null: {kind}", centring="none", n=len(donors),

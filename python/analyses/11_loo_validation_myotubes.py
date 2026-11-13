@@ -9,6 +9,11 @@ Para cada punto de cada serie (un donante en una condicion):
     estandarizacion) construida sin esa serie.
 El panel de genes es fijo y esta en el registro; no se elige con estos datos.
 
+DOS GEOMETRIAS. `amp_inf` y `amp_inf_donor_out` usan las proyecciones directas sobre los vectores
+de la forma de onda, que es como se calcularon los valores publicados; esos vectores no tienen la
+misma norma, y la ganancia de esa amplitud cambia con la fase. `amp_ls` y `amp_ls_donor_out` usan
+la proyeccion por minimos cuadrados, que no tiene ese defecto (python/lib/phase.py).
+
 DOS EXCLUSIONES. `amp_inf` construye la base sin la serie del punto retenido, que es como se
 calcularon los valores publicados: las muestras del mismo donante en la OTRA condicion siguen en la
 base. `amp_inf_donor_out` la construye sin ninguna muestra de ese donante, que es lo que el texto
@@ -27,8 +32,8 @@ def cosinor(y,t,per=24.0):
 def base(others):
     """Referencia fija (python/lib/phase.py) construida solo con las muestras `others`."""
     return ph.fit_reference(Xc[others], g)
-def infer(held,B):
-    return ph.infer_from_reference(Xc[held], B)[1]
+def infer(held,B,geometry="as published"):
+    return ph.infer_from_reference(Xc[held], B, geometry=geometry)[1]
 rows=[]
 for (ind,trt),q in md.groupby(["ind","trt"]):
     cols=list(q.index); t=q.t.values
@@ -40,10 +45,12 @@ for (ind,trt),q in md.groupby(["ind","trt"]):
         # cosinor del donante SIN el punto retenido
         amp_cos=np.mean([cosinor(np.asarray(Xc.loc[gg,keep],float),t[[cols.index(c) for c in keep]]) for gg in g])
         rows.append(dict(ind=ind,trt=trt,held=held,amp_inf=infer(held,B_series),amp_cos=amp_cos,
-                         amp_inf_donor_out=infer(held,B_donor)))
+                         amp_inf_donor_out=infer(held,B_donor),
+                         amp_ls=infer(held,B_series,"least squares"),amp_ls_donor_out=infer(held,B_donor,"least squares")))
 R=pd.DataFrame(rows); R.to_csv(f"{_OUT}/new/GSE182117_loo_validation.tsv",sep="\t",index=False)
 print(f"n puntos retenidos: {len(R)}")
-for col,lab in (("amp_inf","base sin la serie del punto retenido"),("amp_inf_donor_out","base sin el donante entero")):
+for col,lab in (("amp_inf","base sin la serie del punto retenido"),("amp_ls","lo mismo, geometria por minimos cuadrados"),
+                ("amp_ls_donor_out","minimos cuadrados y base sin el donante entero"),("amp_inf_donor_out","base sin el donante entero")):
     print(f"{lab}:")
     for trt,q in R.groupby("trt"):
         r=stats.spearmanr(q[col],q.amp_cos); print(f"  {trt}: rho {r.statistic:+.2f} (P {r.pvalue:.1e}, n={len(q)})")
