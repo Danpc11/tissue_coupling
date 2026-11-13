@@ -55,9 +55,14 @@ EL CRITERIO CONJUNTO. Un modelo reproduce una cohorte si genera los seis observa
     Los seis no son seis dimensiones independientes (O1 y O5, O2 y O6, casi coinciden), asi que
     se informa el rango efectivo de esa covarianza y se usa ese rango, no seis.
   - CALIBRADO, no supuesto. Que esa distancia siga una ji cuadrado es una aproximacion. Se comprueba
-    generando, del propio modelo, cohortes del tamano de la observada y midiendo cuantas quedan
-    dentro de la region nominal del 95 %. El umbral que se usa es el percentil 95 de esas
-    distancias, y la cobertura del umbral nominal se escribe en competing_models_calibration.tsv.
+    generando, del propio modelo, cohortes del tamano exacto de la observada y midiendo cuantas
+    quedan dentro de la region nominal del 95 %. Esas cohortes salen de personas integradas aparte,
+    con semillas que ninguna prediccion usa, y de varias poblaciones independientes, para ver cuanto
+    cambia el umbral de una a otra (competing_models_calibration.tsv). Se usa el mayor.
+
+LA CACHE. T2D_MODEL_REUSE=1 reutiliza las integraciones y la tabla simulada de una corrida anterior,
+pero solo si su manifiesto (competing_models_cache_manifest.json: huella del codigo que las genera
+y de todos sus parametros) coincide con el actual. Si no coincide se vuelven a generar.
 
 POR OBSERVABLE. competing_models_verdict.tsv da, por cohorte y observable, el estado de lo observado
 (positivo, negativo o compatible con cero, por su intervalo) y la fraccion de puntos de cada modelo
@@ -285,14 +290,30 @@ def predictions(S, model, windows, nseeds=None):
     return P, Z, SE
 
 
-def region(C):
-    """Inversa de la covarianza restringida a sus direcciones informativas, y cuantas son. Dos
-    observables que casi coinciden dan un autovalor casi nulo: invertirlo tal cual convertiria ruido
-    numerico en distancias enormes, y contar seis grados de libertad seria contar de mas."""
-    C = (np.asarray(C) + np.asarray(C).T) / 2
+def region(C, rtol=1e-3):
+    """Inversa de la covarianza restringida a sus direcciones informativas, cuantas son, y el numero
+    de condicion entre ellas. Dos observables que casi coinciden dan un autovalor casi nulo:
+    invertirlo tal cual convertiria ruido numerico en distancias enormes, y contar seis grados de
+    libertad seria contar de mas.
+
+    Se niega a seguir, con un mensaje que dice por que, si la matriz no sirve para definir una
+    region: valores no finitos, forma que no es cuadrada, ninguna direccion con varianza, o un
+    autovalor claramente negativo (no es una covarianza). Un autovalor negativo del tamano del error
+    de redondeo se trata como cero."""
+    C = np.asarray(C, float)
+    if C.ndim != 2 or C.shape[0] != C.shape[1]:
+        raise ValueError(f"la covarianza debe ser cuadrada y tiene forma {C.shape}")
+    if not np.isfinite(C).all():
+        raise ValueError("la covarianza tiene valores no finitos: algun observable no se pudo calcular en el bootstrap")
+    C = (C + C.T) / 2
     w, V = np.linalg.eigh(C)
-    keep = w > w.max() * 1e-3
-    return (V[:, keep] / w[keep]) @ V[:, keep].T, int(keep.sum()), float(w.max() / w.min())
+    top = w.max()
+    if not top > 0:
+        raise ValueError("la covarianza no tiene ninguna direccion con varianza: no define una region")
+    if w.min() < -1e-8 * top:
+        raise ValueError(f"la matriz no es una covarianza: autovalor {w.min():.3g} frente a un maximo de {top:.3g}")
+    keep = w > top * rtol
+    return (V[:, keep] / w[keep]) @ V[:, keep].T, int(keep.sum()), float(top / w[keep].min())
 
 
 def distance(Z, zc, C, n_obs, n_sim):
@@ -360,30 +381,101 @@ def verdict(O, S, nseeds=None):
     return pd.DataFrame(rows)
 
 
-def calibrate(o, C, ENS, model, point, seeds, reps=200, boot=200, seed=0):
-    """Se cumple que la region nominal del 95 % cubre el 95 %? Se toma un punto de un modelo como si fuera
-    la verdad, se sacan de el cohortes del tamano de la observada, y a cada una se le aplica el mismo
-    procedimiento que a los datos: sus seis observables, su covarianza por bootstrap y su distancia a la
-    prediccion del modelo. Devuelve la cobertura del umbral nominal y el percentil 95 de las distancias."""
+CALIBRATION_SEED = 10_000        # las semillas de calibracion no coinciden con ninguna de las que definen las predicciones
+_POOLS = {}
+
+
+def independent_population(model, point, n, pool):
+    """n personas nuevas del modelo en un punto de la rejilla: su receptor medido y su salida en los dos
+    tejidos. Se integran aparte, con semillas que no usa ninguna prediccion, de modo que lo que sirve
+    para calibrar no ha intervenido en lo que se calibra. Se guarda por si otra cohorte pide lo mismo."""
     sd_F, rho_K, pn, w = point
-    # la prediccion del modelo, igual que en joint: media entre semillas de los observables de cada cohorte simulada
+    key = (model, sd_F, rho_K, w, pn, pool)
+    if key in _POOLS and len(_POOLS[key][0]) >= n:
+        return [x[:n] for x in _POOLS[key]]
+    seed = CALIBRATION_SEED + pool
+    F, K = people(sd_F, rho_K, seed, n=n)
+    hour, eps, eseed = sampling(seed, w, n=n)
+    out = {}
+    for i, t in enumerate("AM"):
+        a, p, _ = fc.simulate_cohort(MODELS[model](F, K[t], F_MEAN, K_MEAN), n_cells=40, days=12, seed=[seed, 3, i])
+        d = pd.DataFrame(dict(subject=np.arange(n), hour=hour, amp_ens=a, phase_ens=p))
+        E = fc.synthetic_expression(d, noise=0.6, seed=eseed[t])
+        Z = E.loc[OUTPUT_GENES]; out[t] = ((Z.T - Z.mean(1)) / (Z.std(1) + 1e-9)).T.mean(0).values
+    rec = {t: K[t] + pn * np.std(K[t]) * eps[t] for t in "AM"}
+    _POOLS[key] = (rec["A"], rec["M"], out["A"], out["M"])
+    return list(_POOLS[key])
+
+
+def calibrate(o, ENS, model, point, seeds, reps=100, boot=150, pools=2, pool_factor=3):
+    """Se cumple que la region nominal del 95 % cubre el 95 %? Se toma un punto de un modelo como si fuera
+    la verdad y se le aplica a cohortes suyas el mismo procedimiento que a los datos: sus seis
+    observables, su covarianza por bootstrap y su distancia a la prediccion del modelo.
+
+    Dos condiciones para que la respuesta valga:
+      - Las cohortes de calibracion son INDEPENDIENTES de la prediccion. La prediccion es la media de
+        las semillas de la rejilla, igual que en joint(); las cohortes salen de personas integradas
+        aparte, con otras semillas.
+      - Tienen EXACTAMENTE el tamano de la cohorte observada. La poblacion de la que se extraen tiene
+        `pool_factor` veces ese tamano, sea cual sea.
+    Se repite con `pools` poblaciones independientes, y se informa de cuanto cambian la cobertura y el
+    umbral de una a otra. Las replicas de una misma poblacion comparten personas; las de poblaciones
+    distintas, ninguna."""
     def vec(*v):
-        o = observables(*v); return [o[k] for k in OBS]
-    per_seed = [measured(ENS, model, sd_F, rho_K, s, w, pn) for s in seeds]
-    zs = np.array([fz(vec(*m)) for m in per_seed])
-    pop = [np.concatenate(x) for x in zip(*per_seed)]
-    zp = zs.mean(0); n_sim = len(seeds) * N_DONORS; n = int(min(o.n, len(pop[0]) // 2))
-    rng = np.random.default_rng(seed); d2 = []; ranks = []
-    for _ in range(reps):
-        i = rng.choice(len(pop[0]), n, replace=False); v = [x[i] for x in pop]
-        est = fz(vec(*v))
-        B = np.array([vec(*(x[j] for x in v)) for j in (rng.integers(0, n, n) for _ in range(boot))])
-        d, rank, _ = distance(zp[None, :], est, np.cov(fz(B).T), n, [n_sim]); d2.append(d[0]); ranks.append(rank)
-    d2 = np.array(d2); rank = int(np.median(ranks)); nominal = float(stats.chi2.ppf(0.95, rank))
-    return dict(cohort=o.cohort, n_cohort=n, truth_model=model, truth_sd_F=sd_F, truth_rho_K=rho_K, truth_proxy_noise=pn,
-                truth_window=w, replicates=reps, bootstrap_per_replicate=boot, effective_rank=rank, nominal_threshold=nominal,
-                coverage_of_nominal_threshold=float(np.mean(d2 <= nominal)), calibrated_threshold=float(np.percentile(d2, 95)),
-                median_distance_under_truth=float(np.median(d2)))
+        ob = observables(*v); return [ob[k] for k in OBS]
+    sd_F, rho_K, pn, w = point
+    zp = np.array([fz(vec(*measured(ENS, model, sd_F, rho_K, s, w, pn))) for s in seeds]).mean(0)
+    n = int(o.n); n_sim = len(seeds) * N_DONORS
+    cov, thr, med, ranks = [], [], [], []
+    for pool in range(pools):
+        pop = independent_population(model, point, pool_factor * n, pool)
+        assert len(pop[0]) >= pool_factor * n
+        rng = np.random.default_rng([CALIBRATION_SEED, pool]); d2 = []
+        for _ in range(reps):
+            i = rng.choice(len(pop[0]), n, replace=False); v = [x[i] for x in pop]
+            assert len(v[0]) == n
+            B = np.array([vec(*(x[j] for x in v)) for j in (rng.integers(0, n, n) for _ in range(boot))])
+            d, rank, _ = distance(zp[None, :], fz(vec(*v)), np.cov(fz(B).T), n, [n_sim]); d2.append(d[0]); ranks.append(rank)
+        d2 = np.array(d2); nominal = float(stats.chi2.ppf(0.95, int(np.median(ranks))))
+        cov.append(float(np.mean(d2 <= nominal))); thr.append(float(np.percentile(d2, 95))); med.append(float(np.median(d2)))
+    rank = int(np.median(ranks)); nominal = float(stats.chi2.ppf(0.95, rank))
+    return dict(cohort=o.cohort, n_observed=int(o.n), n_calibration_cohort=n, population_size=pool_factor * n,
+                independent_populations=pools, replicates_per_population=reps, bootstrap_per_replicate=boot,
+                truth_model=model, truth_sd_F=sd_F, truth_rho_K=rho_K, truth_proxy_noise=pn, truth_window=w,
+                prediction_seeds=len(seeds), effective_rank=rank, nominal_threshold=nominal,
+                coverage_of_nominal_threshold=float(np.mean(cov)), coverage_min=min(cov), coverage_max=max(cov),
+                calibrated_threshold=float(np.mean(thr)), calibrated_threshold_min=min(thr), calibrated_threshold_max=max(thr),
+                median_distance_under_truth=float(np.mean(med)))
+
+
+# ------------------------------------------------------------------ la cache y su manifiesto
+def manifest(seeds):
+    """Que codigo y que parametros generan las integraciones y la tabla simulada. Una cache solo se
+    reutiliza si su manifiesto es identico a este: cambiar una ecuacion, el numero de personas, la
+    rejilla o las semillas la invalida sin que nadie tenga que acordarse de borrarla."""
+    import hashlib, inspect
+    def h(*objs):
+        m = hashlib.sha256()
+        for x in objs: m.update((x if isinstance(x, str) else inspect.getsource(x)).encode())
+        return m.hexdigest()
+    params = dict(n_donors=N_DONORS, seeds=list(seeds), f_mean=F_MEAN, k_mean=K_MEAN, sd_F=list(SD_F), rho_K=list(RHO_K),
+                  models=list(MODELS), n_cells=40, days=12)
+    gen = h(fc.simulate_cohort, people, ensemble_of, simulate_ensembles, *[inspect.getsource(v) for v in MODELS.values()], repr(sorted(params.items())))
+    tab = h(gen, sampling, measured, table, observables, resid, fc.synthetic_expression,
+            repr(sorted(WINDOWS.items(), key=str)), repr(PROXY), repr(OBS), repr(OUTPUT_GENES))
+    return dict(parameters=params, integrations_sha256=gen, simulated_table_sha256=tab)
+
+
+def cached(path, key, current):
+    """True si hay cache, se pidio reutilizarla y su manifiesto coincide con el codigo y los parametros
+    actuales en la parte `key`. Si no coincide lo dice y devuelve False."""
+    import json
+    if os.environ.get("T2D_MODEL_REUSE") != "1" or not os.path.exists(path): return False
+    mf = f"{OUT}/new/competing_models_cache_manifest.json"
+    old = json.load(open(mf)) if os.path.exists(mf) else {}
+    if old.get(key) == current[key]: return True
+    print(f"  la cache {os.path.basename(path)} no corresponde al codigo o a los parametros actuales: se vuelve a generar", flush=True)
+    return False
 
 
 if __name__ == "__main__":
@@ -400,18 +492,20 @@ if __name__ == "__main__":
             _, rank, cond = region(COV[r.cohort])
             print(f"  {r.cohort} (n = {int(r.n)}, {r.window}); rango efectivo de la covarianza {rank} de {len(OBS)}")
             print("     " + "; ".join(f"{k.split()[0]} {r[k]:+.2f} [{r[k + ' lo']:+.2f}, {r[k + ' hi']:+.2f}]" for k in OBS))
-    fe = f"{OUT}/new/competing_models_ensembles.pkl"
-    if os.environ.get("T2D_MODEL_REUSE") == "1" and os.path.exists(fe):
-        ENS = pickle.load(open(fe, "rb")); seeds = sorted({k[3] for k in ENS})
-        print(f"\n(se reutilizan las integraciones de {fe}: {len(seeds)} semillas)")
+    import json
+    fe = f"{OUT}/new/competing_models_ensembles.pkl"; seeds = SEEDS; MAN = manifest(seeds)
+    if cached(fe, "integrations_sha256", MAN):
+        ENS = pickle.load(open(fe, "rb"))
+        print(f"\n(se reutilizan las integraciones de {fe}: {len(seeds)} semillas; su manifiesto coincide)")
     else:
-        seeds = SEEDS
         print(f"\nSIMULANDO {len(MODELS)} modelos sobre la rejilla completa:")
         ENS = simulate_ensembles(seeds); pickle.dump(ENS, open(fe, "wb"))
     fs = f"{OUT}/new/competing_models_simulated.tsv"
-    S = pd.read_csv(fs, sep="\t") if (os.environ.get("T2D_MODEL_REUSE") == "1" and os.path.exists(fs)) else None
-    if S is None or sorted(S.seed.unique()) != list(seeds) or set(S.window.unique()) != set(WINDOWS):
+    if cached(fs, "simulated_table_sha256", MAN):
+        S = pd.read_csv(fs, sep="\t")
+    else:
         S = table(ENS, seeds); S.to_csv(fs, sep="\t", index=False)
+    json.dump(MAN, open(f"{OUT}/new/competing_models_cache_manifest.json", "w"), indent=1)
     print(f"\nPREDICHO con la ventana de manana ({MORNING}) y con horas uniformes, intervalo sobre la rejilla (media de {len(seeds)} semillas):")
     for w in (MORNING, "uniform over 24 h"):
         print(f"  [{w}]")
@@ -425,15 +519,19 @@ if __name__ == "__main__":
         print("\nCALIBRANDO la region conjunta, cohorte por cohorte:", flush=True)
         for _, o in O.iterrows():
             q = J0[(J0.cohort == o.cohort) & (J0.scope == "windows allowed by the design")].sort_values("min_distance").iloc[0]
-            c = calibrate(o, COV[o.cohort], ENS, q.model, (q.closest_sd_F, q.closest_rho_K, q.closest_proxy_noise, q.closest_window), seeds,
-                          reps=int(os.environ.get("T2D_MODEL_CALIB", 100)), boot=int(os.environ.get("T2D_MODEL_CALIB_BOOT", 150)))
-            cal.append(c); thr[o.cohort] = max(c["calibrated_threshold"], c["nominal_threshold"])   # nunca mas estricto que lo nominal
-            print(f"  calibrada {o.cohort}: cobertura del umbral nominal {c['coverage_of_nominal_threshold'] * 100:.0f} %", flush=True)
+            c = calibrate(o, ENS, q.model, (q.closest_sd_F, q.closest_rho_K, q.closest_proxy_noise, q.closest_window), seeds,
+                          reps=int(os.environ.get("T2D_MODEL_CALIB", 100)), boot=int(os.environ.get("T2D_MODEL_CALIB_BOOT", 150)),
+                          pools=int(os.environ.get("T2D_MODEL_CALIB_POOLS", 2)))
+            # el umbral que se usa: el mayor de los calibrados y el nominal, para no excluir un modelo por un umbral corto
+            cal.append(c); thr[o.cohort] = max(c["calibrated_threshold_max"], c["nominal_threshold"])
+            print(f"  calibrada {o.cohort} (n = {c['n_calibration_cohort']}): cobertura del umbral nominal {c['coverage_min'] * 100:.0f} a "
+                  f"{c['coverage_max'] * 100:.0f} % entre poblaciones", flush=True)
         CAL = pd.DataFrame(cal); CAL.to_csv(f"{OUT}/new/competing_models_calibration.tsv", sep="\t", index=False)
         print("\nCALIBRACION de la region conjunta: cohortes generadas del propio modelo, del tamano de la observada")
         for r in CAL.itertuples():
-            print(f"  {r.cohort}: rango efectivo {r.effective_rank}; el umbral nominal ({r.nominal_threshold:.1f}) cubre {r.coverage_of_nominal_threshold * 100:.0f} % "
-                  f"(deberia cubrir 95 %); percentil 95 de las distancias {r.calibrated_threshold:.1f}; se usa {thr[r.cohort]:.1f}")
+            print(f"  {r.cohort}: cohortes de {r.n_calibration_cohort} personas; rango efectivo {r.effective_rank}; el umbral nominal ({r.nominal_threshold:.1f}) "
+                  f"cubre {r.coverage_of_nominal_threshold * 100:.0f} % ({r.coverage_min * 100:.0f} a {r.coverage_max * 100:.0f}); "
+                  f"percentil 95 de las distancias {r.calibrated_threshold_min:.1f} a {r.calibrated_threshold_max:.1f}; se usa {thr[r.cohort]:.1f}")
         # 2. criterio con el umbral calibrado
         J = joint(O, COV, S, thr); J.to_csv(f"{OUT}/new/competing_models_joint.tsv", sep="\t", index=False)
         V = verdict(O, S); V.to_csv(f"{OUT}/new/competing_models_verdict.tsv", sep="\t", index=False)

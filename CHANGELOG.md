@@ -1,5 +1,41 @@
 # Changelog
 
+## v2.9.1: the calibration of the joint criterion, made independent
+
+Four points of a further review of `python/model/competing_models.py`. All four were right.
+
+### Fixed
+- **The calibration drew its cohorts from the same simulations that defined the prediction.** The
+  two were not independent, so the coverage it reported was not an independent check. Calibration
+  cohorts now come from people integrated separately, with seeds that no prediction uses, and from
+  two independent populations, so that the table gives the range of the coverage and of the
+  calibrated threshold between them. The largest threshold is the one used.
+- **Calibration cohorts could be smaller than the observed cohort.** Their size was capped at half
+  the pooled simulations. Each population now has three times the size of the observed cohort,
+  whatever that is, and the cohorts drawn from it have exactly that size; the table records both.
+- **`region()` inverted whatever it was given.** It now refuses, saying why, a matrix with
+  non-finite values, with no direction of variance, that is not square or that is not positive
+  semidefinite; a negative eigenvalue of rounding size is treated as zero; and the condition number
+  it returns is that of the directions it keeps.
+- **A cache could be reused with code that no longer produced it.** `T2D_MODEL_REUSE=1` now reuses
+  the integrations and the simulated table only if their manifest matches: a hash of the source of
+  every function that generates them and of all their parameters (people, seeds, grid, windows,
+  models). Otherwise they are generated again, and the step says so.
+
+### The result with the independent calibration (thirty seeds)
+Coverage of the nominal 95% threshold, by cohort: 99% in AAGMEx (98 to 100 between populations),
+and between 87% and 98% in the twelve GTEx cohorts and strata. Where the calibrated threshold is
+above the nominal one it is used (up to 17.1 against 12.6).
+
+The conclusions do not change. AAGMEx: no forcing 0 of 18 grid points (closest distance 63.5),
+cortisol alone 0 (22.4), cortisol times receptor 2 (6.3), receptor alone 2 (8.3). GTEx, adipose
+tissue and muscle, ventilator donors: cortisol times receptor is compatible in both adipose depots
+(2.0 and 3.3); receptor alone is compatible in one (10.6) and just outside in the other (14.0
+against a threshold of 13.7). Fast deaths: the three forced models in the subcutaneous depot, and
+all but cortisol alone in the visceral one.
+
+`tests/test_model_verdict.py` checks each of the four corrections.
+
 ## v2.9.0: the comparison of mechanisms, calibrated; and why GTEx looked incompatible
 
 ### GTEx is not one cohort, and the sampling window is not known there

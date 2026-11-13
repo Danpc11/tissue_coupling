@@ -13,8 +13,14 @@ Sin simulaciones ni datos: se construyen lo observado y lo predicho.
   6. La prediccion de un punto es la media de sus semillas: mas semillas exigen mas.
   7. Una covarianza con direcciones redundantes no se invierte a ciegas: se usa su rango efectivo.
   8. Donde el diseno no fija la ventana de muestreo, se recorren todas; donde la fija, solo esa.
+  9. Una covarianza que no define una region (no finita, nula, no definida positiva) se rechaza.
+ 10. La calibracion usa personas independientes de las que definen la prediccion, del tamano exacto
+     de la cohorte observada, y de mas de una poblacion.
+ 11. La cache de simulaciones solo se reutiliza si su manifiesto coincide con el codigo y los
+     parametros actuales.
 """
-import os, sys, importlib.util
+import os, sys, importlib.util, tempfile, json
+os.environ.setdefault("T2D_MODEL_N", "40")                  # cohortes pequenas: aqui se comprueba el criterio, no el resultado
 import numpy as np, pandas as pd
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 spec = importlib.util.spec_from_file_location("cm", os.path.join(ROOT, "python/model/competing_models.py"))
@@ -118,6 +124,49 @@ Jp = cm.joint(pd.DataFrame([cohort_row("A", a, window="post mortem, any hour")])
 check("una cohorte de manana solo admite la ventana de manana", Jm.loc[("windows allowed by the design", names[0]), "n_compatible"] == 0)
 check("una cohorte post mortem admite cualquiera y dice cual", Jp.loc[("windows allowed by the design", names[0]), "n_compatible"] == 1
       and Jp.loc[("windows allowed by the design", names[0]), "closest_window"] == w2)
+
+print("9. Una matriz que no define una region se rechaza, y dice por que")
+def refuses(C):
+    try: cm.region(C); return False
+    except ValueError: return True
+check("valores no finitos", refuses(np.array([[1.0, np.nan], [np.nan, 1.0]])))
+check("ninguna direccion con varianza", refuses(np.zeros((3, 3))))
+check("no definida positiva", refuses(np.array([[1.0, 2.0], [2.0, 1.0]])))
+check("no cuadrada", refuses(np.ones((2, 3))))
+near = np.eye(3) * 1e-2; near[2, 2] = 1e-9                   # una direccion casi sin varianza
+Ci, rank, cond = cm.region(near)
+check("casi singular: se descarta esa direccion y el numero de condicion es el de las que quedan", rank == 2 and abs(cond - 1.0) < 1e-9)
+tiny = np.eye(3); tiny[2, 2] = -1e-14                        # negativo solo por redondeo
+check("un autovalor negativo del tamano del redondeo se trata como cero", cm.region(tiny)[1] == 2)
+
+print("10. La calibracion no usa lo que calibra, y respeta el tamano de la cohorte")
+seeds2 = [0, 1]; pt = (cm.SD_F[0], cm.RHO_K[1], cm.PROXY[1], cm.MORNING)
+ENS = dict(cm.ensemble_of((names[2], pt[0], pt[1], sd)) for sd in seeds2)
+c = cm.calibrate(pd.Series(dict(cohort="A", n=57)), ENS, names[2], pt, seeds2, reps=6, boot=25, pools=2)
+check("las cohortes de calibracion tienen el tamano de la observada", c["n_calibration_cohort"] == 57 and c["n_observed"] == 57)
+check("salen de una poblacion varias veces mayor", c["population_size"] == 3 * 57)
+check("de dos poblaciones independientes, con su intervalo", c["independent_populations"] == 2 and c["calibrated_threshold_min"] <= c["calibrated_threshold_max"])
+check("con semillas que ninguna prediccion usa", cm.CALIBRATION_SEED > max(cm.SEEDS) and all(k[5] in (0, 1) for k in cm._POOLS))
+a1 = cm.independent_population(names[2], pt, 30, 0); a2 = cm.independent_population(names[2], pt, 30, 1)
+m0 = cm.measured(ENS, names[2], pt[0], pt[1], 0, pt[3], pt[2])
+check("y que no repiten a las personas de la prediccion ni entre si",
+      not np.allclose(a1[0][:30], m0[0][:30]) and not np.allclose(a1[0], a2[0]))
+
+print("11. La cache solo vale si su manifiesto coincide")
+M1 = cm.manifest([0, 1, 2]); M2 = cm.manifest([0, 1, 2, 3])
+check("cambiar las semillas cambia la huella", M1["integrations_sha256"] != M2["integrations_sha256"] and M1["simulated_table_sha256"] != M2["simulated_table_sha256"])
+check("la misma configuracion da la misma huella", M1 == cm.manifest([0, 1, 2]))
+with tempfile.TemporaryDirectory() as d:
+    os.makedirs(f"{d}/new"); old_out, cm.OUT = cm.OUT, d; f = f"{d}/new/x.pkl"; open(f, "w").write("x")
+    os.environ["T2D_MODEL_REUSE"] = "1"
+    no_manifest = cm.cached(f, "integrations_sha256", M1)
+    json.dump(M2, open(f"{d}/new/competing_models_cache_manifest.json", "w")); other = cm.cached(f, "integrations_sha256", M1)
+    json.dump(M1, open(f"{d}/new/competing_models_cache_manifest.json", "w")); same = cm.cached(f, "integrations_sha256", M1)
+    os.environ["T2D_MODEL_REUSE"] = "0"; not_asked = cm.cached(f, "integrations_sha256", M1)
+    cm.OUT = old_out; os.environ.pop("T2D_MODEL_REUSE")
+check("sin manifiesto no se reutiliza", not no_manifest)
+check("con un manifiesto de otra configuracion tampoco", not other)
+check("con el mismo si, y solo si se pide", same and not not_asked)
 
 print("\nTODO CORRECTO" if not fails else f"\nFALLAN {len(fails)}: {fails}")
 sys.exit(1 if fails else 0)
