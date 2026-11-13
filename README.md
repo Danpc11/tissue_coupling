@@ -103,6 +103,17 @@ a random gene with the clock-output score is 0.44 rather than zero without it). 
 compares differences between groups and is built without centring. Mixing the two conventions
 changes results.
 
+**Two ways of measuring amplitude, each where the design allows it.** Where a study has a series
+with recorded hours in each person, amplitude is measured directly by cosinor: a sinusoid fitted to
+each gene over the real hours. That is the measure for the sleep-delay control in blood
+(GSE107537), and the one that gives the measured amplitude in synchronised myotubes and in muscle
+sampled around the clock. Where there is one biopsy per person and no hour, which is every
+cross-sectional cohort, amplitude is inferred with the single-sample estimator, and only in tissues
+where the clock genes form a recognisable cycle (the BMAL1 and DBP antiphase check). The two are
+not interchangeable and the code does not treat them as such: the estimator is validated against
+cosinor in the two datasets that allow both, and in blood, which fails the antiphase check, it is
+not the tool and does not reproduce the effect that cosinor measures.
+
 **"Single sample" means one sample per person, not a sample without a cohort.** The estimators
 standardise each gene across the samples they are given and learn the waveform from them, so
 they are relative to a cohort. A sample that is not part of it is scored against a reference
@@ -128,7 +139,7 @@ simulated phases).
 | `tests/test_phase_template.py` | the validation of the phase template uses nothing from the held-out subject: on pure noise its error is that of chance | no |
 | `tests/test_single_sample.py` | "single sample" means one sample per person scored against a fixed reference: a lone sample is refused, and its value does not depend on which others accompany it | no |
 | `tests/test_model_null.py` | on simulated cohorts the estimator recovers the effect of the receptor gain when the model has one and finds none when it has none | no |
-| `tests/test_model_verdict.py` | the criterion that compares the competing models: three states per observable; a joint region, cohort by cohort, that respects the correlation between observables; and predictions averaged over seeds, so that more seeds make it stricter | no |
+| `tests/test_model_verdict.py` | the criterion that compares the competing models, on values built by hand: three states per observable, with state and interval required at the same grid point; a joint region, cohort by cohort, on the effective rank of the covariance; predictions averaged over seeds; the sampling window fixed where the design fixes it and scanned where it does not | no |
 | `tests/test_clamp_vs_saline.py` | runs step 14b on a small simulated series with a known answer and checks the contents of its output | no |
 | `tests/smoke_test.py` | the phase estimator recovers a known phase | no |
 | `tests/verify_package.py` | arithmetic and consistency of the tables of a real run | yes |
