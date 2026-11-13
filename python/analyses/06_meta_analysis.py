@@ -13,6 +13,11 @@ correlacion de Pearson. Aqui se aplica a una de Spearman sobre residuos, asi que
 tambien `se_boot`, el error estandar por bootstrap de individuos (se remuestrean personas y se
 repite la residualizacion), para comprobar que el resultado no depende de esa aproximacion.
 
+GRUPO DIAGNOSTICO. Las estimaciones mezclan casos y controles, porque la pregunta es si receptor y
+salida del reloj varian juntos entre personas. `rho_adjusted_for_group` es la misma correlacion con
+el grupo (diagnostico, o brazo del estudio) como covariable, donde la cohorte lo tiene: dice si la
+asociacion existe DENTRO de los grupos o es solo la diferencia entre ellos.
+
 CENTRADO. Las estimaciones usan expresion centrada por muestra. `rho_uncentred` es la misma
 correlacion sin centrar, para que la sensibilidad a esa decision quede escrita en la tabla.
 
@@ -61,11 +66,18 @@ with gzip.open(f"{_RAW}/GSE95674_series_matrix.txt.gz","rt") as f:
 cov=pd.DataFrame({"sex":sx,"age":ag},index=t).reindex(A.columns); aag=[(cov.sex=="M").astype(float).values,cov.age.values]
 Ea=pd.read_pickle(f"{_OUT}/new/GSE41168_adipose.pkl"); Em=pd.read_pickle(f"{_OUT}/new/GSE41168_muscle.pkl")
 sp=importlib.util.spec_from_file_location("c5",os.path.join(os.path.dirname(os.path.abspath(__file__)),"05_clamp_within_person.py")); c5=importlib.util.module_from_spec(sp); sp.loader.exec_module(c5)
-E,d=c5.load(); mus13=d[(d.tissue=="muscle")&(d.tzd=="pre")&(d.clamp=="pre")].drop_duplicates("subject").set_index("subject")
+E_sym,d=c5.load()
+# GSE13070 es GPL570, como GSE25462 y GSE41168: se anota igual que ellas, por Entrez y con la sonda de
+# mayor expresion media (python/lib/gpl570.py). Hasta v2.7.0 entraba anotada por el simbolo de la
+# plataforma y promediando sondas, que es la regla del analisis del clamp, y sus dos estimaciones
+# salian 0.1 mas altas. T2D_GSE13070_SYMBOLS=1 recupera aquella anotacion.
+_f13=f"{OUT}/new/GSE13070_entrez.pkl"
+E=E_sym if (os.environ.get("T2D_GSE13070_SYMBOLS")=="1" or not os.path.exists(_f13)) else pd.read_pickle(_f13)
+mus13=d[(d.tissue=="muscle")&(d.tzd=="pre")&(d.clamp=="pre")].drop_duplicates("subject").set_index("subject")
 adi13=d[(d.tissue=="adipose")&(d.tzd=="pre")].drop_duplicates("subject").set_index("subject")
 G1=pd.read_pickle(f"{_OUT}/new/GTEx_adipose_sc.pkl"); G2=pd.read_pickle(f"{_OUT}/new/GTEx_adipose_visc.pkl"); G3=pd.read_pickle(f"{_OUT}/new/GTEx_muscle.pkl")
 rows=[]; ALLG={}
-def add(coh,tis,X0,cv,x_lab="NR3C1"):
+def add(coh,tis,X0,cv,x_lab="NR3C1",grp=None):
     X=X0.sub(X0.mean(0),axis=1) if os.environ.get("T2D_CENTER","1")!="0" else X0   # centrado por muestra (Methods, "Sample centring"); T2D_CENTER=0 lo desactiva
     n=X.shape[1]; D=design(n,cv)
     raw={"NR3C1~reloj":np.asarray(X.loc[x_lab],float),"GC~reloj":np.asarray(sc(X,GC),float)}; yraw=np.asarray(sc(X,CL),float)
@@ -93,27 +105,37 @@ def add(coh,tis,X0,cv,x_lab="NR3C1"):
             rb=stats.spearmanr(pres(raw[lab][i],cv,Di),pres(yraw[i],cv,Di)).statistic
             zb.append(np.arctanh(np.clip(rb,-.999,.999)))
         ru=stats.spearmanr(pres(unc[lab],cv,D),pres(yunc,cv,D)).statistic
+        # con el grupo diagnostico o experimental como covariable: es la asociacion solo cosa de casos frente a controles?
+        rg=np.nan
+        if grp is not None:
+            Gd=pd.get_dummies(pd.Series(np.asarray(grp)).astype(str),drop_first=True).values.astype(float)
+            Dg=np.column_stack([D,Gd])
+            if n-np.linalg.matrix_rank(Dg)>=10: rg=stats.spearmanr(pres(raw[lab],cv,Dg),pres(yraw,cv,Dg)).statistic
         rows.append(dict(contraste=lab,cohorte=coh,tejido=tis,n=n,rho=r,z=z,se=se,
                          se_boot=float(np.std(zb,ddof=1)) if len(zb)>50 else np.nan,rho_uncentred=ru,
+                         rho_adjusted_for_group=rg,group_levels=(pd.Series(np.asarray(grp)).nunique() if grp is not None else 0),
                          rho_given_the_other=part[lab],percentile_among_all_genes=pct_all if lab=="NR3C1~reloj" else np.nan))
 add("AAGMEx","adiposo",A,aag); add("AAGMEx","músculo",M,aag)
-add("GSE41168","adiposo",Ea,[]); add("GSE41168","músculo",Em,[])
-add("GSE13070","adiposo",E[list(adi13.gsm)],[]); add("GSE13070","músculo",E[list(mus13.gsm)],[])
+_p41=pd.read_pickle(f"{OUT}/new/GSE41168_meta.pkl"); _p41=_p41[_p41.treatment=="before"]
+_g41=lambda X,key: _p41[_p41.tissue.str.contains(key)].drop_duplicates("subject").set_index("subject").group.reindex(X.columns).values
+add("GSE41168","adiposo",Ea,[],grp=_g41(Ea,"adipose")); add("GSE41168","músculo",Em,[],grp=_g41(Em,"muscle"))
+add("GSE13070","adiposo",E[list(adi13.gsm)],[],grp=adi13.group.values); add("GSE13070","músculo",E[list(mus13.gsm)],[],grp=mus13.group.values)
 add("GTEx","adiposo sc",G1,gtexcov(G1)); add("GTEx","adiposo visceral",G2,gtexcov(G2)); add("GTEx","músculo",G3,gtexcov(G3))
-# --- rama repro-hugo: las cuatro estimaciones restantes de la Fig. 2a (13 en total) ---
+# --- las cuatro estimaciones restantes de la Fig. 2a (13 en total) ---
 if os.path.exists(f"{OUT}/new/GSE78721_log2.pkl"):
     X=pd.read_pickle(f"{OUT}/new/GSE78721_log2.pkl"); md=pd.read_pickle(f"{OUT}/new/GSE78721_meta.pkl").set_index("gsm").reindex(X.columns)
     keep=list(md.index[md.one_per_person]); X=X[keep]; md=md.reindex(keep)   # una muestra por persona (95): extremidad o subcutaneo
-    add("GSE78721","adiposo",X,[(md.sex=="M").astype(float).values,(md.depot=="Subcutaneous").astype(float).values])
+    add("GSE78721","adiposo",X,[(md.sex=="M").astype(float).values,(md.depot=="Subcutaneous").astype(float).values],grp=md.dx.values)
 if os.path.exists(f"{OUT}/new/GSE25462_entrez.pkl"):
     X=pd.read_pickle(f"{OUT}/new/GSE25462_entrez.pkl"); md=pd.read_pickle(f"{OUT}/new/GSE25462_meta.pkl").set_index("gsm").reindex(X.columns)
-    add("GSE25462","músculo",X,[(md.sex=="male").astype(float).values,md.age.fillna(md.age.median()).values.astype(float)])
+    add("GSE25462","músculo",X,[(md.sex=="male").astype(float).values,md.age.fillna(md.age.median()).values.astype(float)],grp=md.fh.values)
 if os.path.exists(f"{RAW}/GSE159984_raw_counts.tsv.gz"):
     don,cul=islets.groups(RAW)
+    _dx=islets.diagnosis(RAW)                                # diabetes tipo 2 o no, de los donantes
     for lab,cols in (("islotes (donantes)",don),("islotes (cultivos)",cul)):
         L=islets.log2cpm_symbols(f"{RAW}/GSE159984_raw_counts.tsv.gz",cols,f"{RAW}/Human_GRCh38_p13_annot_tsv.gz")
         if L.shape[1]<10: print(f"  GSE159984 {lab}: {L.shape[1]} muestras en el fichero de cuentas; se omite"); continue
-        add("GSE159984",lab,L,[])
+        add("GSE159984",lab,L,[],grp=(_dx.reindex(L.columns).values if lab.endswith("(donantes)") and _dx.reindex(L.columns).notna().all() else None))
 R=pd.DataFrame(rows)
 pd.DataFrame(ALLG).to_pickle(f"{OUT}/new/meta_all_genes_rho.pkl")    # gen x estimacion: lo lee 30_receptor_specificity.py
 have=set(zip(R.cohorte,R.tejido)); missing=[m for m in MANIFEST if m not in have]

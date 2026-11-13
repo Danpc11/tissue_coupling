@@ -31,10 +31,11 @@ import numpy as np, pandas as pd
 TAU_Z = 24.0
 
 def simulate_population(F, K, n_cells=200, sigma_tau=1.2, lam=0.05, A=1.0,
-                        days=30, dt=0.05, seed=0):
-    """Integra N osciladores forzados y devuelve fase y radio de cada célula al final."""
+                        days=30, dt=0.05, seed=0, tau_mean=24.0):
+    """Integra N osciladores forzados y devuelve fase y radio de cada célula al final.
+    tau_mean es el periodo intrinseco medio del tejido (24 h salvo en el barrido de la lengua)."""
     rng = np.random.default_rng(seed)
-    tau = rng.normal(24.0, sigma_tau, n_cells)
+    tau = rng.normal(tau_mean, sigma_tau, n_cells)
     omega = 2 * np.pi / tau
     phi = rng.uniform(0, 2 * np.pi, n_cells)
     r = np.full(n_cells, A)

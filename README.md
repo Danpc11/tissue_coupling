@@ -128,6 +128,7 @@ simulated phases).
 | `tests/test_phase_template.py` | the validation of the phase template uses nothing from the held-out subject: on pure noise its error is that of chance | no |
 | `tests/test_single_sample.py` | "single sample" means one sample per person scored against a fixed reference: a lone sample is refused, and its value does not depend on which others accompany it | no |
 | `tests/test_model_null.py` | on simulated cohorts the estimator recovers the effect of the receptor gain when the model has one and finds none when it has none | no |
+| `tests/test_model_verdict.py` | the verdict on the competing models tells a positive, a negative and a null association apart, and uses the observed confidence interval | no |
 | `tests/test_clamp_vs_saline.py` | runs step 14b on a small simulated series with a known answer and checks the contents of its output | no |
 | `tests/smoke_test.py` | the phase estimator recovers a known phase | no |
 | `tests/verify_package.py` | arithmetic and consistency of the tables of a real run | yes |

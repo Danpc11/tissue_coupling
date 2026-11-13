@@ -16,6 +16,7 @@ SENSIBILIDAD, toda en la misma tabla:
   - una sola estimacion por cohorte (la de mayor n), que elimina la dependencia de raiz;
   - con el error estandar por bootstrap de individuos en lugar de la aproximacion de Fisher;
   - con la expresion sin centrar por muestra;
+  - con el grupo diagnostico o experimental como covariable, donde la cohorte lo tiene;
   - el intervalo de PREDICCION: donde cabe esperar la estimacion de una cohorte nueva. Con mucha
     heterogeneidad es mucho mas ancho que el intervalo de confianza de la media, y es el que dice
     si el efecto es positivo en todas partes o solo en promedio.
@@ -119,4 +120,10 @@ if __name__ == "__main__":
             zu = np.arctanh(np.clip(q.rho_uncentred.values, -.999, .999))
             T = summary(zu, se, cl); rows.append(dict(contrast=contrast, analysis="expression not centred per sample", **T))
             print(f"  sin centrar por muestra: rho {T['rho_3level']:+.3f} (IC95 con t {T['lo_3level_t']:+.3f} a {T['hi_3level_t']:+.3f})")
+        if "rho_adjusted_for_group" in q and q.rho_adjusted_for_group.notna().any():
+            ra = q.rho_adjusted_for_group.where(q.rho_adjusted_for_group.notna(), q.rho)
+            T = summary(np.arctanh(np.clip(ra.values, -.999, .999)), se, cl)
+            rows.append(dict(contrast=contrast, analysis="adjusted for diagnostic or study group where the cohort has one", **T))
+            print(f"  con el grupo diagnostico como covariable en las {int(q.rho_adjusted_for_group.notna().sum())} estimaciones que lo tienen: "
+                  f"rho {T['rho_3level']:+.3f} (IC95 con t {T['lo_3level_t']:+.3f} a {T['hi_3level_t']:+.3f})")
     pd.DataFrame(rows).to_csv(f"{OUT}/new/meta_three_level.tsv", sep="\t", index=False)

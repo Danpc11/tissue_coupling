@@ -109,9 +109,11 @@ def annotate_gpl570(e):
     """Sonda -> simbolo (columna Gene Symbol), media entre sondas. Las sondas multi-gen
     ("MIR6883 /// PER1", "NR1D1 /// THRA") se asignan a cada simbolo sin sonda propia; sin esto
     PER1 y NR1D1 se declaran ausentes en GPL570."""
-    files = sorted(glob.glob(f"{RAW}/GPL570*"))
+    # un fichero concreto, no "el primero que empiece por GPL570": con dos anotaciones en el directorio
+    # el resultado dependeria de cual ordena antes
+    files = [p for p in (f"{RAW}/GPL570_annot.txt", f"{RAW}/GPL570.annot.gz", f"{RAW}/_soft/GPL570.annot.gz") if os.path.exists(p)]
     if not files:
-        sys.exit(f"Falta la anotacion GPL570 en {RAW}.")
+        sys.exit(f"Falta la anotacion GPL570 en {RAW} (GPL570_annot.txt; la baja download_public.sh).")
     fn = files[0]
     op = gzip.open if fn.endswith(".gz") else open
     with op(fn, "rt", errors="ignore") as fh:

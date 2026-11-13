@@ -18,7 +18,7 @@ d=pd.read_csv(f"{RAW}/dorothea_ABC.tsv",sep="\t",low_memory=False,usecols=["sour
 d["mor"]=np.where(d.is_stimulation&~d.is_inhibition,1,np.where(d.is_inhibition&~d.is_stimulation,-1,0))
 d=d[d.mor!=0].drop_duplicates(["source_genesymbol","target_genesymbol"])
 CL=set(SETS["Clock output"]["genes"])|set(SETS["Core oscillator"]["genes"])|{"BMAL1"}   # BMAL1: simbolo vigente de ARNTL
-A=pd.read_pickle(f"{_OUT}/new/AAGMEx_adipose_log2.pkl"); A=A.sub(A.mean(0),axis=1)   # centrado por muestra (Methods); rama repro-hugo
+A=pd.read_pickle(f"{_OUT}/new/AAGMEx_adipose_log2.pkl"); A=A.sub(A.mean(0),axis=1)   # centrado por muestra (Methods)
 with gzip.open(f"{_RAW}/GSE95674_series_matrix.txt.gz","rt") as f:
     for l in f:
         if l.startswith("!Sample_title"): t=[x.strip('"') for x in l.rstrip().split("\t")[1:]]
@@ -44,8 +44,27 @@ for tf in d.source_genesymbol.unique():
     a,n=act(tf)
     if a is not None: res.append((tf,n,stats.spearmanr(pres(a,base),co).statistic))
 R=pd.DataFrame(res,columns=["TF","n_dianas","rho"]).sort_values("rho",ascending=False)
+# Fondo: la actividad de un regulon es una suma de genes, y una suma de genes cualesquiera ya
+# correlaciona algo con la puntuacion. Para cada tamano de regulon se sortean conjuntos de dianas al
+# azar (mismos signos, genes fuera del reloj) y se da la posicion de la rho observada en ese nulo.
+rng=np.random.default_rng(0); pool=np.array([g for g in A.index if g not in CL]); NULLN=500; cache={}
+Zall=((A.T-A.mean(1))/(A.std(1)+1e-9)).T
+def null_for(n):
+    if n not in cache:
+        v=[]
+        for _ in range(NULLN):
+            g=rng.choice(pool,n,replace=False); w=rng.choice([1.0,-1.0],n)
+            v.append(stats.spearmanr(pres((Zall.loc[g].values*w[:,None]).sum(0)/np.sqrt(n),base),co).statistic)
+        cache[n]=np.array(v)
+    return cache[n]
+R["null_sd"]=[null_for(int(n)).std() for n in R.n_dianas]
+R["z_vs_random_targets"]=[(r-null_for(int(n)).mean())/null_for(int(n)).std() for r,n in zip(R.rho,R.n_dianas)]
+R["p_vs_random_targets"]=[(np.sum(np.abs(null_for(int(n)))>=abs(r))+1)/(NULLN+1) for r,n in zip(R.rho,R.n_dianas)]
 R.to_csv(f"{_OUT}/new/AAGMEx_TF_activity_vs_clock.tsv",sep="\t",index=False)
 print(R.head(12).to_string(index=False)); print("..."); print(R.tail(10).to_string(index=False))
+print(f"\nfrente a regulones al azar del mismo tamano: {int((R.p_vs_random_targets<0.05).sum())} de {len(R)} factores con P < 0.05 (se esperan {0.05*len(R):.0f} por azar); "
+      f"FOXO3 z = {R[R.TF=='FOXO3'].z_vs_random_targets.iloc[0]:+.1f}, P = {R[R.TF=='FOXO3'].p_vs_random_targets.iloc[0]:.3f}; "
+      f"NR3C1 z = {R[R.TF=='NR3C1'].z_vs_random_targets.iloc[0]:+.1f}, P = {R[R.TF=='NR3C1'].p_vs_random_targets.iloc[0]:.3f}")
 print(f"\nNR3C1: puesto {list(R.TF).index('NR3C1')+1} de {len(R)}, ρ {R[R.TF=='NR3C1'].rho.iloc[0]:+.3f} con {R[R.TF=='NR3C1'].n_dianas.iloc[0]} dianas")
 print("regulón NR3C1 de DoRothEA A-C:",sorted(d[d.source_genesymbol=='NR3C1'].target_genesymbol))
 print("¿incluye alguna diana GC clásica?",[g for g in SETS["Glucocorticoid"]["genes"]+["PER1"] if g in set(d[d.source_genesymbol=='NR3C1'].target_genesymbol)])

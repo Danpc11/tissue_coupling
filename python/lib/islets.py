@@ -28,3 +28,15 @@ def log2cpm_symbols(counts_file, cols, annot, min_count=5, min_samples=10):
     C.index = [sym.get(str(i), str(i)) for i in C.index]; C = C[~C.index.str.isdigit()].groupby(level=0).sum()
     lib = C.sum(); C = C[(C > min_count).sum(1) >= min_samples]
     return np.log2(C / lib * 1e6 + 1)
+
+
+def diagnosis(raw):
+    """Serie GSM -> 'T2D' o 'ND' de los donantes (GPL9115), leida de la matriz de serie."""
+    import gzip, pandas as pd, numpy as np
+    gsm = dx = None
+    with gzip.open(f"{raw}/GSE159984-GPL9115_series_matrix.txt.gz", "rt", errors="ignore") as fh:
+        for l in fh:
+            if l.startswith("!Sample_geo_accession"): gsm = [x.strip('"') for x in l.rstrip("\n").split("\t")[1:]]
+            if l.startswith("!Sample_characteristics_ch1") and "diagnosis" in l:
+                dx = [x.strip('"').split(": ", 1)[1] for x in l.rstrip("\n").split("\t")[1:]]
+    return pd.Series(np.where(pd.Series(dx).str.contains("type 2"), "T2D", "ND"), index=gsm)
