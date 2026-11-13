@@ -23,7 +23,11 @@ def dl(sub):
     w=1/sub.se**2; m=(w*sub.z).sum()/w.sum(); Q=(w*(sub.z-m)**2).sum(); k=len(sub)
     tau2=max(0,(Q-(k-1))/(w.sum()-(w**2).sum()/w.sum())); w2=1/(sub.se**2+tau2)
     m2=(w2*sub.z).sum()/w2.sum(); se2=np.sqrt(1/w2.sum()); I2=max(0,(Q-(k-1))/Q*100) if Q>0 else 0
-    return np.tanh(m2),np.tanh(m2-1.96*se2),np.tanh(m2+1.96*se2),I2,2*(1-stats.norm.cdf(abs(m2/se2))),k
+    return np.tanh(m2),np.tanh(m2-1.96*se2),np.tanh(m2+1.96*se2),I2,2*stats.norm.sf(abs(m2/se2)),k   # sf: 1 - cdf da cero exacto con z grande
+def fmt_p(p):
+    """P para una etiqueta: nunca '0e+00'. Por debajo de 1e-15 se da como cota."""
+    if p < 1e-15: return "P < 10$^{-15}$"
+    return f"P = {p:.2f}" if p >= 0.01 else f"P = {p:.0e}"
 R=pd.read_csv(f"{OUT}/new/meta_per_cohort.tsv",sep="\t")
 R["fam"]=R.tejido.apply(fam); R["lo"]=np.tanh(R.z-1.96*R.se); R["hi"]=np.tanh(R.z+1.96*R.se)
 fig=plt.figure(figsize=(16,8.6)); gs=fig.add_gridspec(2,3,height_ratios=[1.25,1],hspace=.42,wspace=.3)
@@ -40,7 +44,7 @@ for f in ("islets","adipose","muscle"):
     v=dl(q); ax.plot([v[1],v[2]],[y,y],color=COL[f],lw=2.6); ax.scatter(v[0],y,marker="D",s=60,color=COL[f],zorder=3)
     ticks.append(y); labs.append(f"{f}: ρ = {v[0]:.2f}  (k = {v[5]}, I² = {v[3]:.0f}%)"); y+=1.4
 v=dl(sub); ax.plot([v[1],v[2]],[y,y],color="k",lw=3); ax.scatter(v[0],y,marker="D",s=75,color="k",zorder=3)
-ticks.append(y); labs.append(f"overall: ρ = {v[0]:.2f}  (95% CI {v[1]:.2f}–{v[2]:.2f}), P = {v[4]:.0e}")
+ticks.append(y); labs.append(f"overall: ρ = {v[0]:.2f}  (95% CI {v[1]:.2f}–{v[2]:.2f}), {fmt_p(v[4])}")
 ax.axvline(0,color="k",lw=.8); ax.axvline(v[0],color="k",ls=":",lw=.7)
 ax.set_yticks(ticks); ax.set_yticklabels(labs,fontsize=8); ax.invert_yaxis()
 ax.set(xlabel="ρ  receptor (NR3C1) ~ clock output",xlim=(-0.2,1.0),
@@ -82,7 +86,7 @@ for lab,v,c in ((f"living (k={vv[5]})",vv,"#6a3d9a"),(f"post mortem (k={pm[5]})"
     yy+=.6; ax.plot([v[1],v[2]],[yy,yy],color=c,lw=2.6); ax.scatter(v[0],yy,marker="D",s=60,color=c,zorder=3)
 ax.set_yticks(list(range(len(s2)))+[len(s2)+.6,len(s2)+1.2])
 ax.set_yticklabels([f"{r.cohorte} · {en(r.tejido)}" for _,r in s2.iterrows()]+
-                   [f"living: {vv[0]:.2f}, P = {vv[4]:.0e}",f"post mortem: {pm[0]:.2f}, P = {pm[4]:.2f}"],fontsize=7)
+                   [f"living: {vv[0]:.2f}, {fmt_p(vv[4])}",f"post mortem: {pm[0]:.2f}, {fmt_p(pm[4])}"],fontsize=7)
 ax.invert_yaxis(); ax.axvline(0,color="k",lw=.8)
 ax.set(xlabel="ρ  glucocorticoid signalling ~ clock output",)
 # ---- d dentro del donante

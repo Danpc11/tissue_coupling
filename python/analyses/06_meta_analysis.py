@@ -127,14 +127,14 @@ def dl(sub):
     w=1/sub.se**2; m=(w*sub.z).sum()/w.sum(); Q=(w*(sub.z-m)**2).sum(); k=len(sub)
     tau2=max(0,(Q-(k-1))/(w.sum()-(w**2).sum()/w.sum())); w2=1/(sub.se**2+tau2); m2=(w2*sub.z).sum()/w2.sum()
     se2=np.sqrt(1/w2.sum()); I2=max(0,(Q-(k-1))/Q*100) if Q>0 else 0
-    return np.tanh(m2),np.tanh(m2-1.96*se2),np.tanh(m2+1.96*se2),Q,k,I2,2*(1-stats.norm.cdf(abs(m2/se2)))
+    return np.tanh(m2),np.tanh(m2-1.96*se2),np.tanh(m2+1.96*se2),Q,k,I2,2*stats.norm.sf(abs(m2/se2))
 out=[]
 for lab in R.contraste.unique():
     for tej in ("todos","adiposo","músculo","islotes"):
         sub=R[(R.contraste==lab)&(R.tejido.str.contains(tej) if tej!="todos" else True)]
         if len(sub)<2: continue
         rr,lo,hi,Q,k,I2,p=dl(sub)
-        print(f"{lab:12s} {tej:8s} k={k}: ρ combinado {rr:+.3f} (IC95 {lo:+.3f} a {hi:+.3f}), P {p:.2e}, Q={Q:.1f}, I²={I2:.0f}%")
+        print(f"{lab:12s} {tej:8s} k={k}: ρ combinado {rr:+.3f} (IC95 {lo:+.3f} a {hi:+.3f}), P {p:.1e}, Q={Q:.1f}, I²={I2:.0f}%")
         out.append(dict(contraste=lab,grupo=tej,k=k,rho=rr,lo=lo,hi=hi,p=p,Q=Q,I2=I2))
 R.to_csv(f"{OUT}/new/meta_per_cohort.tsv",sep="\t",index=False); pd.DataFrame(out).to_csv(f"{OUT}/new/meta_pooled.tsv",sep="\t",index=False)
 print("\nPor cohorte:"); print(R.round(3).to_string(index=False))
