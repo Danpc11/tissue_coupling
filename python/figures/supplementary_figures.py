@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extended Data figures ED1-ED7 (English, Nature style, uppercase panel letters).
+"""Supplementary Figures 1 to 3 and 5 to 7, written as ED1-ED3 and ED5-ED7 (English, Nature style, uppercase panel letters).
 
 Descriptions live in FIGURE_CAPTIONS.md; panels carry only their letter and a provenance line.
 """
@@ -64,14 +64,14 @@ def ed2():
     ax.set_yticklabels([f"{lab.replace('clock genes, ','clock ').replace('800-gene projection','800-gene')} · {coh}" for _, lab in ests for coh in sorted(D.coh.unique())], fontsize=6)
     ax.tick_params(axis='y', pad=1)
     ax.set_xlabel("resistant − sensitive (inferred amplitude)"); ax.set_xlim(-0.95, 1.9)
-    src(ax, "only the unvalidated 800-gene projection separates the groups"); panel(ax, "D")
+    src(ax, "difference between groups, by estimator and cohort"); panel(ax, "D")
     ax = fig.add_subplot(gs[1, 1])
     for coh, q in D.groupby("coh"):
         ax.scatter(q.amp_free, q.amp_800, s=10, alpha=.6, label=coh)
     r = stats.spearmanr(D.amp_free, D.amp_800)
     ax.set(xlabel="amplitude, free ordering", ylabel="amplitude, 800-gene projection")
     ax.legend(frameon=False, loc="upper right", title=f"ρ = {r.statistic:.2f}", title_fontsize=7)
-    src(ax, "the two estimators measure different things"); panel(ax, "E")
+    src(ax, "two amplitude estimators on the same samples"); panel(ax, "E")
     # F  dispersion: la prueba correcta si el mecanismo es perdida de entrainment
     ax = fig.add_subplot(gs[1, 2])
     rng2 = np.random.default_rng(1)
@@ -93,7 +93,7 @@ def ed2():
     ax.set_yticks(range(len(rows))); ax.set_yticklabels([r[0].replace("clock genes, ", "clock ").replace("800-gene projection", "800-gene") for r in rows], fontsize=6)
     ax.tick_params(axis="y", pad=1)
     ax.set_xlabel("5–95 range ratio, resistant / sensitive"); ax.set_xlim(.85, 3.2)
-    src(ax, "scale test: the median is blind to a dispersion effect")
+    src(ax, "ratio of 5\u201395 ranges; permutation P and Levene P")
     panel(ax, "F")
     tidy(fig); save(fig, "ED2")
 
@@ -110,7 +110,7 @@ def ed3():
     ax.axvline(0, color="k", lw=.8, ls=":")
     ax.set(xlabel="median ρ of a random gene with the clock score", ylabel="ρ  NR3C1 ~ clock output")
     ax.legend(frameon=False, loc="lower right")
-    src(ax, "ten cohort-tissue matrices"); panel(ax, "A")
+    src(ax, f"{len(A)} cohort-tissue matrices"); panel(ax, "A")
     ax = fig.add_subplot(gs[0, 1])
     S = pd.read_csv(f"{OUT}/new/msigdb_symbol_coverage.tsv", sep="\t")
     x = np.arange(len(S)); w = .38
@@ -160,13 +160,15 @@ def ed6():
     ax.scatter(T["median"], -np.log10(T[pcol].clip(lower=1e-6)), s=5, color="#dddddd")
     sel = T.loc[[g for g in G.gene if g in T.index]]
     ax.scatter(sel["median"], -np.log10(sel[pcol].clip(lower=1e-6)), s=12, color=IS)
-    ax.set(xlabel="hydrocortisone − placebo (log$_2$)", ylabel="−log$_{10}$ P (Wilcoxon, n = 10)")
-    src(ax, "GSE148640 · adipose · 12,641 genes; 68 selected (10/10 consistent)"); panel(ax, "A")
+    NP = int(T.n_up.max())                                   # participantes: el maximo de n_up es todos
+    ax.set(xlabel="hydrocortisone − placebo (log$_2$)", ylabel=f"−log$_{{10}}$ P (Wilcoxon, n = {NP})")
+    src(ax, f"GSE148640 · adipose · {len(T):,} genes; {len(sel)} in the signature"); panel(ax, "A")
     ax = fig.add_subplot(gs[0, 1])
     nup = T.n_up.value_counts().sort_index()
-    ax.bar(nup.index, nup.values, color=[IS if i in (0, 10) else GR for i in nup.index])
-    ax.set(xlabel="participants changing in the same direction (of 10)", ylabel="genes")
-    src(ax, "no gene reaches FDR < 0.10 with n = 10"); panel(ax, "B")
+    ax.bar(nup.index, nup.values, color=[IS if i in (0, NP) else GR for i in nup.index])
+    ax.set(xlabel=f"participants in whom the gene goes up (of {NP})", ylabel="genes")
+    fcol = "fdr" if "fdr" in T.columns else "FDR" if "FDR" in T.columns else None
+    src(ax, (f"{int((T[fcol] < 0.10).sum())} genes with FDR < 0.10 · " if fcol else "") + f"n = {NP}"); panel(ax, "B")
     ax = fig.add_subplot(gs[0, 2])
     tests = ["Cushing\nadipose", "dexamethasone\nmuscle", "dexamethasone\nadipose", "GSE13070\nIR adipose"]
     gras = [0.39, -0.06, -0.33, 0.12]; nine = [0.14, 0.48, 0.48, 0.21]
@@ -294,10 +296,13 @@ def ed1():
     xs = np.linspace(Xc.loc["NR3C1"].min(), Xc.loc["NR3C1"].max(), 40)
     ax.plot(xs, np.polyval(b, xs), "k--", lw=1.1)
     ax.set(xlabel="NR3C1 (sample-centred log$_2$)", ylabel="clock-output score (z)")
-    src(ax, "GTEx visceral adipose · n = 587"); panel(ax, "C")
+    src(ax, f"GTEx visceral adipose · n = {Xc.shape[1]}"); panel(ax, "C")
     tidy(fig); save(fig, "ED1")
 
 if __name__ == "__main__":
+    failed = []
     for f, n in ((ed1, "ED1"), (ed2, "ED2"), (ed3, "ED3"), (ed5, "ED5"), (ed6, "ED6"), (ed7, "ED7")):
         try: f(); print(n, "ok")
-        except Exception as e: print(n, "FAILED:", type(e).__name__, e)
+        except Exception as e: failed.append(n); print(n, "FAILED:", type(e).__name__, e)
+    if failed:                                    # una figura que falla no puede pasar por generada
+        sys.exit(f"figuras no generadas: {', '.join(failed)}")

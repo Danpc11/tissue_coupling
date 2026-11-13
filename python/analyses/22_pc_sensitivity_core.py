@@ -19,13 +19,12 @@ def sc(X,g):
     Z=X.loc[gg]; return ((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T.mean(0)
 
 def islets():
-    ann=pd.read_csv(f"{RAW}/Human_GRCh38_p13_annot_tsv.gz",sep="\t",usecols=["GeneID","Symbol"],dtype=str)
-    sym=dict(zip(ann.GeneID,ann.Symbol))
-    C=pd.read_csv(f"{RAW}/GSE159984_raw_counts.tsv.gz",sep="\t",index_col=0)
-    C=C[[g for g in C.columns if int(g[3:])<=4852118]]
-    C.index=[sym.get(str(i),str(i)) for i in C.index]; C=C[~C.index.str.isdigit()]
-    C=C.groupby(level=0).sum(); C=C[(C>5).sum(1)>=10]
-    L=np.log2(C/C.sum()*1e6+1); return L.sub(L.mean(0),axis=1)
+    """Islotes de donantes de GSE159984, log2 CPM centrado por muestra. Que GSM son donantes se lee
+    de la matriz de serie, igual que en el metaanalisis."""
+    import islets as isl
+    don,_=isl.groups(RAW)
+    L=isl.log2cpm_symbols(f"{RAW}/GSE159984_raw_counts.tsv.gz",don,f"{RAW}/Human_GRCh38_p13_annot_tsv.gz")
+    return L.sub(L.mean(0),axis=1)
 
 def run(X, cov, label, npc=(0,1,2,3,5)):
     Z=X.sub(X.mean(1),axis=0).div(X.std(1)+1e-9,axis=0)

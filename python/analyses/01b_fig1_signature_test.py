@@ -1,23 +1,20 @@
 #!/usr/bin/env python3
-"""Figura 1: la expresión diferencial convencional no recupera la firma.
+"""Expresion diferencial convencional, caso frente a control dentro de cada cohorte (Fig. 1b-d).
 
-Pregunta de la figura: ¿puede el análisis convencional —comparar grupos dentro de un tejido— dar
-la firma glucocorticoide y de salida del reloj sobre la que descansa el resto del artículo?
-Respuesta: no. Ni gen a gen (ningún miembro de los conjuntos pasa FDR 0,1 en ninguna cohorte) ni,
-en la mayoría de cohortes, a nivel de conjunto. La firma solo aparece cuando se estima por muestra
-y se correlaciona dentro del individuo, que es lo que hacen las figuras 2 a 6.
+Pregunta: comparar grupos dentro de un tejido, que es el analisis habitual, recupera la firma
+glucocorticoide y la de salida del reloj? Se mira gen a gen y a nivel de conjunto.
 
-Cohortes de la figura, las mismas cinco del manuscrito:
-  músculo  GSE182120 (T2D vs NGT), GSE25462 (historia familiar de T2D), GSE159984 (transversal)
-  adiposo  GSE78721, GSE26637
-GSE13070 NO entra en esta figura: su contraste adiposo es 35 vs 6 y domina el panel con ~3.000
-genes significativos que son consecuencia del desbalance, no del efecto. GSE13070 se usa en las
-figuras 4 y 6, donde el diseño es pareado dentro de la persona y el desbalance no aplica.
-Este script corre las que estén en data/raw y avisa de las que falten.
+LAS CINCO COHORTES SON OBLIGATORIAS (COHORTS). Si falta la matriz de alguna, el paso lo dice y
+termina con error en vez de dibujar la figura con menos; T2D_ALLOW_PARTIAL=1 permite seguir.
+  musculo  GSE182120 (T2D frente a tolerancia normal), GSE25462 (T2D frente a sin historia familiar)
+  adiposo  GSE78721 (una muestra por persona), GSE26637 (resistentes frente a sensibles, en ayunas)
+  islotes  GSE159984 (donantes; PyDESeq2 en 01c_islets_deseq2.py)
+GSE13070 no entra: su contraste de adiposo es 35 frente a 6 y el desbalance domina el resultado.
 
-Método: moderación de varianza estilo limma (ajuste por momentos de la distribución a priori sobre
-log s², contracción de cada varianza hacia ella), Benjamini-Hochberg, y enriquecimiento de conjunto
-por z frente a 2.000 conjuntos del mismo tamaño muestreados del universo medido.
+Metodo: para microarreglos, t moderada estilo limma (a priori por momentos sobre log s2, Smyth
+2004) y Benjamini-Hochberg; para los islotes, PyDESeq2. A nivel de conjunto, z de la t media del
+conjunto frente a 2.000 conjuntos del mismo tamano. Ese nulo trata los genes como independientes:
+es una prueba competitiva y sobrestima la significacion de conjuntos de genes correlacionados.
 
 Salidas: results/fig1_de_per_cohort.tsv, fig1_signature_genes.tsv, fig1_set_enrichment.tsv
 """
@@ -36,7 +33,6 @@ def moderated_t(X, grp):
     s2=((a.var(1,ddof=1)*(na-1))+(b.var(1,ddof=1)*(nb-1)))/df
     s2=np.clip(s2,1e-12,None)
     # a priori por momentos sobre log(s2)  (Smyth 2004, aproximación)
-    z=np.log(s2); e=z-stats.psi(df/2)+np.log(df/2) if hasattr(stats,"psi") else z-(np.log(df/2)-1/df)
     from scipy.special import digamma, polygamma
     e=np.log(s2)-digamma(df/2)+np.log(df/2)
     ebar=e.mean(); var_e=e.var(ddof=1)-polygamma(1,df/2)
@@ -82,7 +78,7 @@ if __name__=="__main__":
     # --- GSE78721 (PrimeView): adiposo de extremidad, 68 T2D / 62 normales
     if os.path.exists(f"{OUT}/new/GSE78721_log2.pkl"):
         X=pd.read_pickle(f"{OUT}/new/GSE78721_log2.pkl"); md=pd.read_pickle(f"{OUT}/new/GSE78721_meta.pkl").set_index("gsm")
-        keep=md.index[md.one_per_person] if "one_per_person" in md else md.index   # una muestra por persona (rama repro-hugo)
+        keep=md.index[md.one_per_person] if "one_per_person" in md else md.index   # una muestra por persona
         COH["GSE78721 · adiposo"]=(X[list(keep)],(md.dx.reindex(keep)!="Normal").values,"adiposo")
     # --- GSE182120 (HTA 2.0): músculo 25 T2D / 24 NGT, centrado por laboratorio
     if os.path.exists(f"{OUT}/new/GSE182120_log2.pkl"):
@@ -90,11 +86,13 @@ if __name__=="__main__":
         Xc=X.copy()
         for lab,q in md.groupby("lab"): Xc[list(q.index)]=X[list(q.index)].sub(X[list(q.index)].mean(1),axis=0)
         COH["GSE182120 · músculo"]=(Xc,(md.disease.reindex(Xc.columns)=="T2D").values,"músculo")
-    FALTAN=[g for g in ("GSE159984",) if not glob.glob(f"{RAW}/{g}*")]
-    for g in FALTAN: print(f"AVISO: falta {g} en {RAW}; la figura completa requiere correrlo en el clúster")
-    if FALTAN: print(f"   -> esta corrida usa {len(COH)} de 5 cohortes; los z de conjunto publicados\n"
-                     "      incluyen clock output enriquecido en GSE25462 (z 4,3) y GSE78721 (z 2,5)")
-    rows=[],; rows=[]; sg=[]; se=[]
+    COHORTS=["GSE25462 · músculo","GSE26637 · adiposo","GSE78721 · adiposo","GSE182120 · músculo","GSE159984 · islotes"]
+    have=list(COH)+(["GSE159984 · islotes"] if os.path.exists(f"{OUT}/new/GSE159984_islets_T2D_vs_ND.tsv") else [])
+    missing=[c for c in COHORTS if c not in have]
+    if missing:
+        print(f"FALTAN {len(missing)} de las {len(COHORTS)} cohortes de la figura: "+"; ".join(missing))
+        if os.environ.get("T2D_ALLOW_PARTIAL")!="1": sys.exit("la figura completa necesita las cinco; T2D_ALLOW_PARTIAL=1 permite seguir")
+    rows=[]; sg=[]; se=[]
     for name,(X,grp,tis) in COH.items():
         res=moderated_t(X,grp); res.to_csv(f"{OUT}/fig1_de_{name.split(' ')[0]}_{tis}.tsv",sep="\t")
         n01=int((res.FDR<0.1).sum())
@@ -107,7 +105,7 @@ if __name__=="__main__":
                 r=resolve(x,res.index)
                 if r: sg.append(dict(cohorte=name,tejido=tis,conjunto=setname,gen=x,
                                      logFC=res.logFC[r],t=res.t[r],P=res.P[r],FDR=res.FDR[r]))
-    # --- rama repro-hugo: islotes de donantes (GSE159984), PyDESeq2 en 01c_islets_deseq2.py ---
+    # --- islotes de donantes (GSE159984): PyDESeq2 en 01c_islets_deseq2.py ---
     isl=f"{OUT}/new/GSE159984_islets_T2D_vs_ND.tsv"
     if os.path.exists(isl):
         res=pd.read_csv(isl,sep="\t",index_col=0); res=res[res.t.notna()]
@@ -126,7 +124,7 @@ if __name__=="__main__":
     Z.to_csv(f"{OUT}/fig1_set_enrichment.tsv",sep="\t",index=False)
     pd.set_option("display.width",200)
     print("\n== genes a FDR<0.1 por cohorte =="); print(D.to_string(index=False))
-    print("\n== los 18 genes de las dos firmas: ¿alguno pasa FDR 0,1? ==")
+    print(f"\n== los {S.gen.nunique()} genes de las dos firmas: ¿alguno pasa FDR 0,1? ==")
     print(f"   total de pruebas: {len(S)} | con FDR<0.1: {int((S.FDR<0.1).sum())} | con P<0.05 sin corregir: {int((S.P<0.05).sum())}")
     print(S.sort_values("P").head(10).round(3).to_string(index=False))
     print("\n== enriquecimiento de conjunto (z frente a conjuntos del mismo tamaño) ==")

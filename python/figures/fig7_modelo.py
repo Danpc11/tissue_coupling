@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Figura 7. Un oscilador forzado por el ritmo glucocorticoide reproduce lo observado.
-Requiere python/model/make_fig7_data.py (precalcula las simulaciones) y /tmp/tongue (barrido)."""
+"""Figura 5 del articulo (el nombre del fichero viene de una numeracion anterior): el modelo de
+oscilador forzado. Requiere python/model/make_fig7_data.py y python/model/make_tongue.py."""
 import os,sys,warnings; warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -8,7 +8,7 @@ from scipy import stats
 OUT=os.environ.get("T2D_OUT","results")
 BLUE,ORANGE,GREEN,PURPLE,GREY="#1f77b4","#d95f02","#2a9d8f","#6a3d9a","#999999"
 D=np.load(f"{OUT}/new/fig7_data.npz",allow_pickle=True)
-fig=plt.figure(figsize=(16,8.8)); gs=fig.add_gridspec(2,3,hspace=.5,wspace=.35)
+fig=plt.figure(figsize=(16,8.8)); gs=fig.add_gridspec(2,3,hspace=.5,wspace=.5)
 ax=fig.add_subplot(gs[0,0]); ax.text(-0.22,1.07,"A",transform=ax.transAxes,fontsize=11,fontweight="bold",va="top")
 R=np.load(f"{OUT}/new/tongue_R.npy"); FK,TAU=np.load(f"{OUT}/new/tongue_axes.npy")
 im=ax.pcolormesh(TAU,FK,R,cmap="viridis",shading="auto",vmin=0,vmax=1)
@@ -36,18 +36,22 @@ sim=sim[_keep]; genes=[genes[k] for k in _keep]
 OBS=pd.read_csv(f"{OUT}/new/observed_signature_for_model.tsv",sep="\t",index_col=0)["IR_minus_sensitive_log2"]
 obs=np.array([OBS.get(g,np.nan) for g in genes])
 x=np.arange(len(sim))
-ax.bar(x-.2,sim,.4,color=PURPLE,label="model (low − high coupling)")
-ax.bar(x+.2,obs,.4,color=GREEN,label="observed (resistant − sensitive)")
-ax.axhline(0,color="k",lw=.8); ax.set_xticks(x); ax.set_xticklabels(genes,rotation=45,fontsize=7.5,ha="right")
+# El modelo esta en sus propias unidades (amplitud del oscilador fijada en 1) y lo observado en log2:
+# las alturas no son comparables, y por eso cada serie lleva su eje. Lo que si se compara es el signo
+# de cada gen y el patron entre genes; 29_signature_from_phases.py lo hace con fases medidas.
 ok=~np.isnan(obs); conc=int(np.sum(np.sign(sim[ok])==np.sign(obs[ok])))
-ratio=np.abs(sim[ok]).mean()/np.abs(obs[ok]).mean()
-ax.set_title(f"{conc}/{int(ok.sum())} signs agree; mean magnitude within {abs(1-ratio)*100:.0f}%",
-             fontsize=8, pad=4)
-pd.DataFrame(dict(gene=[g for g,k in zip(genes,ok) if k], model=sim[ok], observed=obs[ok])).to_csv(
-    f"{OUT}/new/model_vs_observed.tsv", sep="\t", index=False)
-ax.set(ylabel="change (log$_2$ / model units)",
-       )
-ax.legend(fontsize=7,frameon=False)
+rho_pattern=stats.spearmanr(sim[ok],obs[ok]).statistic if ok.sum()>2 else np.nan
+ax.bar(x-.2,sim,.4,color=PURPLE,label="model (low − high coupling)")
+ax.axhline(0,color="k",lw=.8); ax.set_xticks(x); ax.set_xticklabels(genes,rotation=45,fontsize=7.5,ha="right")
+ax.set_ylabel("model, arbitrary units",color=PURPLE); lim=np.nanmax(np.abs(sim))*1.25; ax.set_ylim(-lim,lim)
+axo=ax.twinx(); axo.bar(x+.2,obs,.4,color=GREEN,label="observed (resistant − sensitive)")
+axo.set_ylabel("observed, log$_2$",color=GREEN); limo=np.nanmax(np.abs(obs))*1.25; axo.set_ylim(-limo,limo)
+axo.spines[["top"]].set_visible(False)
+ax.set_title(f"{conc}/{int(ok.sum())} signs agree; pattern across genes ρ = {rho_pattern:.2f}",fontsize=8,pad=4)
+pd.DataFrame(dict(gene=[g for g,k in zip(genes,ok) if k], model_arbitrary_units=sim[ok], observed_log2=obs[ok])).assign(
+    signs_agree=conc, rho_pattern=rho_pattern).to_csv(f"{OUT}/new/model_vs_observed.tsv", sep="\t", index=False)
+h1,l1=ax.get_legend_handles_labels(); h2,l2=axo.get_legend_handles_labels()
+ax.legend(h1+h2,l1+l2,fontsize=7,frameon=False,loc="upper right")
 ax=fig.add_subplot(gs[1,0]); ax.text(-0.22,1.07,"D",transform=ax.transAxes,fontsize=11,fontweight="bold",va="top")
 W=D["window"]; x=np.arange(3)
 ax.bar(x-.2,W[:,0],.4,color=PURPLE,label="LEVEL difference")
@@ -56,12 +60,12 @@ ax.axhline(0,color="k",lw=.8); ax.set_xticks(x)
 ax.set_xticklabels(["morning\n(08:00 ± 1.5 h)","wide\n(± 4 h)","uniform\n(24 h)"],fontsize=7.5)
 ax.set(ylabel="low − high coupling",
        )
-ax.legend(fontsize=7,frameon=False)
+ax.legend(fontsize=7,frameon=False,loc="lower center",bbox_to_anchor=(.5,1.0),ncol=2)
 ax=fig.add_subplot(gs[1,1]); ax.text(-0.22,1.07,"E",transform=ax.transAxes,fontsize=11,fontweight="bold",va="top")
 E=D["est"]
 ax.plot(E[:,0],E[:,1],"o-",color=BLUE,label="true coupling (K)")
-ax.axhspan(0.09,0.22,color=GREEN,alpha=.25)
-ax.text(0.62,0.26,"range observed with NR3C1\n(0.09–0.22)",fontsize=7.5,color="#1d6b5f")
+# Aqui habia una banda con un "intervalo observado con NR3C1 (0.09-0.22)" escrito a mano. Ningun
+# paso del repositorio produce esas dos cifras, asi que no se dibuja hasta que tengan productor.
 ax.set(xlabel="measurement noise",ylabel="ρ (coupling, inferred amplitude)",ylim=(0,0.85),
        )
 ax.legend(fontsize=7,frameon=False)

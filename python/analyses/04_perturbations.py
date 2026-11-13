@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""Respuesta de la fase y la amplitud a perturbaciones metabolicas.
+"""Proyeccion de una muestra sobre la plantilla de fase: fase, amplitud y calidad de ajuste.
 
-Tres perturbaciones, con la misma plantilla y el mismo estimador en las tres:
-
-  GSE107537  retraso de 10 h del periodo de sueno habitual, en laboratorio controlado, sangre.
-             Es el control POSITIVO: las horas de muestreo estan registradas y el resultado esta
-             publicado por otro grupo, de modo que sirve para comprobar que el estimador asigna la
-             perturbacion a la componente correcta.
-  GSE13070   clamp de insulina (agudo) y tiazolidindiona (sostenida), musculo y adiposo.
+ESTE FICHERO ES UNA LIBRERIA, NO UN PASO. No calcula nada por si solo ni escribe ninguna tabla.
+Sus funciones las usan 05_clamp_within_person.py (clamp y tiazolidindiona, dentro de la persona)
+y 00d_reference_tables.py (tablas de amplitud). Las respuestas a hidrocortisona, dexametasona y
+sindrome de Cushing se calculan en 00d_reference_tables.py y 23_build_signatures_table.py.
 
 QUE SE MIDE Y COMO. Por muestra se estima una fase y una amplitud contra una plantilla fija. La
 comparacion entre condiciones se hace sobre DISTRIBUCIONES, no sobre medias:
@@ -15,16 +12,12 @@ comparacion entre condiciones se hace sobre DISTRIBUCIONES, no sobre medias:
   - la fase, por la concentracion circular R del grupo, porque la perturbacion puede agrupar las
     fases sin desplazar su centro, y una prueba de medianas no ve eso;
   - la amplitud, por la diferencia ABSOLUTA entre condiciones, nunca por el cociente: con basal
-    pequeno el cociente explota (se observaron cambios de +1000 % que son division por casi cero)
-    y produce ademas correlacion espuria con el valor basal.
+    pequeno el cociente explota y produce ademas correlacion espuria con el valor basal.
 
-FILTRO DE AJUSTE. Las muestras se restringen a los percentiles 5-95 del ajuste a la onda. El
-criterio se fija por regla y no por resultado, y el efecto debe comprobarse en varios rangos: en
-GSE13070 la concentracion de fase tras el clamp aparece igual sin filtro y con cualquiera de los
-rangos ensayados.
-
-Uso:  python python/analyses/04_perturbations.py
-Salidas: results/perturbation_phase_amplitude.tsv
+AVISO. Esta proyeccion sobre los 800 genes mas ritmicos de la plantilla NO es el estimador
+validado dejando uno fuera (ese es el ordenamiento libre sobre el panel de genes del reloj, pasos
+04 y 05 de run_all.sh). Sus resultados dependen de la plantilla que se use: con la plantilla
+versionada y con la regenerada el cambio de amplitud tras el clamp tiene distinto signo.
 """
 import os
 import sys
@@ -108,12 +101,4 @@ def sweep_fit_ranges(df, condition, ranges=((0, 100), (10, 90), (5, 95), (12, 88
 
 
 if __name__ == "__main__":
-    tpath = os.path.join(OUT, "template_2harm.tsv")
-    if not os.path.exists(tpath):
-        print(f"Falta {tpath}. Ejecuta antes 02b_phase_template.py con los dos armonicos.")
-        sys.exit(1)
-    template = pd.read_csv(tpath, sep="\t").set_index("gene")
-    genes = list(template.sort_values("r2", ascending=False).index[:800])
-    print(f"plantilla: {len(template)} genes, se usan {len(genes)}")
-    print("Este paso necesita las matrices por cohorte preparadas en 00_prepare_data.py;")
-    print("las funciones de arriba son las que aplica el analisis publicado.")
+    print("04_perturbations.py es una libreria de funciones; no es un paso del pipeline y no escribe nada.")

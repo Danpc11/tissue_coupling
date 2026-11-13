@@ -6,12 +6,11 @@ from scipy import stats
 from gene_sets import SETS, resolve
 ann=pd.read_csv(f"{_RAW}/Human_GRCh38_p13_annot_tsv.gz",sep="\t",usecols=["GeneID","Symbol"],dtype=str)
 sym=dict(zip(ann.GeneID,ann.Symbol))
+import islets as _isl
 def islets():
-    C=pd.read_csv(f"{_RAW}/GSE159984_raw_counts.tsv.gz",sep="\t",index_col=0)
-    C=C[[g for g in C.columns if int(g[3:])<=4852118]]
-    C.index=[sym.get(str(i),str(i)) for i in C.index]; C=C[~C.index.str.isdigit()]
-    C=C.groupby(level=0).sum(); C=C[(C>5).sum(1)>=10]
-    return np.log2(C/C.sum()*1e6+1)
+    """Islotes de donantes de GSE159984, log2 CPM. Que GSM son donantes se lee de la matriz de serie."""
+    don,_=_isl.groups(_RAW)
+    return _isl.log2cpm_symbols(f"{_RAW}/GSE159984_raw_counts.tsv.gz",don,f"{_RAW}/Human_GRCh38_p13_annot_tsv.gz")
 def rank_vs(X,cv=None):
     Xc=X.sub(X.mean(0),axis=1)                    # centrado por muestra (§30)
     D=np.column_stack([np.ones(Xc.shape[1])]+(cv or []))
@@ -41,16 +40,29 @@ WANT=["HP_TRUNCAL_OBESITY","HP_INCREASED_URINARY_CORTISOL_LEVEL","HP_INSULIN_RES
       "HP_HYPERGLYCEMIA","HP_TYPE_II_DIABETES_MELLITUS","HP_OBESITY","HP_ABNORMAL_CIRCULATING_CORTISOL_CONCENTRATION",
       "HP_HYPERCORTISOLISM","HP_PRIMARY_HYPERCORTISOLISM","HP_DIABETES_MELLITUS","HP_HYPERINSULINEMIA",
       "HP_ABNORMAL_GLUCOSE_HOMEOSTASIS","HP_INCREASED_BODY_WEIGHT","HP_MUSCLE_WEAKNESS","HP_HYPERTENSION"]
+# El ranking es la correlacion de cada gen con NR3C1, y la de NR3C1 consigo mismo vale 1. Varios de
+# estos terminos lo contienen (entre ellos el de cortisol urinario, de 16 genes): contarlo es
+# circular. `z` lo excluye; `z_including_NR3C1` es el calculo anterior, tal como se publico.
+absent=[w for w in WANT if w not in gmt]
+if absent: print("terminos que no existen en esta version de MSigDB y no se puntuan:", ", ".join(absent))
+rng2=np.random.default_rng(1)
 for tis,R in RK.items():
     R.index=[syn.get(g,g) for g in R.index]; R=R.groupby(level=0).mean()
-    idx={g:i for i,g in enumerate(R.index)}; vals=R.values; cache={}
+    idx={g:i for i,g in enumerate(R.index)}; vals=R.values; cache={}; cache2={}
+    ia=idx.get("NR3C1"); pool=np.array([i for i in range(len(vals)) if i!=ia])
     for name in WANT:
         if name not in gmt: continue
         g=[idx[x] for x in gmt[name] if x in idx]; n=len(g)
         if n<8: continue
         if n not in cache:
             m=np.array([vals[rng.integers(0,len(vals),n)].mean() for _ in range(3000)]); cache[n]=(m.mean(),m.std())
-        mu,sd=cache[n]; rows.append(dict(tissue=tis,term=name,n=n,z=(vals[g].mean()-mu)/sd))
+        mu,sd=cache[n]; z0=(vals[g].mean()-mu)/sd; z=z0; has=ia in g
+        if has:
+            g2=[i for i in g if i!=ia]; k=len(g2)
+            if k not in cache2:
+                m=np.array([vals[rng2.choice(pool,k)].mean() for _ in range(3000)]); cache2[k]=(m.mean(),m.std())
+            z=(vals[g2].mean()-cache2[k][0])/cache2[k][1]
+        rows.append(dict(tissue=tis,term=name,n=n,z=z,z_including_NR3C1=z0,contains_NR3C1=has))
 T=pd.DataFrame(rows); T.to_csv(f"{_OUT}/new/HPO_by_tissue.tsv",sep="\t",index=False)
 P=T.pivot_table(index="term",columns="tissue",values="z").reindex(columns=["adipose","muscle","islets"])
 print(P.round(2).to_string())

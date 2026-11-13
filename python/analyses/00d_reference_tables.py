@@ -172,9 +172,17 @@ LIBS = {"h_all": ("h.all", None), "c2_cp_reactome": ("c2.cp.reactome", None), "c
         "c5_go_bp": ("c5.go.bp", None), "c5_hpo": ("c5.hpo", None), "c7_all": ("c7.all", None), "c8_all": ("c8.all", None)}
 
 
-def enrichment(R, libs, nperm=2000, seed=0, min_n=10):
-    """z de la media de rho de cada conjunto frente a 2,000 conjuntos aleatorios del mismo tamano."""
+def enrichment(R, libs, nperm=2000, seed=0, min_n=10, anchor="NR3C1"):
+    """z de la media de rho de cada conjunto frente a 2,000 conjuntos aleatorios del mismo tamano.
+
+    El ranking es la correlacion de cada gen con `anchor`, y la del ancla consigo misma vale 1. Un
+    conjunto que contiene al ancla recibe ese 1 en su media: es circular, y en conjuntos pequenos
+    pesa (hasta dos unidades de z). La columna `z` excluye al ancla de los conjuntos que la
+    contienen; `z_including_anchor` es el calculo anterior, tal como se publico, y
+    `contains_anchor` dice a cuales afecta. En los demas conjuntos las dos columnas coinciden."""
     rng = np.random.default_rng(seed); vals = R.values; idx = {g: i for i, g in enumerate(R.index)}
+    ia = idx.get(anchor); rng2 = np.random.default_rng(seed + 1); null2 = {}
+    pool = np.array([i for i in range(len(vals)) if i != ia])            # el ancla tampoco entra en el nulo corregido
     null = {}
     rows = []
     for lib in libs:
@@ -186,7 +194,13 @@ def enrichment(R, libs, nperm=2000, seed=0, min_n=10):
             if n < min_n: continue
             if n not in null:
                 null[n] = np.array([vals[rng.choice(len(vals), n, replace=False)].mean() for _ in range(nperm)])
-            rows.append(dict(lib=lib, set=name, n=n, z=(vals[ii].mean() - null[n].mean()) / null[n].std()))
+            z0 = (vals[ii].mean() - null[n].mean()) / null[n].std(); z = z0; has = ia is not None and ia in ii
+            if has:
+                jj = [i for i in ii if i != ia]; m = len(jj)
+                if m not in null2:
+                    null2[m] = np.array([vals[rng2.choice(pool, m, replace=False)].mean() for _ in range(nperm)])
+                z = (vals[jj].mean() - null2[m].mean()) / null2[m].std()
+            rows.append(dict(lib=lib, set=name, n=n, z=z, z_including_anchor=z0, contains_anchor=has))
     return pd.DataFrame(rows)
 
 

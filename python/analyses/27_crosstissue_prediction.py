@@ -76,19 +76,34 @@ def load():
 
 
 def oof(Yx, Yy, Cx, Cy, extra, Z_cov, nfold, seed):
-    """Prediccion fuera de pliegue. Con Z_cov el predictor son las covariables y no la expresion."""
-    n = Yy.shape[0]; pred = np.zeros(n); obs = np.zeros(n); fold = np.zeros(n, int)
+    """Prediccion fuera de pliegue. Con Z_cov el predictor son las covariables y no la expresion.
+
+    Dos precisiones sobre la escala:
+      - el resultado se estandariza en cada pliegue con la media y la desviacion de SU entrenamiento
+        (no hay otra forma de hacerlo sin fuga), de modo que cada pliegue queda en su propia escala.
+        Por eso, ademas del R2 con todas las predicciones juntas, se devuelve el R2 de cada pliegue,
+        que no depende de esa escala;
+      - los predictores, sean genes o covariables, se estandarizan igual, con el entrenamiento, antes
+        de la regresion con penalizacion: asi la penalizacion pesa lo mismo en los dos modelos que
+        se comparan.
+    Devuelve (R2 conjunto, observado, predicho, pliegue, R2 por pliegue)."""
+    n = Yy.shape[0]; pred = np.zeros(n); obs = np.zeros(n); fold = np.zeros(n, int); r2f = []
     for fi, (tr, te) in enumerate(KFold(nfold, shuffle=True, random_state=seed).split(np.arange(n))):
         def prep(Y, Cv):
             C = Cv if extra is None else np.column_stack([Cv, extra])
             b, *_ = np.linalg.lstsq(C[tr], Y[tr], rcond=None); R = Y - C @ b
             return (R - R[tr].mean(0)) / (R[tr].std(0) + 1e-9)
         y = prep(Yy, Cy).mean(1)
-        Z = Z_cov if Z_cov is not None else prep(Yx, Cx)
+        if Z_cov is not None:
+            keep = Z_cov[tr].std(0) > 0                      # sin columnas constantes en el entrenamiento
+            Z = (Z_cov[:, keep] - Z_cov[tr][:, keep].mean(0)) / Z_cov[tr][:, keep].std(0)
+        else:
+            Z = prep(Yx, Cx)
         m = RidgeCV(alphas=np.logspace(-2, 3, 20)).fit(Z[tr], y[tr])
         pred[te] = m.predict(Z[te]); obs[te] = y[te]; fold[te] = fi
+        r2f.append(1 - ((obs[te] - pred[te]) ** 2).sum() / ((obs[te] - obs[te].mean()) ** 2).sum())
     r2 = 1 - ((obs - pred) ** 2).sum() / ((obs - obs.mean()) ** 2).sum()
-    return r2, obs, pred, fold
+    return r2, obs, pred, fold, np.array(r2f)
 
 
 def run(nfold=5, seed=0):
@@ -101,12 +116,14 @@ def run(nfold=5, seed=0):
         gx = [g for g in GC if g in E["adipose"].index]; gy = [g for g in TARGET if g in E["muscle"].index]
         Yx = E["adipose"].loc[gx].to_numpy().T; Yy = E["muscle"].loc[gy].to_numpy().T
         for label, extra, zc in (("raw", None, None), ("death-adjusted", hardy, None), ("covariates only", hardy, cov)):
-            r2, obs, pred, fold = oof(Yx, Yy, tech["adipose"], tech["muscle"], extra, zc, nfold, seed)
+            r2, obs, pred, fold, r2f = oof(Yx, Yy, tech["adipose"], tech["muscle"], extra, zc, nfold, seed)
             rho = stats.spearmanr(obs, pred)
             rows.append(dict(predictor="adipose", outcome="muscle", setting=label, centring=centring, n=len(donors),
                              n_pred_genes=len(gx), n_out_genes=len(gy), folds=nfold, seed=seed,
-                             r2=r2, rho=rho.statistic, p=rho.pvalue))
-            print(f"  adipose -> muscle, {label:16s} centrado: {centring:10s} n={len(donors)}  R2={r2:+.3f}  rho={rho.statistic:+.3f}")
+                             r2=r2, rho=rho.statistic, p=rho.pvalue,
+                             r2_fold_mean=r2f.mean(), r2_fold_min=r2f.min(), r2_fold_max=r2f.max()))
+            print(f"  adipose -> muscle, {label:16s} centrado: {centring:10s} n={len(donors)}  R2={r2:+.3f}  rho={rho.statistic:+.3f}"
+                  f"   por pliegue: media {r2f.mean():+.3f}, de {r2f.min():+.3f} a {r2f.max():+.3f}")
             if label == "death-adjusted" and centring == "none":
                 out_oof = pd.DataFrame(dict(donor=donors, fold=fold, observed=obs, predicted=pred))
                 observed_r2 = r2

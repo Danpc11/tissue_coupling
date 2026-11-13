@@ -16,7 +16,12 @@ repite la residualizacion), para comprobar que el resultado no depende de esa ap
 CENTRADO. Las estimaciones usan expresion centrada por muestra. `rho_uncentred` es la misma
 correlacion sin centrar, para que la sensibilidad a esa decision quede escrita en la tabla.
 
-Salidas: results/new/meta_per_cohort.tsv y meta_pooled.tsv
+ESPECIFICIDAD. La misma correlacion parcial se calcula para todos los genes de cada matriz y se
+guarda (meta_all_genes_rho.pkl); `percentile_among_all_genes` dice donde queda NR3C1 entre ellos, y
+`rho_given_the_other` es la correlacion de cada predictor con la salida del reloj una vez quitado
+lo que explica el otro (NR3C1 dada la senal glucocorticoide, y al reves).
+
+Salidas: results/new/meta_per_cohort.tsv, meta_pooled.tsv y meta_all_genes_rho.pkl
 """
 import os as _os, sys as _sys
 _RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
@@ -59,13 +64,24 @@ sp=importlib.util.spec_from_file_location("c5",os.path.join(os.path.dirname(os.p
 E,d=c5.load(); mus13=d[(d.tissue=="muscle")&(d.tzd=="pre")&(d.clamp=="pre")].drop_duplicates("subject").set_index("subject")
 adi13=d[(d.tissue=="adipose")&(d.tzd=="pre")].drop_duplicates("subject").set_index("subject")
 G1=pd.read_pickle(f"{_OUT}/new/GTEx_adipose_sc.pkl"); G2=pd.read_pickle(f"{_OUT}/new/GTEx_adipose_visc.pkl"); G3=pd.read_pickle(f"{_OUT}/new/GTEx_muscle.pkl")
-rows=[]
+rows=[]; ALLG={}
 def add(coh,tis,X0,cv,x_lab="NR3C1"):
     X=X0.sub(X0.mean(0),axis=1) if os.environ.get("T2D_CENTER","1")!="0" else X0   # centrado por muestra (Methods, "Sample centring"); T2D_CENTER=0 lo desactiva
     n=X.shape[1]; D=design(n,cv)
     raw={"NR3C1~reloj":np.asarray(X.loc[x_lab],float),"GC~reloj":np.asarray(sc(X,GC),float)}; yraw=np.asarray(sc(X,CL),float)
     unc={"NR3C1~reloj":np.asarray(X0.loc[x_lab],float),"GC~reloj":np.asarray(sc(X0,GC),float)}; yunc=np.asarray(sc(X0,CL),float)
     y=pres(yraw,cv,D); rng=np.random.default_rng(0)
+    # la misma correlacion parcial para TODOS los genes: es el fondo contra el que se mide NR3C1
+    V=X.values.T.astype(float); V=V-D@np.linalg.lstsq(D,V,rcond=None)[0]
+    rk=np.apply_along_axis(stats.rankdata,0,V); sd=rk.std(0); sd[sd==0]=np.nan
+    ry=stats.rankdata(y); allrho=pd.Series(((rk-rk.mean(0))/sd*((ry-ry.mean())/ry.std())[:,None]).mean(0),index=X.index).dropna()
+    ALLG[f"{coh} | {tis}"]=allrho.astype("float32"); del V,rk
+    inscore={r for r in (resolve(x,X.index) for x in CL) if r}
+    bg=allrho.drop([g for g in allrho.index if g in inscore or g==x_lab])
+    pct_all=float((bg<allrho[x_lab]).mean()*100)
+    def partial(a,b,c):                                   # rho de a con b quitando a los dos lo que explica c
+        Dc=np.column_stack([D,c]); return stats.spearmanr(pres(a,cv,Dc),pres(b,cv,Dc)).statistic
+    part={"NR3C1~reloj":partial(raw["NR3C1~reloj"],yraw,raw["GC~reloj"]),"GC~reloj":partial(raw["GC~reloj"],yraw,raw["NR3C1~reloj"])}
     idx=[rng.integers(0,n,n) for _ in range(NBOOT)]          # las mismas remuestras para los dos contrastes
     for lab in raw:
         r=stats.spearmanr(pres(raw[lab],cv,D),y).statistic
@@ -78,7 +94,8 @@ def add(coh,tis,X0,cv,x_lab="NR3C1"):
             zb.append(np.arctanh(np.clip(rb,-.999,.999)))
         ru=stats.spearmanr(pres(unc[lab],cv,D),pres(yunc,cv,D)).statistic
         rows.append(dict(contraste=lab,cohorte=coh,tejido=tis,n=n,rho=r,z=z,se=se,
-                         se_boot=float(np.std(zb,ddof=1)) if len(zb)>50 else np.nan,rho_uncentred=ru))
+                         se_boot=float(np.std(zb,ddof=1)) if len(zb)>50 else np.nan,rho_uncentred=ru,
+                         rho_given_the_other=part[lab],percentile_among_all_genes=pct_all if lab=="NR3C1~reloj" else np.nan))
 add("AAGMEx","adiposo",A,aag); add("AAGMEx","músculo",M,aag)
 add("GSE41168","adiposo",Ea,[]); add("GSE41168","músculo",Em,[])
 add("GSE13070","adiposo",E[list(adi13.gsm)],[]); add("GSE13070","músculo",E[list(mus13.gsm)],[])
@@ -98,6 +115,7 @@ if os.path.exists(f"{RAW}/GSE159984_raw_counts.tsv.gz"):
         if L.shape[1]<10: print(f"  GSE159984 {lab}: {L.shape[1]} muestras en el fichero de cuentas; se omite"); continue
         add("GSE159984",lab,L,[])
 R=pd.DataFrame(rows)
+pd.DataFrame(ALLG).to_pickle(f"{OUT}/new/meta_all_genes_rho.pkl")    # gen x estimacion: lo lee 30_receptor_specificity.py
 have=set(zip(R.cohorte,R.tejido)); missing=[m for m in MANIFEST if m not in have]
 R["complete"]=not missing
 if missing:

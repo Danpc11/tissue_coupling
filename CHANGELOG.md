@@ -1,5 +1,103 @@
 # Changelog
 
+## v2.5.0: answers to a second look by the same reviewer, and one new control
+
+This release contains v2.4.0, which was never published on its own.
+
+Two of the reviewer's points refer to code that was no longer in the repository: the leak in the
+validation of the phase template was removed in v2.2.2 (`02b_phase_template.py` has 256 lines and
+no selection on all samples), and the fixed reference for a sample outside the cohort was added in
+v2.3.0. The other four were right.
+
+### Fixed
+- **The benchmark of the template in adipose tissue led with an optimistic error.** The template
+  fixes phase up to an arbitrary zero, so one offset has to be learned from samples with a known
+  hour. The headline figure fitted it on the very samples it then scored. The primary figure is
+  now the one with the offset learned from the other subjects, for every gene list, and chance is
+  measured with the same procedure (6.0 h). On the real GSE87761 with the versioned template:
+  2.64 h mean and 2.33 h median, 67% within 3 h, against 2.62 h with the optimistic offset.
+- **The cross-tissue prediction pooled folds that are on different scales.** The outcome is
+  standardised within each fold with its own training set, which is the only way without a leak,
+  so the pooled R² mixes scales. The table now also carries the R² of each fold, which does not:
+  0.43 on average, from 0.39 to 0.48, against 0.44 pooled. And the covariates of the
+  covariates-only model were not standardised before the penalised regression while the genes
+  were; they are now, and that row moves from 0.033 to 0.036.
+- **The sleep-delay control measured a different amplitude from the estimator it was said to
+  validate.** It fits a cosinor on the recorded hours. The step now also applies the single-sample
+  estimator under the same design, and says what it finds: the cosinor amplitude falls in 8 of 8
+  participants (median −28.6%, *P* = 0.008); the inferred amplitude falls in 3 of 8 (median +8.9%,
+  *P* = 0.95) and does not follow the cosinor change across participants (ρ = −0.33). Blood does
+  not pass the antiphase check the estimator requires of a tissue (BMAL1 and DBP 2.3 h apart). The
+  control supports the gene set, not the single-sample estimator.
+
+### Added
+- **Is the association specific to the receptor?** (step 12b). The same partial correlation, with
+  the same covariates and the same random-effects pooling, for every gene measured in all the
+  estimates. On the eleven estimates that could be built here, *NR3C1* is at the 99.97th
+  percentile of 15,041 genes: four are above it, among them the clock gene *BHLHE41* and *NR3C2*,
+  the mineralocorticoid receptor, which also binds cortisol. Among the nuclear receptors *NR3C1*
+  is second to *NR3C2*, and the third, *RORA*, is at 0.29 against 0.45. Its percentile within each
+  estimate has a median of 98 and a minimum of 77.
+- The meta-analysis table carries, for each estimate, the correlation of each predictor with clock
+  output once the other is removed: the receptor given the glucocorticoid score, and the reverse.
+- A fixed reference for the anchored phase as well (`fit_anchored_reference`,
+  `phase_from_anchored_reference`), tested: a new sample gets the phase it would get inside the
+  cohort, whichever reference is used.
+
+## v2.4.0: the last scripts read, and what the figures draw
+
+The scripts not read in v2.3.0 (perturbations, signature table, case-control analysis, islets,
+phenotype terms) and every figure script. Steps were rerun on the real data where the downloads
+reach, and all eleven figures were rendered with the edited code.
+
+### Fixed
+- **The enrichments scored the receptor against itself.** Fig. 4b, 4c, 4f and 4g rank every gene
+  by its correlation with *NR3C1* and score gene sets on that ranking. The correlation of *NR3C1*
+  with itself is 1, and it was left in the sets that contain it: 7 of the phenotype terms shown,
+  and 189 sets of the Hallmark and phenotype collections. It is circular, and it weighs in small
+  sets. With the receptor excluded, "increased urinary cortisol level" (16 genes) goes from z = 3.8
+  to 2.0 in adipose tissue and from 1.9 to −0.2 in muscle; "truncal obesity" from 3.7 to 2.8 and
+  from 0.9 to 0.0; the GO terms of response to dexamethasone from +1.4 to about zero. Hallmark
+  changes little (three sets, by 0.5). `z` now excludes the receptor, `z_including_anchor` (or
+  `z_including_NR3C1`) keeps the previous value, and sets without it are unchanged to the last bit.
+- **Step 15, "hydrocortisone, dexamethasone, Cushing", computed nothing.** `04_perturbations.py`
+  printed two lines and exited; its docstring named an output that no code writes. It is a library
+  of functions used by two other steps, says so now, and is no longer a step.
+- **The signature table is not fully regenerated, and the documentation said it was.** Nine of its
+  twelve columns, among them the insulin-resistance contrast, come from the versioned copy. That
+  is now stated in the script and in `docs/DATA.md`, and step 16 computes the same statistics on
+  the fully regenerated table too.
+- **Fig. 5c compared the model in its own units with observed log2 differences** on one axis, and
+  its title gave their ratio as an agreement "within 14%". The magnitude of the model follows from
+  an oscillator amplitude fixed at 1 and from the contrast of receptor gain chosen. Each series now
+  has its own axis and the title gives what is comparable: the signs, and the correlation of the
+  pattern across genes, which with the model's hand-set phases is 0.14.
+- **Fig. 5e drew a band "observed with NR3C1 (0.09–0.22)"** whose two numbers no step produces.
+  Removed until they have a producer.
+- **Numbers written by hand in the figures.** Every count in a panel annotation is now read from
+  the data the panel draws: participants, cohorts, genes, transcription factors. One was already
+  stale (34,020 genes where the ranking has 34,615) and one was wrong (nine clock genes where
+  eight are drawn). Three annotations that stated a conclusion now describe the panel.
+- The case-control analysis added each cohort only if its matrix existed, and printed published
+  values that no longer hold. Its five cohorts are a manifest, as in the meta-analysis.
+- A failed supplementary figure was reported and the step still succeeded.
+- The islet donors were selected by a GEO accession threshold in two steps and by reading the
+  series matrices in a third; all three read the series matrices now.
+
+### Added
+- **The model's prediction without units, with measured phases** (step 20b). The model says that a
+  biopsy at a fixed hour sees each gene pulled towards its mean in proportion to its amplitude.
+  With the phases and amplitudes measured in the time-course cohort instead of the ones written in
+  the model, the predicted sign agrees in 8 of 8 genes and the predicted pattern correlates with
+  the observed one at ρ = 0.74 (P = 0.027 against random template genes) at 08:00, the hour of the
+  model; 0.31 at 06:00 and 0.86 at 10:00.
+- **The signature correlation against its background** (step 16). Over the eight output-arm genes
+  the insulin-resistance and hydrocortisone profiles correlate at 0.71; over all 6,108 genes at
+  −0.05; random sets of eight genes reach 0.62 at their 95th percentile (P = 0.026); leaving one
+  gene out gives 0.57 to 0.79. The Cushing profile does not stand out from random sets (P = 0.16).
+- Panel titles that were passed to a function that ignores them, sixteen of them stating results,
+  are gone from the code.
+
 ## v2.3.0: a full review of every script, run on the real data
 
 The published code was run here on the real downloads, as far as they reach, on a different

@@ -1,21 +1,32 @@
 #!/usr/bin/env python3
 """Benchmark de la plantilla de musculo en adiposo con hora de muestreo registrada (GSE87761).
 
-Results §2 afirma que la plantilla construida en musculo "predicted the recorded sampling time of
-adipose tissue under constant routine (GSE87761) to within 1.7 h". GSE87761 (Christou et al.,
-Agilent GPL15331): 7 varones en rutina constante, 5 biopsias de adiposo subcutaneo cada 6 h, 33
-muestras con hora de reloj y fase circadiana respecto al inicio de melatonina en los metadatos.
+GSE87761 (Christou et al., Agilent GPL15331): 7 varones en rutina constante, 5 biopsias de adiposo
+subcutaneo cada 6 h, 33 muestras con hora de reloj y fase circadiana respecto al inicio de
+melatonina en los metadatos. La plantilla se construyo en otro tejido y en otra cohorte, de modo
+que ni los genes ni sus fases se han elegido con estos datos.
 
 Que hace:
   1. mapea las sondas a simbolo con la tabla de la plataforma y promedia por gen
   2. infiere la fase de cada muestra con la plantilla de dos armonicos de results/template_2harm.tsv
      (misma proyeccion firmada que usa el resto del pipeline: lib/within_person_coupling._profile)
-  3. alinea el cero arbitrario de la plantilla con un unico desfase global y mide el error circular
-     absoluto frente a la hora registrada y frente a la fase circadiana
-  4. repite con varias listas de genes y con un nulo de fases al azar (mismo desfase optimo)
+  3. mide el error circular absoluto frente a la hora registrada
+
+EL DESFASE. La plantilla fija la fase salvo un cero arbitrario: hay que estimar UN desfase entre el
+cero de la plantilla y la hora de reloj, y ese parametro se aprende de datos con hora conocida. Hay
+dos maneras de hacerlo y dan cifras distintas:
+  - con todas las muestras, las mismas que luego se evaluan: es optimista, porque el desfase se
+    elige minimizando el error que se informa;
+  - con los demas sujetos, dejando fuera al que se evalua: es la estimacion honesta, y es la cifra
+    PRINCIPAL de este paso (columna `primary`).
+Para una prediccion del todo independiente el desfase tendria que venir de una tercera cohorte.
+El azar se mide con el mismo procedimiento: fases al azar y desfase aprendido de los demas sujetos.
+
+Se informan varias listas de genes. La principal es la de genes del reloj del registro, fijada de
+antemano; las demas muestran cuanto depende el error de la lista, y su minimo no es una estimacion.
 
 Uso:  python python/analyses/02e_gse87761_benchmark.py
-Salidas: results/new/gse87761_benchmark.tsv (resumen por lista de genes),
+Salidas: results/new/gse87761_benchmark.tsv (resumen por lista de genes y forma de fijar el desfase),
          results/new/gse87761_phases.tsv (fase inferida por muestra, lista de genes reloj)
 """
 import os, sys, importlib.util, warnings
@@ -68,6 +79,16 @@ def circ_err(phi_h, ref_h, step=0.05):
     return best + (R,)
 
 
+def loso_err(phi_h, ref_h, subject):
+    """Error absoluto de cada muestra con el desfase aprendido SOLO de los demas sujetos."""
+    out = np.empty(len(phi_h))
+    for s in pd.unique(subject):
+        te = subject == s
+        off = circ_err(phi_h[~te], ref_h[~te])[2]
+        out[te] = np.abs((phi_h[te] + off - ref_h[te] + 12) % 24 - 12)
+    return out
+
+
 def infer(E, T, genes, two_harmonics=True):
     g = [x for x in genes if x in E.index and x in T.index]
     P, _, _ = wpc._profile(E, T, g, two_harmonics)
@@ -83,37 +104,44 @@ if __name__ == "__main__":
     byr2 = T.sort_values("r2", ascending=False).index
     for n in (50, 100, 200, 500):
         lists.append((f"top{n}_r2_2harm", list(byr2[:n]), True))
-    rows = []
+    rows = []; subj = md.subject.values; clock = md.clock_h.values
+    ALL, LOSO = "offset fitted on all samples (optimistic)", "offset from the other subjects"
     for name, genes, two in lists:
         phi, g = infer(E, T, genes, two)
-        for ref, rname in ((md.clock_h.values, "clock"), (md.circ_phase_h.values, "circadian")):
+        for ref, rname in ((clock, "clock"), (md.circ_phase_h.values, "circadian")):
             mae, med, off, R = circ_err(phi, ref)
-            rows.append(dict(genes=name, n_genes=len(g), reference=rname, mae_h=mae, median_h=med, offset_h=off, R=R))
+            rows.append(dict(genes=name, n_genes=len(g), reference=rname, offset=ALL, primary=False,
+                             mae_h=mae, median_h=med, within_3h=float(np.mean(np.abs((phi + off - ref + 12) % 24 - 12) <= 3)), offset_h=off, R=R))
+        e = loso_err(phi, clock, subj)
+        rows.append(dict(genes=name, n_genes=len(g), reference="clock", offset=LOSO, primary=name == "clock_19_2harm",
+                         mae_h=e.mean(), median_h=np.median(e), within_3h=float(np.mean(e <= 3)), offset_h=np.nan, R=np.nan))
         if name == "clock_19_2harm":
-            mae, med, off, R = circ_err(phi, md.clock_h.values)
+            off = circ_err(phi, clock)[2]
             ph = md.copy(); ph["phase_inferred_h"] = (phi + off) % 24
             ph["abs_error_h"] = np.abs((ph.phase_inferred_h - ph.clock_h + 12) % 24 - 12)
-            # error por sujeto (mediana de sus 4-5 muestras) y dejando cada sujeto fuera del desfase
-            per_subj = ph.groupby("subject").abs_error_h.median()
-            loso = []
-            for s in ph.subject.unique():
-                tr = ph.subject != s
-                _, _, off_s, _ = circ_err(phi[tr.values], md.clock_h.values[tr.values])
-                d = (phi[~tr.values] + off_s - md.clock_h.values[~tr.values] + 12) % 24 - 12
-                loso.append(np.abs(d))
-            loso = np.concatenate(loso)
-            rows.append(dict(genes=name, n_genes=len(g), reference="clock_per_subject_median", mae_h=per_subj.mean(), median_h=per_subj.median(), offset_h=off, R=R))
-            rows.append(dict(genes=name, n_genes=len(g), reference="clock_leave_subject_out", mae_h=loso.mean(), median_h=np.median(loso), offset_h=np.nan, R=R))
-    rng = np.random.default_rng(0); null = []
+            ph["abs_error_h_offset_from_other_subjects"] = e
+            per_subj = ph.groupby("subject").abs_error_h_offset_from_other_subjects.median()
+    # azar: fases al azar, con las dos formas de fijar el desfase
+    rng = np.random.default_rng(0); null_all = []; null_loso = []
     for _ in range(2000):
-        null.append(circ_err(rng.uniform(0, 24, len(md)), md.clock_h.values, step=0.5)[0])
-    rows.append(dict(genes="null_random_phases", n_genes=0, reference="clock", mae_h=np.mean(null), median_h=np.percentile(null, 5), offset_h=np.nan, R=np.nan))
+        r = rng.uniform(0, 24, len(md))
+        null_all.append(circ_err(r, clock, step=0.5)[0])
+    for _ in range(300):
+        null_loso.append(loso_err(rng.uniform(0, 24, len(md)), clock, subj).mean())
+    for lab, v in ((ALL, null_all), (LOSO, null_loso)):
+        rows.append(dict(genes="null_random_phases", n_genes=0, reference="clock", offset=lab, primary=False,
+                         mae_h=np.mean(v), null_p05_mae_h=np.percentile(v, 5), offset_h=np.nan, R=np.nan))
     res = pd.DataFrame(rows)
     os.makedirs(f"{OUT}/new", exist_ok=True)
     res.to_csv(f"{OUT}/new/gse87761_benchmark.tsv", sep="\t", index=False, float_format="%.3f")
     ph.to_csv(f"{OUT}/new/gse87761_phases.tsv", sep="\t", float_format="%.3f")
-    with pd.option_context("display.width", 160):
+    with pd.option_context("display.width", 200):
         print(res.round(2).to_string(index=False))
-    main = res[(res.genes == "clock_19_2harm") & (res.reference == "clock")].iloc[0]
-    print(f"\nGenes reloj, dos armonicos: error absoluto medio {main.mae_h:.2f} h, mediana {main.median_h:.2f} h, R {main.R:.2f} "
-          f"(fases al azar: {np.mean(null):.2f} h)")
+    main = res[res.primary].iloc[0]
+    opt = res[(res.genes == "clock_19_2harm") & (res.reference == "clock") & (res.offset == ALL)].iloc[0]
+    print(f"\nPRINCIPAL (genes del reloj, dos armonicos, desfase aprendido de los demas sujetos): error absoluto medio "
+          f"{main.mae_h:.2f} h, mediana {main.median_h:.2f} h, {main.within_3h*100:.0f} % dentro de 3 h; "
+          f"por sujeto, mediana {per_subj.median():.2f} h (de {per_subj.min():.2f} a {per_subj.max():.2f}). "
+          f"Azar con el mismo procedimiento: {np.mean(null_loso):.2f} h (percentil 5: {np.percentile(null_loso, 5):.2f} h).")
+    print(f"Con el desfase ajustado a las mismas muestras que se evaluan, que es optimista: {opt.mae_h:.2f} h de media, "
+          f"{opt.median_h:.2f} h de mediana (azar {np.mean(null_all):.2f} h).")
