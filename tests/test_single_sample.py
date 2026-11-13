@@ -5,6 +5,9 @@ muestra nueva se puntua contra una referencia fija.
 Cohortes simuladas, sin datos.
   1. order_anchored() se niega a trabajar con una muestra aislada en vez de devolver NaN.
   2. Con una referencia fija, el valor de una muestra no depende de que otras la acompanen.
+  3c. La referencia fija recupera la fase exacta aunque los dos vectores de su forma de onda no sean
+     ortogonales ni de igual norma. Las fases se comparan por su ERROR circular, no por la
+     concentracion de su diferencia, que daria por buena una fase desplazada 12 h.
   3. La referencia es estable: dos referencias ajustadas en mitades distintas de una cohorte dan
      casi la misma amplitud a las mismas muestras nuevas. Lo mismo para la fase anclada.
   4. La amplitud inferida sigue a la amplitud verdadera de cada muestra.
@@ -23,16 +26,23 @@ def check(name, ok, detail=""):
     print(f"  {'OK  ' if ok else 'FALLA'} {name}" + (f"  [{detail}]" if detail else ""))
     if not ok: fails.append(name)
 
+COHORT_PHASE = {}
+def circ_err_h(a, b):
+    """Error circular absoluto, en horas. A diferencia de la concentracion de la diferencia, es
+    cero solo si las dos fases COINCIDEN: un desfase constante de 12 h da 12, no 0."""
+    return np.abs(np.angle(np.exp(1j * (np.asarray(a) - np.asarray(b))))) * 24 / (2 * np.pi)
+
 def cohort(rng, n, genes, peak, amp_sd=0.35, noise=0.5):
     t = rng.uniform(0, 2*np.pi, n); amp = np.clip(rng.normal(1, amp_sd, n), 0.1, None)
     X = amp[None, :] * np.cos(t[None, :] - peak[:, None]) + rng.normal(0, noise, (len(genes), n)) + 8
     X = pd.DataFrame(X, index=genes, columns=[f"s{i}" for i in range(n)])
+    COHORT_PHASE["last"] = t
     return X.sub(X.mean(axis=0), axis=1), amp
 
 rng = np.random.default_rng(0)
 genes = list(ph.CLK); peak = rng.uniform(0, 2*np.pi, len(genes))
 gi = {g: i for i, g in enumerate(genes)}; peak[gi["DBP"]] = (peak[gi["BMAL1"]] + np.pi) % (2*np.pi)   # antifase
-E, amp = cohort(rng, 300, genes, peak)
+E, amp = cohort(rng, 300, genes, peak); true_phase = COHORT_PHASE["last"]
 
 print("1. Una muestra aislada")
 tpl = pd.DataFrame({"r2": 1.0, "phase_h": peak * 24 / (2*np.pi), "amp": 1.0}, index=genes)
@@ -61,12 +71,34 @@ aref = ph.fit_anchored_reference(E.iloc[:, :200], tpl, genes=genes)
 one = np.array([ph.phase_from_anchored_reference(new[c], aref) for c in new.columns])
 check("fase finita para cada muestra nueva, una a una", bool(np.isfinite(one).all()))
 cohort_phase = ph.order_anchored(E, tpl, genes=genes)[0].values[200:]          # la misma muestra, dentro de la cohorte
-agree = abs(np.mean(np.exp(1j * (one - cohort_phase))))
-check("coincide con la fase que recibe dentro de la cohorte", agree > 0.95, f"R = {agree:.3f}")
+e = circ_err_h(one, cohort_phase)
+check("coincide con la fase que recibe dentro de la cohorte", np.median(e) < 0.5, f"diferencia mediana {np.median(e):.2f} h, maxima {e.max():.2f} h")
 aref2 = ph.fit_anchored_reference(E.iloc[:, 100:200], tpl, genes=genes)
 two = np.array([ph.phase_from_anchored_reference(new[c], aref2) for c in new.columns])
-check("y no depende de que referencia se use", abs(np.mean(np.exp(1j * (one - two)))) > 0.95,
-      f"R = {abs(np.mean(np.exp(1j * (one - two)))):.3f}")
+e = circ_err_h(one, two)
+check("y no depende de que referencia se use", np.median(e) < 0.5, f"diferencia mediana {np.median(e):.2f} h")
+e = circ_err_h(one, true_phase[200:])
+check("y es la hora verdadera de la muestra, no solo una fase coherente", np.median(e) < 1.0 and np.mean(e <= 3) > 0.9,
+      f"error mediano {np.median(e):.2f} h, {np.mean(e <= 3) * 100:.0f} % dentro de 3 h")
+check("un desfase constante de 12 h no pasaria esta prueba", np.median(circ_err_h(one + np.pi, true_phase[200:])) > 10)
+
+print("3c. Geometria de la referencia: los vectores de la forma de onda no son ortonormales")
+g2 = genes[:8]; rng2 = np.random.default_rng(3)
+fake = dict(genes=g2, mu=np.zeros(8), sd=np.ones(8), a=2.0 * rng2.normal(0, 1, 8), b=0.7 * rng2.normal(0, 1, 8))
+thetas = np.linspace(0, 2 * np.pi, 48, endpoint=False)
+ls, pub, amp_ls, amp_pub = [], [], [], []
+for th in thetas:
+    x = pd.Series(1.3 * (fake["a"] * np.cos(th) + fake["b"] * np.sin(th)), index=g2)
+    p1, a1 = ph.infer_from_reference(x, fake); p0, a0 = ph.infer_from_reference(x, fake, geometry="as published")
+    ls.append(p1); pub.append(p0); amp_ls.append(a1); amp_pub.append(a0)
+check("minimos cuadrados recupera la fase exacta", circ_err_h(ls, thetas).max() < 1e-6, f"error maximo {circ_err_h(ls, thetas).max():.1e} h")
+check("las proyecciones directas la sesgan", circ_err_h(pub, thetas).max() > 1.0, f"error maximo {circ_err_h(pub, thetas).max():.1f} h")
+degenerate = dict(fake, b=fake["a"] * 0.5)
+try:
+    ph.infer_from_reference(pd.Series(fake["a"], index=g2), degenerate); raised = False
+except ValueError:
+    raised = True
+check("una referencia sin estructura ciclica se rechaza", raised)
 
 print("4. La amplitud inferida sigue a la verdadera")
 r = stats.spearmanr(alone, amp[200:]).statistic

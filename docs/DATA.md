@@ -94,13 +94,15 @@ R the step runs our own estimator only and says so.
 
 These tables were shipped with the earlier releases, which had no code to produce most of them.
 Step 02d now regenerates every one from the public data and compares it with the versioned copy.
-The pipeline uses the regenerated tables, with one exception stated here so that nobody has to
-find it in the code: the signature table of Fig. 3h and 3i starts from the versioned copy of
-`signatures_reference.tsv` and replaces three of its twelve columns (hydrocortisone, Cushing,
-thiazolidinedione) by their regeneration, after checking that they agree. The other nine,
-including the insulin-resistance contrast, are the versioned ones. Step 16 computes the same
-statistics on the fully regenerated table as well and writes both to `signature_correlations.tsv`.
-The copies also stay here as the reference for the comparison below.
+Every figure is drawn from tables computed in the run. The copies stay here as the reference for
+the comparison below, and for one more purpose, stated so that nobody has to find it in the code:
+step 16 builds the signature table twice. `signatures_published_reference.tsv` starts from the
+versioned copy of `signatures_reference.tsv` and replaces three of its twelve columns by their
+recomputation; it is the table behind the published values. `signatures_fully_regenerated.tsv` has
+the twelve columns recomputed. The same statistics are computed on both, the difference is written
+gene by gene, and the figures read the second. `T2D_SIGNATURES=published` makes them read the
+first. In the same way, Fig. 1f and 1g plot the leave-one-out validation of the run;
+`T2D_LOO_COLUMN=amp_inf` plots the estimator as it was published.
 
 The comparison of a complete run (11 November 2026, public data as downloaded that week) is below.
 The correlation is between the versioned and the regenerated values over the rows they share. It
@@ -125,7 +127,7 @@ is the answer to which results of the earlier releases the present code reproduc
 | `ncbi_synonym_map.tsv` | 99.1% of shared entries identical | the NCBI file changes daily |
 | `GSE129843_amplitude_per_person.tsv` | r = 0.70 to 0.95 | |
 | `template_2harm.tsv` | r = 0.93 and 0.84 for the first harmonic, 0.84 and 0.64 for the second; 0.55 for r²; 0.49 and 0.08 for the two amplitudes | **reproduces only in part.** The regenerated template comes from recount3 counts (13,430 genes) and the versioned one from the NCBI counts of the original analysis (14,024). Every phase and amplitude estimate downstream uses the regenerated template |
-| `amplitude_phase_distributions_two_cohorts.tsv` | r = 0.73 to 0.76 for amplitude, 0.07 for phase | **the phases do not reproduce.** This table feeds the dispersion analysis |
+| `amplitude_phase_distributions_two_cohorts.tsv` | amplitude: ρ = 0.71 to 0.78. Phase, compared as a circular quantity and allowing a global offset and either direction: concentration of the difference 0.06 to 0.22, median error 4.6 to 6.3 h once the offset is removed, where chance gives 6 h | **the phases do not reproduce, and it is not a matter of convention.** In these cohorts every biopsy was taken at about the same hour, so the true phases differ little and what the estimator returns for one sample is mostly noise: two builds of the template give unrelated phases to the same sample. This table feeds the dispersion analysis, whose phase results should not be relied on |
 | `GSE182117_inferred_free_vs_measured.tsv` | r = −0.22 for inferred amplitude | **does not reproduce.** No figure reads it since v2.0.0, when Fig. 1f moved to the leave-one-out table |
 | `msigdb_symbol_coverage.tsv` | not comparable | a five-row coverage summary computed on a different gene universe |
 | `symbol_audit_renamed_genes.tsv` | not comparable | the versioned table is a subset whose selection rule was not recorded (427 rows against 10,926) |

@@ -6,16 +6,21 @@ glucocorticoides.
 Cada columna es el cambio en log2 de un contraste y las filas son los genes medidos en todos, de
 modo que las correlaciones entre columnas son comparables.
 
-DE DONDE SALE CADA COLUMNA, sin ambiguedad. La tabla que usan las figuras parte de la copia
-VERSIONADA (data/reference/signatures_reference.tsv) y sustituye tres columnas por su regeneracion
-de esta corrida, comprobando antes que coinciden (r > 0.95): hidrocortisona, Cushing y
-tiazolidindiona. Las otras nueve, entre ellas la de resistencia a la insulina, son las de la copia
-versionada. El paso 02d regenera las doce desde los datos publicos y mide cuanto coincide cada una
-con la versionada (reference_tables_check.tsv); la de resistencia a la insulina coincide exactamente.
+DOS TABLAS, CON NOMBRE, porque reproducir lo publicado y recalcular desde los datos publicos son dos
+cosas distintas y las dos valen:
 
-Para que el resultado no dependa de esa mezcla, las mismas estadisticas se calculan ademas sobre
-la tabla regenerada entera (results/new/signatures_reference.tsv) cuando existe, y las dos van a
-signature_correlations.tsv.
+  signatures_published_reference.tsv   la copia VERSIONADA (data/reference/signatures_reference.tsv)
+        con tres de sus doce columnas sustituidas por su regeneracion, tras comprobar que coinciden
+        (r > 0.95): hidrocortisona, Cushing y tiazolidindiona. Las otras nueve, entre ellas la de
+        resistencia a la insulina, son las versionadas. Con esta tabla se obtuvieron los valores
+        publicados.
+  signatures_fully_regenerated.tsv     las doce columnas recalculadas desde los datos publicos por
+        el paso 02d.
+
+Las mismas estadisticas se calculan sobre las dos (signature_correlations.tsv), se escribe la
+diferencia gen a gen (signature_table_differences.tsv) y se dice si llevan a la misma conclusion.
+Las figuras leen la regenerada entera, de modo que todo lo que se dibuja sale de los datos
+publicos; T2D_SIGNATURES=published hace que lean la de referencia publicada.
 
 LA CORRELACION ENTRE FIRMAS SE CALCULA SOBRE OCHO GENES. Tres comprobaciones la acompanan:
   - frente a conjuntos de ocho genes al azar de la misma tabla: dos perfiles de expresion pueden
@@ -104,8 +109,8 @@ def signature_stats(S, table, nnull=5000, seed=0):
 
 if __name__ == "__main__":
     R = reference()
-    # Se regeneran tres columnas y se comprueban contra la referencia; el resto se toma de la
-    # referencia versionada (ver la cabecera).
+    # Tabla A, "published reference": la copia versionada con tres columnas sustituidas por su
+    # regeneracion, tras comprobar que coinciden. Es con la que se calcularon los valores publicados.
     regen = {c.name: c for c in (col_tzd(), col_hydrocortisone(), col_cushing())}
     for name, v in regen.items():
         com = [g for g in R.index if g in v.index]
@@ -115,16 +120,37 @@ if __name__ == "__main__":
         if r <= 0.95:
             raise SystemExit("una columna regenerada no coincide con la referencia: revisar antes de seguir")
         R.loc[com, name] = v[com].values
-    S = R.dropna()
-    S.to_csv(f"{OUT}/new/signatures_log2_common_genes.tsv", sep="\t")
-    rows = signature_stats(S, "versioned reference, three columns regenerated")
-    full = f"{OUT}/new/signatures_reference.tsv"
+    A = R.dropna()
+    A.to_csv(f"{OUT}/new/signatures_published_reference.tsv", sep="\t")
+    rows = signature_stats(A, "published reference (nine versioned columns, three regenerated)")
+    # Tabla B, "fully regenerated": las doce columnas desde los datos publicos (paso 02d).
+    full = f"{OUT}/new/signatures_reference.tsv"; B = None
     if os.path.exists(full):
         F = pd.read_csv(full, sep="\t", index_col=0)
         if IR in F.columns:
-            rows += signature_stats(F.dropna(), "all twelve columns regenerated")
-        else:
-            print(f"  (aviso) {full} no lleva la columna de resistencia a la insulina; no se calcula la variante regenerada")
-    else:
-        print("  (aviso) falta la tabla regenerada por el paso 02d: solo se calcula sobre la referencia versionada")
+            B = F.dropna(); B.to_csv(f"{OUT}/new/signatures_fully_regenerated.tsv", sep="\t")
+            rows += signature_stats(B, "fully regenerated (twelve columns from the public data)")
+    if B is None:
+        print("  (aviso) falta la tabla regenerada por el paso 02d: solo existe la de referencia publicada")
     pd.DataFrame(rows).to_csv(f"{OUT}/new/signature_correlations.tsv", sep="\t", index=False)
+
+    # Las dos tablas, gen a gen, en los genes y contrastes que entran en la estadistica
+    if B is not None:
+        cols = [IR] + [c for c, _ in COMPARE]
+        genes = [g for g in SETS["Clock output"]["genes"] if g in A.index or g in B.index]
+        D = pd.concat({"published_reference": A.reindex(genes)[cols], "fully_regenerated": B.reindex(genes)[cols]}, axis=1)
+        for c in cols:
+            D[("difference", c)] = D[("fully_regenerated", c)] - D[("published_reference", c)]
+        D.to_csv(f"{OUT}/new/signature_table_differences.tsv", sep="\t")
+        T = pd.DataFrame(rows); q = T[T.comparison == "IR vs hydrocortisone"].set_index("table")
+        same = bool((np.sign(q.rho).nunique() == 1) and ((q.p_vs_random_sets < 0.05).nunique() == 1))
+        print(f"\nLas dos tablas llevan a la misma conclusion sobre la firma de hidrocortisona: {'SI' if same else 'NO'} "
+              f"(rho {q.rho.iloc[0]:+.2f} y {q.rho.iloc[1]:+.2f}; frente a conjuntos al azar P = {q.p_vs_random_sets.iloc[0]:.3f} y {q.p_vs_random_sets.iloc[1]:.3f})")
+
+    # Cual leen las figuras. Por defecto la regenerada entera, para que todo lo que se dibuja salga
+    # de los datos publicos; T2D_SIGNATURES=published devuelve la de referencia publicada.
+    use = os.environ.get("T2D_SIGNATURES", "regenerated")
+    S = B if (use == "regenerated" and B is not None) else A
+    S.to_csv(f"{OUT}/new/signatures_log2_common_genes.tsv", sep="\t")
+    print(f"las figuras 3h y 3i leen la tabla: {'fully regenerated' if S is B else 'published reference'} "
+          f"({S.shape[0]} genes, {sum(g in S.index for g in SETS['Clock output']['genes'])} del brazo de salida)")

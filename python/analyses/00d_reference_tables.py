@@ -84,7 +84,17 @@ def compare(name, new, key=None, note=""):
         a = pd.to_numeric(r.loc[common, c], errors="coerce"); b = pd.to_numeric(n.loc[common, c], errors="coerce")
         m = a.notna() & b.notna()
         if m.sum() >= 3 and a[m].std() > 0 and b[m].std() > 0:
-            stats_.append((c, np.corrcoef(a[m], b[m])[0, 1], float((a[m] - b[m]).abs().median())))
+            if str(c).lower().startswith("phase"):
+                # una fase es circular: la correlacion lineal no la mide. Se compara la concentracion de
+                # la diferencia, permitiendo los dos sentidos de giro y un desfase global, y el error
+                # que queda una vez quitado ese desfase (el azar da 6 h).
+                x, y = a[m].values * 2 * np.pi / 24, b[m].values * 2 * np.pi / 24
+                R, way = max((abs(np.mean(np.exp(1j * (x - y)))), "same direction"), (abs(np.mean(np.exp(1j * (x + y)))), "reversed"))
+                d = x - y if way == "same direction" else x + y
+                e = np.abs(np.angle(np.exp(1j * (d - np.angle(np.mean(np.exp(1j * d))))))) * 24 / (2 * np.pi)
+                stats_.append((f"{c} (circular: concentration of the difference, {way}; median error after offset)", R, float(np.median(e))))
+            else:
+                stats_.append((c, np.corrcoef(a[m], b[m])[0, 1], float((a[m] - b[m]).abs().median())))
     rmin = min([s[1] for s in stats_], default=np.nan)
     row = dict(tabla=name, filas_ref=len(r), filas_nueva=len(n), filas_comunes=len(common),
                columnas_comparadas=len(stats_), r_minimo=rmin,

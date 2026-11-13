@@ -212,14 +212,39 @@ def fit_reference(E, genes=None):
     return dict(genes=g, mu=X.mean(1).values, sd=X.std(1).values + 1e-9, a=a, b=b, n=X.shape[1])
 
 
-def infer_from_reference(x, ref):
+def infer_from_reference(x, ref, geometry="least squares"):
     """Fase y amplitud de UNA muestra con una referencia fija. `x` es la expresion de la muestra
     (Serie indexada por gen, centrada por muestra igual que la referencia). Devuelve
-    (fase en radianes, amplitud). No usa ninguna otra muestra."""
+    (fase en radianes, amplitud). No usa ninguna otra muestra.
+
+    La forma de onda de la referencia es z = a*cos(theta) + b*sin(theta), con un vector a y uno b
+    por gen. Esos dos vectores NO son ortogonales ni tienen la misma norma, y eso importa:
+
+    geometry="least squares" (por defecto). Se resuelven los dos coeficientes de z en la base
+        (a, b) por minimos cuadrados; la fase es el angulo de esos coeficientes y la amplitud es la
+        norma de la proyeccion de z sobre el plano que generan a y b. Recupera theta exactamente
+        cuando la muestra sigue la forma de onda, y la amplitud no depende de la fase. Es la misma
+        definicion de amplitud que amplitude(), que es su version relativa a la cohorte.
+    geometry="as published". Las proyecciones directas z.a y z.b, que es como se calcularon los
+        valores de validacion publicados. Con a y b de norma distinta la fase queda sesgada (hasta
+        1.7 h en la referencia de miotubos) y la ganancia de la amplitud cambia con la fase (entre
+        0.76 y 1.21 veces su media en esa referencia). Se conserva para poder regenerar esos
+        valores, no para usarla.
+    """
     z = (np.asarray(x.loc[ref["genes"]], float) - ref["mu"]) / ref["sd"]
-    th = np.arctan2(np.dot(z, ref["b"]), np.dot(z, ref["a"]))
-    amp = np.dot(z, ref["a"] * np.cos(th) + ref["b"] * np.sin(th)) / np.sqrt(len(ref["genes"]))
-    return th % (2 * np.pi), amp
+    if geometry == "as published":
+        th = np.arctan2(np.dot(z, ref["b"]), np.dot(z, ref["a"]))
+        amp = np.dot(z, ref["a"] * np.cos(th) + ref["b"] * np.sin(th)) / np.sqrt(len(ref["genes"]))
+        return th % (2 * np.pi), amp
+    if geometry != "least squares":
+        raise ValueError("geometry debe ser 'least squares' o 'as published'")
+    B = np.column_stack([ref["a"], ref["b"]])
+    if np.linalg.cond(B) > 1e6:
+        raise ValueError("la forma de onda de la referencia es degenerada: a y b son casi paralelos, "
+                         "y la fase no esta definida. La cohorte de referencia no tiene estructura ciclica.")
+    c, *_ = np.linalg.lstsq(B, z, rcond=None)
+    Q, _ = np.linalg.qr(B)
+    return float(np.arctan2(c[1], c[0]) % (2 * np.pi)), float(np.sqrt(((Q.T @ z) ** 2).sum()))
 
 
 def fit_anchored_reference(E, template, genes=None, n_template=60, grid=721):

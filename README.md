@@ -4,7 +4,12 @@
 [![tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Code for the manuscript. `run_all.sh` regenerates its tables and figures from public data.
+Code for the manuscript. `run_all.sh` recomputes its tables and figures from public data.
+
+Recomputing is not the same as reproducing the published numbers, and both are kept apart. Every
+figure is drawn from tables computed in the run. The tables shipped with earlier releases stay in
+`data/reference/` only so that each can be compared with its recomputation, and `docs/DATA.md`
+lists, table by table, how close the two are, including the ones that differ.
 
 ## What the code does
 
