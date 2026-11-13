@@ -80,6 +80,7 @@ step "29b phase-coherence statistic"           "${PY:-python3}" tests/test_phase
 step "29b2 phase template validation has no leak" "${PY:-python3}" tests/test_phase_template.py
 step "29b3 single sample and fixed reference"  "${PY:-python3}" tests/test_single_sample.py
 step "29b4 estimator on a model with no effect" "${PY:-python3}" tests/test_model_null.py
+step "29b5 three-state verdict of the competing models" "${PY:-python3}" tests/test_model_verdict.py
 step "29c integration test, step 14b"          "${PY:-python3}" tests/test_clamp_vs_saline.py
 step "30 verify the package"                   "${PY:-python3}" tests/verify_package.py "$T2D_OUT"
 

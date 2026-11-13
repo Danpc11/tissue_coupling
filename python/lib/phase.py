@@ -199,17 +199,30 @@ def double_angle(a, b):
 # valor de una muestra no cambia cuando se anaden o se quitan otras.
 # ---------------------------------------------------------------------------
 
-def fit_reference(E, genes=None):
+def fit_reference(E, genes=None, ang=None):
     """Aprende de la cohorte E (genes x muestras, ya centrada por muestra) lo necesario para
-    puntuar muestras nuevas: genes, media y desviacion por gen, y coeficientes de la forma de onda
-    obtenidos por ordenamiento libre."""
+    puntuar muestras nuevas: genes, media y desviacion por gen, y coeficientes de la forma de onda.
+    Las fases de las muestras de la cohorte salen del ordenamiento libre, salvo que se den en `ang`.
+
+    LOS COEFICIENTES SE AJUSTAN POR MINIMOS CUADRADOS, con termino independiente: z = m + a*cos(theta)
+    + b*sin(theta). El promedio simple de z*cos(theta) y z*sin(theta), que es como se calcularon los
+    valores publicados, solo coincide con ese ajuste (salvo un factor 2) si las fases de la cohorte
+    estan repartidas por igual en el ciclo; con un muestreo desigual, por ejemplo una cohorte tomada
+    en media jornada, mezcla los dos coeficientes y sesga la fase. Se guardan los dos: `a`, `b` son
+    los de minimos cuadrados, y `a_published`, `b_published` los promedios, para poder regenerar lo
+    publicado (infer_from_reference con geometry="as published").
+    """
     g = [x for x in (genes or CLK) if x in E.index]
     X = E.loc[g]
     Z = ((X.T - X.mean(1)) / (X.std(1) + 1e-9)).T
-    ang = unsup(Z.values)
-    a = np.array([np.mean(Z.loc[gg].values * np.cos(ang)) for gg in g])
-    b = np.array([np.mean(Z.loc[gg].values * np.sin(ang)) for gg in g])
-    return dict(genes=g, mu=X.mean(1).values, sd=X.std(1).values + 1e-9, a=a, b=b, n=X.shape[1])
+    ang = unsup(Z.values) if ang is None else np.asarray(ang, float)
+    D = np.column_stack([np.ones(len(ang)), np.cos(ang), np.sin(ang)])
+    B, *_ = np.linalg.lstsq(D, Z.values.T, rcond=None)
+    a_pub = np.array([np.mean(Z.loc[gg].values * np.cos(ang)) for gg in g])
+    b_pub = np.array([np.mean(Z.loc[gg].values * np.sin(ang)) for gg in g])
+    return dict(genes=g, mu=X.mean(1).values, sd=X.std(1).values + 1e-9, a=B[1], b=B[2], offset=B[0],
+                a_published=a_pub, b_published=b_pub, n=X.shape[1],
+                phase_uniformity=float(abs(np.mean(np.exp(1j * ang)))))
 
 
 def infer_from_reference(x, ref, geometry="least squares"):
@@ -233,11 +246,13 @@ def infer_from_reference(x, ref, geometry="least squares"):
     """
     z = (np.asarray(x.loc[ref["genes"]], float) - ref["mu"]) / ref["sd"]
     if geometry == "as published":
-        th = np.arctan2(np.dot(z, ref["b"]), np.dot(z, ref["a"]))
-        amp = np.dot(z, ref["a"] * np.cos(th) + ref["b"] * np.sin(th)) / np.sqrt(len(ref["genes"]))
+        ap, bp = ref.get("a_published", ref["a"]), ref.get("b_published", ref["b"])
+        th = np.arctan2(np.dot(z, bp), np.dot(z, ap))
+        amp = np.dot(z, ap * np.cos(th) + bp * np.sin(th)) / np.sqrt(len(ref["genes"]))
         return th % (2 * np.pi), amp
     if geometry != "least squares":
         raise ValueError("geometry debe ser 'least squares' o 'as published'")
+    z = z - ref.get("offset", 0.0)                       # el termino independiente del ajuste de la referencia
     B = np.column_stack([ref["a"], ref["b"]])
     if np.linalg.cond(B) > 1e6:
         raise ValueError("la forma de onda de la referencia es degenerada: a y b son casi paralelos, "

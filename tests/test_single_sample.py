@@ -8,6 +8,8 @@ Cohortes simuladas, sin datos.
   3c. La referencia fija recupera la fase exacta aunque los dos vectores de su forma de onda no sean
      ortogonales ni de igual norma. Las fases se comparan por su ERROR circular, no por la
      concentracion de su diferencia, que daria por buena una fase desplazada 12 h.
+  3d. Si la cohorte de referencia solo cubre parte del ciclo, los coeficientes de su forma de onda
+     deben ajustarse por minimos cuadrados: el promedio simple mezcla los dos y sesga la fase.
   3. La referencia es estable: dos referencias ajustadas en mitades distintas de una cohorte dan
      casi la misma amplitud a las mismas muestras nuevas. Lo mismo para la fase anclada.
   4. La amplitud inferida sigue a la amplitud verdadera de cada muestra.
@@ -93,6 +95,27 @@ for th in thetas:
     ls.append(p1); pub.append(p0); amp_ls.append(a1); amp_pub.append(a0)
 check("minimos cuadrados recupera la fase exacta", circ_err_h(ls, thetas).max() < 1e-6, f"error maximo {circ_err_h(ls, thetas).max():.1e} h")
 check("las proyecciones directas la sesgan", circ_err_h(pub, thetas).max() > 1.0, f"error maximo {circ_err_h(pub, thetas).max():.1f} h")
+print("3d. Cohorte de referencia con muestreo desigual en el ciclo")
+# las fases de la cohorte de referencia cubren solo medio ciclo, como en una cohorte tomada de manana
+rng3 = np.random.default_rng(7); G3 = 12; g3 = genes[:G3]
+a_true, b_true = rng3.normal(0, 1, G3), rng3.normal(0, 1, G3)
+th_ref = rng3.uniform(0, np.pi, 400)
+Eref = pd.DataFrame(np.outer(a_true, np.cos(th_ref)) + np.outer(b_true, np.sin(th_ref)) + rng3.normal(0, 0.05, (G3, 400)),
+                    index=g3, columns=[f"r{i}" for i in range(400)])
+ref_u = ph.fit_reference(Eref, genes=g3, ang=th_ref)
+check("la cohorte es de muestreo desigual", ref_u["phase_uniformity"] > 0.5, f"concentracion de sus fases {ref_u['phase_uniformity']:.2f}")
+th_new = np.linspace(0, 2 * np.pi, 60, endpoint=False)
+def recovered(geometry):
+    out = []
+    for th in th_new:
+        x = pd.Series(a_true * np.cos(th) + b_true * np.sin(th), index=g3)
+        out.append(ph.infer_from_reference(x, ref_u, geometry=geometry)[0])
+    return circ_err_h(out, th_new)
+e_ls, e_pub = recovered("least squares"), recovered("as published")
+check("el ajuste por minimos cuadrados recupera la fase de muestras de TODO el ciclo", np.median(e_ls) < 0.3 and e_ls.max() < 1.0,
+      f"error mediano {np.median(e_ls):.2f} h, maximo {e_ls.max():.2f} h")
+check("el promedio simple, no", e_pub.max() > 2.0, f"error mediano {np.median(e_pub):.2f} h, maximo {e_pub.max():.1f} h")
+
 degenerate = dict(fake, b=fake["a"] * 0.5)
 try:
     ph.infer_from_reference(pd.Series(fake["a"], index=g2), degenerate); raised = False

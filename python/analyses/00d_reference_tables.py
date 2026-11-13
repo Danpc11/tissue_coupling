@@ -300,13 +300,34 @@ def t_gse148640_stats():
 
 
 def t_gras():
-    """GRAS_signature.tsv (Supp. Fig. 6): genes que cambian en la misma direccion en las 10 personas
-    con hidrocortisona, con |mediana| >= 0.2."""
+    """GRAS_signature.tsv (Supp. Fig. 6): genes que cambian en la misma direccion en todas las personas
+    con hidrocortisona, con |mediana| >= 0.2.
+
+    Cuantos de esos genes se esperan por azar: con n personas, un gen sin efecto cambia en el mismo
+    sentido en todas con probabilidad 2 * 0.5^n, y entre decenas de miles de genes eso son decenas.
+    El nulo invierte el signo de la respuesta de personas enteras (todos los patrones), lo que
+    conserva la correlacion entre genes, y cuenta cuantos pasan los dos criterios."""
+    import itertools
     H = pd.read_pickle(f"{OUT}/GSE148640_diff_genes.pkl")
+    n = H.shape[1]
     up = (H > 0).sum(1); med = H.median(1)
-    cons = H[((up == 10) | (up == 0)) & (med.abs() >= 0.2)]
+    cons = H[((up == n) | (up == 0)) & (med.abs() >= 0.2)]
     D = pd.DataFrame(dict(gene=cons.index, direction=np.where(med[cons.index] > 0, "up", "down"),
-                          median_log2=med[cons.index].round(5), n_consistent=10)).sort_values("median_log2", key=abs, ascending=False)
+                          median_log2=med[cons.index].round(5), n_consistent=n)).sort_values("median_log2", key=abs, ascending=False)
+    V = H.dropna().values; null = []
+    for signs in itertools.product([1, -1], repeat=n):
+        if signs[0] == -1: break                         # la otra mitad es la misma con el signo global invertido
+        if all(x == 1 for x in signs): continue
+        W = V * np.array(signs)[None, :]; u = (W > 0).sum(1)
+        null.append(int((((u == n) | (u == 0)) & (np.abs(np.median(W, axis=1)) >= 0.2)).sum()))
+    null = np.array(null); obs = len(cons)
+    pd.DataFrame([dict(n_participants=n, genes_tested=V.shape[0], signature_genes=obs, null_median=float(np.median(null)),
+                       null_p95=float(np.percentile(null, 95)), expected_false_fraction=float(np.median(null) / max(obs, 1)),
+                       p_signature_size=float((np.sum(null >= obs) + 1) / (len(null) + 1)), sign_patterns=len(null))]
+                 ).to_csv(f"{NEW}/GRAS_signature_null.tsv", sep="\t", index=False)
+    print(f"  firma: {obs} genes; por azar (inversion de signo de personas enteras, {len(null)} patrones) pasan {np.median(null):.0f} "
+          f"(percentil 95: {np.percentile(null, 95):.0f}); fraccion esperada de falsos {np.median(null) / max(obs, 1) * 100:.0f} %; "
+          f"P del tamano de la firma {(np.sum(null >= obs) + 1) / (len(null) + 1):.4f}")
     compare("GRAS_signature.tsv", D, key=["gene"], note="umbral |mediana| >= 0.2 deducido de la referencia")
 
 

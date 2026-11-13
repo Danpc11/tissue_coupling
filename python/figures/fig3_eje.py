@@ -57,11 +57,11 @@ ann=pd.read_csv(f"{os.environ.get('T2D_RAW','data/raw')}/Human_GRCh38_p13_annot_
 symmap=dict(zip(ann.GeneID,ann.Symbol))
 import islets as _isl; _don,_cul=_isl.groups(os.environ.get('T2D_RAW','data/raw'))
 I=_isl.log2cpm_symbols(f"{os.environ.get('T2D_RAW','data/raw')}/GSE159984_raw_counts.tsv.gz",_don,f"{os.environ.get('T2D_RAW','data/raw')}/Human_GRCh38_p13_annot_tsv.gz")
-I=I.sub(I.mean(0),axis=1)   # centrado por muestra (Methods); rama repro-hugo
-panels=[("islets (n=85)",I.loc["NR3C1"],sc(I,SETS["Clock output"]["genes"]),COL["islets"]),
+I=I.sub(I.mean(0),axis=1)   # centrado por muestra (Methods)
+panels=[(f"islets (n={I.shape[1]})",I.loc["NR3C1"],sc(I,SETS["Clock output"]["genes"]),COL["islets"]),
         ("GTEx adipose visceral (n=587)",*[None,None],COL["adipose"])]
 G=pd.read_pickle(f"{OUT}/new/GTEx_adipose_visc.pkl"); G=G.sub(G.mean(0),axis=1)   # centrado por muestra
-panels[1]=("GTEx visceral (n=587)",G.loc["NR3C1"],sc(G,SETS["Clock output"]["genes"]),COL["adipose"])
+panels[1]=(f"GTEx visceral (n={G.shape[1]})",G.loc["NR3C1"],sc(G,SETS["Clock output"]["genes"]),COL["adipose"])
 off=0
 for name,x,yv,c in panels:
     x=np.asarray(x,float); yv=np.asarray(yv,float); q=pd.qcut(x,5,labels=False)
@@ -97,7 +97,7 @@ x=np.arange(len(dat))
 ax.bar(x-.2,[d[1] for d in dat],.4,color="#999999",label="unadjusted")
 ax.bar(x+.2,[d[2] for d in dat],.4,color="#2a9d8f",label="donor-level NR3C1 removed")
 ax.axhline(0,color="k",lw=.8); ax.set_xticks(x); ax.set_xticklabels([en(d[0].replace(chr(10)," ")).replace(" ",chr(10)) for d in dat],fontsize=6.5)
-ax.set(ylabel="ρ NR3C1 ~ reloj",)
+ax.set(ylabel="ρ  NR3C1 ~ clock output",)
 ax.legend(fontsize=7,frameon=False)
 # ---- e islets cultivados
 ax=fig.add_subplot(gs[1,2]); ax.text(-0.2,1.06,"E",transform=ax.transAxes,fontsize=11,fontweight="bold",va="top")

@@ -14,13 +14,11 @@ rng=np.random.default_rng(0); B=80; n=max(4,int(len(genes)*0.6))
 cols=list(S.gsm); A=[]
 for _ in range(B):
     g=list(rng.choice(genes,n,replace=False))
-    Z=Xc.loc[g,cols]; Z=((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T
-    ang=ph.unsup(Z.values)
-    a=np.array([np.mean(Z.loc[x].values*np.cos(ang)) for x in g])
-    b=np.array([np.mean(Z.loc[x].values*np.sin(ang)) for x in g])
-    v=Z.values
-    th=np.arctan2(v.T@b,v.T@a)
-    A.append(np.array([np.dot(v[:,i],a*np.cos(th[i])+b*np.sin(th[i])) for i in range(v.shape[1])])/np.sqrt(n))
+    # el mismo estimador que el resto del pipeline (python/lib/phase.py), no una copia: referencia
+    # ajustada por minimos cuadrados y amplitud como norma de la proyeccion. Se divide por raiz de n
+    # para que subconjuntos de distinto tamano sean comparables.
+    ref=ph.fit_reference(Xc[cols],genes=g)
+    A.append(np.array([ph.infer_from_reference(Xc[c],ref)[1] for c in cols])/np.sqrt(n))
 A=np.array(A)                                   # B x personas
 noise=A.std(0); mean=A.mean(0)
 grp=S.set_index("gsm").sensitivity.reindex(cols).values

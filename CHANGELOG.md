@@ -1,5 +1,59 @@
 # Changelog
 
+## v2.8.0: one annotation rule for the meta-analysis, and a second audit of every script
+
+### Fixed
+- **GSE13070 entered the meta-analysis annotated differently from the other cohorts of its
+  platform.** GSE25462 and GSE41168 are collapsed to genes by Entrez identifier keeping the probe
+  with the highest mean, as the Methods say. GSE13070 came in through the loader of the clamp
+  analysis, by platform symbol and averaging probes. Its two estimates, the highest of the
+  thirteen, were 0.1 higher for that reason: 0.78 and 0.67, against 0.69 and 0.58 with the rule of
+  the others. With one rule for all, **the pooled estimate is 0.415 (0.330 to 0.494) instead of
+  0.443, and the three-level estimate 0.457 (0.284 to 0.602 with the t distribution) instead of
+  0.484**; heterogeneity falls from 86% to 82% and the prediction interval is −0.09 to 0.79. The
+  specificity result does not move: *NR3C1* at the 99.93rd percentile of 14,793 genes, second of
+  44 nuclear receptors after *NR3C2*. `T2D_GSE13070_SYMBOLS=1` restores the previous annotation.
+- **The waveform of a fixed reference was fitted by simple averages**, which equal the
+  least-squares coefficients only when the phases of the reference cohort are spread evenly over
+  the cycle. With a cohort covering half the cycle the phase of a new sample was off by up to
+  3 h; fitted by least squares with an intercept it is off by 0.02 h. In the references of the real
+  data the phases are close to uniform and the effect is small. The averages are kept so that the
+  published values can be regenerated (they are, to the last bit).
+- **The verdict on the competing models could not see a negative association**, and asked whether a
+  model could produce a feature "at some point of the grid", which more seeds make ever easier.
+  It now has three states, uses bootstrap confidence intervals of the observed values, and reports
+  how often: the fraction of the simulations of each model in which every observable falls inside
+  the observed interval at once. The four models now see the same people, the same biopsy hours
+  and the same measurement noise, over three seeds.
+- The noise analysis of the amplitude carried its own copy of the estimator, with the geometry
+  corrected in v2.7.0 still uncorrected there. It uses the library.
+- The entrainment sweep carried its own copy of the model equations. It calls the model; its output
+  is identical to the last bit.
+- The clamp analysis took "the first file whose name begins with GPL570". It takes a named file.
+- The library module for within-person coupling still described, with numbers, an analysis that is
+  no longer in the paper, and four functions that nothing called. They are gone.
+- Fig. 2: two sample sizes were written by hand and one axis label was in Spanish.
+
+### Added
+- **Is the association only cases against controls?** For the seven estimates whose cohort has a
+  diagnostic or study group, the meta-analysis also gives the correlation with the group as a
+  covariate. It hardly moves (0.53 against 0.54 in GSE78721, where it is 0.56 in the normal group
+  and 0.57 in the diabetic one), and the pooled estimate with those adjustments is 0.434.
+- **Transcription-factor activities against random regulons** of the same size. *FOXO3* stands
+  (z = 3.7, *P* = 0.002) and so does NF-κB at the other end (z = −4.3). The regulon of *NR3C1*
+  itself does not: fifth of 134 by rank, but z = 1.7 and *P* = 0.08.
+- **How many genes of the hydrocortisone signature are expected by chance.** With ten participants
+  a gene with no effect changes in the same direction in all of them once in 512 times, and there
+  are 29,525 genes. Flipping the sign of whole participants, 27 genes pass both criteria by chance
+  (95th percentile 54) against 131 observed: the signature is real as a whole (*P* = 0.004) and
+  about one gene in five of it is expected to be chance.
+
+### What the competing models say with the corrected criterion
+With morning biopsies (AAGMEx), the fraction of simulations in which all five observables fall
+inside the observed intervals at once: no forcing 0 of 9; cortisol alone 0 of 54; cortisol times
+receptor 6 of 54; receptor alone 3 of 54. The first two are excluded; the product is favoured over
+receptor alone but not separated from it. With post-mortem samples (GTEx) it is 0 for every model.
+
 ## v2.7.0: the geometry of the fixed reference, and every figure drawn from the run
 
 Answers to a further external review. One of its points referred to code already changed (Fig. 5c

@@ -5,19 +5,15 @@ import numpy as np
 HERE=os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0,HERE)
 import forced_clock as fc
 OUT=os.environ.get("T2D_OUT","results")
+# Las mismas ecuaciones que el resto del modelo (fc.simulate_population), no una copia. Dos parametros
+# difieren de los demas paneles y se dicen: la dispersion de periodos entre celulas es 1.5 h aqui y
+# 1.2 h en el resto, y se usan 80 celulas y 20 dias.
 FK=np.linspace(0,0.06,24); TAU=np.linspace(21.5,26.5,24); SIG=1.5
 R=np.zeros((len(FK),len(TAU))); A=np.zeros_like(R)
-rng0=np.random.default_rng(7)
 for i,fk in enumerate(FK):
     for j,tau in enumerate(TAU):
-        n=80; rng=np.random.default_rng(100+j)
-        taus=rng.normal(tau,SIG,n); om=2*np.pi/taus
-        ph=rng.uniform(0,2*np.pi,n); rr=np.ones(n); dt=0.05
-        for t in np.arange(0,20*24,dt):
-            thz=2*np.pi*t/24.0; d=thz-ph
-            ph=ph+dt*(om+fk*np.sin(d)/np.maximum(rr,1e-3))
-            rr=np.clip(rr+dt*(0.05*rr*(1.0-rr)+fk*np.cos(d)),1e-3,10)
-        amp,_,Rs=fc.ensemble(ph%(2*np.pi),rr); R[i,j]=Rs; A[i,j]=amp
+        ph,rr=fc.simulate_population(1.0,float(fk),n_cells=80,sigma_tau=SIG,days=20,seed=100+j,tau_mean=float(tau))
+        amp,_,Rs=fc.ensemble(ph,rr); R[i,j]=Rs; A[i,j]=amp
 np.save(f"{OUT}/new/tongue_R.npy",R); np.save(f"{OUT}/new/tongue_A.npy",A)
 np.save(f"{OUT}/new/tongue_axes.npy",np.array([FK,TAU]))
 print("R rango",R.min().round(2),R.max().round(2))
