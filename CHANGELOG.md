@@ -1,5 +1,43 @@
 # Changelog
 
+## v2.8.1: the joint criterion for the competing models
+
+The criterion introduced in v2.8.0 counted the simulations in which every observable fell inside
+the observed interval. It had four defects, and the two tables it wrote are recomputed.
+
+### Fixed
+- **It mixed cohorts.** For the post-mortem window the "observed interval" of each observable ran
+  from the lowest lower bound to the highest upper bound of three cohorts, which is the interval of
+  nothing. Every comparison is now with one cohort, with its own estimates and uncertainty.
+- **It used six separate intervals as if they were a joint region.** The observables are strongly
+  correlated (receptor against output, with and without the other receptor removed, are nearly the
+  same quantity), and six marginal 95% intervals do not cover 95% jointly. The distance from a
+  prediction to the observed values is now measured with the covariance of the six, from a
+  bootstrap of people on Fisher's z scale, against the 95% quantile of a chi-square with six
+  degrees of freedom. The fraction inside simultaneous intervals is given beside it.
+- **It left the receptor concordance between tissues out.** It was described as used "to fix the
+  model", and nothing fixed anything with it: simulations in which the receptor of the two tissues
+  is unrelated were scored against a cohort in which it is related. It is now one of the six.
+- **It compared single simulated cohorts**, each a noisy realisation of what a model predicts, so
+  that sampling noise decided. The prediction of a model at a point of the grid is now the mean of
+  its seeds, with the simulation's own covariance reduced accordingly. More seeds make the
+  criterion stricter, where before they made it looser.
+
+### The result with the corrected criterion (three seeds, 600 people per grid point)
+- **AAGMEx, morning biopsies.** No forcing: 0 of 3 grid points, closest distance 52.5 against a
+  threshold of 12.6. Cortisol alone: 0 of 18, closest 15.2. Cortisol times receptor: 4 of 18,
+  closest 2.1; at that point the six predicted values are 0.20, 0.42, 0.16, 0.13, 0.19 and 0.39,
+  and the observed ones 0.20, 0.43, 0.22, 0.10, 0.19 and 0.39. Receptor alone: 2 of 18, closest
+  4.6; it falls short of the concordance between tissues (0.34 and 0.28 against 0.43 and 0.39).
+  The first two mechanisms are excluded; the product fits best and receptor alone is not excluded.
+- **GTEx, post mortem.** No grid point of any model is compatible with any of the three tissue
+  pairs; the closest distances are between 169 and 322.
+
+`competing_models_joint.tsv` now has one row per cohort and model, with the number of compatible
+grid points, the closest distance and the grid point that reaches it; `competing_models_verdict.tsv`
+has one row per cohort, observable and model. `tests/test_model_verdict.py` checks each of the four
+corrections on values built by hand.
+
 ## v2.8.0: one annotation rule for the meta-analysis, and a second audit of every script
 
 ### Fixed

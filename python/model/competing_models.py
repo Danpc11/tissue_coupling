@@ -19,7 +19,7 @@ ruidosa del receptor, que es lo que da el ARNm:
 
     O1  receptor ~ salida, dentro del tejido
     O2  salida de un tejido ~ salida del otro, misma persona
-    O3  receptor de un tejido ~ receptor del otro            (se usa para fijar el modelo, no para puntuarlo)
+    O3  receptor de un tejido ~ receptor del otro            (un dato que el modelo tambien tiene que cumplir)
     O4  receptor de un tejido ~ salida del OTRO
     O5  receptor ~ salida del mismo tejido, descontado el receptor del otro
     O6  salida ~ salida entre tejidos, descontados los dos receptores
@@ -38,18 +38,38 @@ el mismo receptor), a las mismas horas de biopsia y con el mismo ruido de medida
 se sortean una vez por escenario y semilla y se reutilizan en M0, M1, M2 y M3, de modo que lo unico
 que difiere entre modelos es el mecanismo. Todo se repite con varias semillas.
 
-CUANTAS VECES, NO SI ALGUNA VEZ. Preguntar si un modelo puede producir lo observado "en algun punto
-de la rejilla" es demasiado facil: con suficientes semillas el ruido de muestreo acaba rozando
-cualquier intervalo. La cifra principal es por eso una FRACCION: de todas las simulaciones de un
-modelo (rejilla por semillas), en cuantas cae cada observable dentro del intervalo de confianza
-observado, y en cuantas caen TODOS a la vez (competing_models_joint.tsv). Un mecanismo que no
-reproduce el conjunto en ninguna simulacion queda descartado; dos que lo reproducen con frecuencia
-parecida quedan sin distinguir.
+EL CRITERIO CONJUNTO. Un modelo reproduce una cohorte si genera los SEIS observables a la vez, y eso
+se decide asi:
 
-TRES ESTADOS, NO DOS. Cada observable es positivo, negativo o compatible con cero. En los datos se
-decide con el intervalo de confianza al 95 % por bootstrap de personas; en las simulaciones, con el
-umbral de muestreo del tamano de cohorte simulado. Un modelo reproduce un rasgo si puede generar el
-mismo estado Y si el intervalo de lo que simula se solapa con el intervalo observado.
+  - Cohorte por cohorte. Cada simulacion se compara con una cohorte concreta, con sus estimaciones
+    y su incertidumbre. No se mezclan cohortes: el limite inferior de una y el superior de otra no
+    forman un intervalo de nada.
+  - Con una region conjunta, no con seis intervalos sueltos. Los observables estan correlacionados
+    (el receptor frente a la salida, con y sin descontar el otro receptor, son casi la misma
+    cantidad), y seis intervalos marginales al 95 % no cubren al 95 % en conjunto. La distancia de
+    cada simulacion a lo observado se mide con la covarianza de los seis, estimada por bootstrap de
+    personas en la escala z de Fisher, a la que se suma la del muestreo de la propia simulacion
+    (la misma covarianza, escalada por n observado / n simulado). Una simulacion es compatible si
+    esa distancia queda dentro del cuantil 95 % de una ji cuadrado con seis grados de libertad.
+  - Con la concordancia del receptor entre tejidos (O3) dentro. Es un dato que el modelo tambien
+    tiene que cumplir: una simulacion en la que el receptor de los dos tejidos no se parece nada no
+    describe una cohorte en la que si se parecen.
+  - La prediccion de un modelo en un punto de la rejilla es la MEDIA de sus semillas, no cada cohorte
+    simulada por separado. Una cohorte simulada de 200 personas es una realizacion ruidosa de lo
+    que el modelo predice; promediar las semillas acerca a la prediccion, y la covarianza de la
+    simulacion se reduce en consecuencia (n simulado = personas por semillas). Asi, anadir semillas
+    hace el criterio mas exigente y no mas laxo: al reves que preguntar si alguna simulacion roza
+    lo observado.
+  - Contando. La cifra es la fraccion de los puntos de la rejilla de cada modelo compatibles con
+    cada cohorte, con la distancia minima alcanzada y el punto que la alcanza.
+
+Como comprobacion mas facil de leer se da tambien la fraccion de puntos con los seis observables
+dentro de intervalos SIMULTANEOS al 95 % (los del maximo estudentizado del bootstrap), que no
+incluyen el ruido de muestreo de la simulacion.
+
+TRES ESTADOS POR OBSERVABLE. competing_models_verdict.tsv da, por cohorte y observable, si lo
+observado es positivo, negativo o compatible con cero segun su intervalo, y que fraccion de los
+puntos de la rejilla de cada modelo predice un valor dentro de ese intervalo.
 
 LO QUE ESTO NO HACE. No ajusta ningun parametro a los datos y no elige un modelo por verosimilitud.
 Dice que rasgos cualitativos de los datos puede y no puede generar cada mecanismo. Dos mecanismos
@@ -59,7 +79,9 @@ Entradas (si existen): results/new/AAGMEx_*_log2.pkl, GTEx_*.pkl, GTEx_pheno.pkl
                        de AAGMEx. Sin ellas se escriben solo las simulaciones.
 Salidas:  results/new/competing_models_observed.tsv     los observables en cada cohorte con dos tejidos
           results/new/competing_models_simulated.tsv    lo mismo en cada modelo y cada punto de la rejilla
-          results/new/competing_models_verdict.tsv      que rasgos observados puede producir cada modelo
+          results/new/competing_models_joint.tsv        el criterio conjunto: simulaciones compatibles con cada cohorte
+          results/new/competing_models_verdict.tsv      observable por observable, estado y fraccion dentro del intervalo
+          results/new/competing_models_observed_covariance.tsv  covarianza de los seis observables de cada cohorte
 """
 import os, sys, gzip, warnings; warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd
@@ -110,21 +132,31 @@ def score(X, genes):
     Z = X.loc[g]; return ((Z.T - Z.mean(1)) / (Z.std(1) + 1e-9)).T.mean(0)
 
 
+def fz(x):
+    return np.arctanh(np.clip(np.asarray(x, float), -0.999, 0.999))
+
+
 def observed():
-    rows = []; CL = SETS["Clock output"]["genes"]
+    """Los seis observables de cada cohorte con dos tejidos por persona, con su incertidumbre por
+    bootstrap de personas. Devuelve la tabla y, por cohorte, la covarianza de los seis en z de Fisher."""
+    rows = []; COV = {}; CL = SETS["Clock output"]["genes"]
     def add(label, window, A, M, C):
         A = A.sub(A.mean(0), axis=1); M = M.sub(M.mean(0), axis=1)          # centrado por muestra, como en el metaanalisis
         v = (A.loc["NR3C1"].values, M.loc["NR3C1"].values, score(A, CL).values, score(M, CL).values)
-        o = observables(*v, C); rng = np.random.default_rng(0); n = len(v[0]); B = {k: [] for k in OBS}
+        o = observables(*v, C); rng = np.random.default_rng(0); n = len(v[0]); B = []
         for _ in range(NBOOT):                               # se remuestrean personas: los dos tejidos van juntos
             i = rng.integers(0, n, n)
             if np.linalg.matrix_rank(C[i]) < C.shape[1]: continue
-            b = observables(*(x[i] for x in v), C[i])
-            for k in OBS: B[k].append(b[k])
+            b = observables(*(x[i] for x in v), C[i]); B.append([b[k] for k in OBS])
+        B = np.array(B); est = np.array([o[k] for k in OBS])
+        Z = fz(B); zc = fz(est); se = Z.std(0, ddof=1)
+        crit = np.percentile(np.abs((Z - zc) / se).max(1), 95)                # maximo estudentizado: intervalos simultaneos
         ci = {}
-        for k in OBS:
-            ci[f"{k} lo"], ci[f"{k} hi"] = np.percentile(B[k], [2.5, 97.5])
-        rows.append(dict(cohort=label, window=window, **o, **ci))
+        for j, k in enumerate(OBS):
+            ci[f"{k} lo"], ci[f"{k} hi"] = np.percentile(B[:, j], [2.5, 97.5])
+            ci[f"{k} sim_lo"], ci[f"{k} sim_hi"] = np.tanh(zc[j] - crit * se[j]), np.tanh(zc[j] + crit * se[j])
+        COV[label] = np.cov(Z.T)
+        rows.append(dict(cohort=label, window=window, **o, **ci, simultaneous_critical_value=crit, n_bootstrap=len(B)))
     fa, fm = f"{OUT}/new/AAGMEx_adipose_log2.pkl", f"{OUT}/new/AAGMEx_muscle_log2.pkl"
     if os.path.exists(fa) and os.path.exists(fm):
         A, M = pd.read_pickle(fa), pd.read_pickle(fm); ids = [c for c in A.columns if c in set(M.columns)]
@@ -149,7 +181,7 @@ def observed():
                 H = pd.get_dummies(p.DTHHRDY.fillna(-1).astype(int), drop_first=True).values.astype(float)
                 C = np.column_stack([np.ones(len(ids)), (p.SEX == 1).astype(float), p.AGE.map(agemid).astype(float), H])
                 add(f"GTEx {a}-{b}", "post mortem, any hour", G[a][ids], G[b][ids], C)
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows), COV
 
 
 # ------------------------------------------------------------------ las simulaciones
@@ -215,68 +247,91 @@ def simulate():
 
 
 # ------------------------------------------------------------------ el veredicto
+SIM_WINDOW = {"morning biopsy": "morning biopsy", "post mortem, any hour": "any hour"}
+POINT = ["sd_F", "rho_K", "proxy_noise"]
+
+
+def predictions(S, model, window):
+    """La prediccion del modelo en cada punto de la rejilla: la media de sus semillas, en z de Fisher.
+    Devuelve una fila por punto, con los observables ya de vuelta en la escala de rho, cuantas
+    semillas se promediaron y cuantas personas suman."""
+    q = S[(S.model == model) & (S.window == window)].copy()
+    q[OBS] = fz(q[OBS].values)
+    g = q.groupby(POINT, as_index=False)
+    P = g[OBS].mean(); P[OBS] = np.tanh(P[OBS].values)
+    P["n_seeds"] = g.size()["size"].values
+    P["n_simulated"] = g["n"].sum()["n"].values if "n" in q.columns else P.n_seeds * N_DONORS
+    return P
+
+
 def state(lo, hi):
     return "positive" if lo > 0 else "negative" if hi < 0 else "zero"
 
 
 def verdict(O, S):
-    """Para cada rasgo observado: en que estado esta (positivo, negativo o compatible con cero, segun
-    su intervalo de confianza) y si cada modelo puede generar ese estado con un intervalo que se
-    solape con el observado, en algun punto de la rejilla y alguna semilla."""
-    thr = 1.96 / np.sqrt(N_DONORS - 3)                                       # |rho| distinguible de cero con el n simulado
+    """Observable por observable y cohorte por cohorte: el estado de lo observado (positivo, negativo
+    o compatible con cero, por su intervalo al 95 %) y la fraccion de las simulaciones de cada modelo
+    que cae dentro de ese intervalo. Un observable aislado no decide nada; decide el conjunto (joint)."""
     rows = []
-    for win, wsim in (("morning biopsy", "morning biopsy"), ("post mortem, any hour", "any hour")):
-        o = O[O.window == win]
-        if not len(o): continue
+    for _, o in O.iterrows():
         for k in OBS:
-            if k.startswith("O3"): continue                                  # se usa para fijar el modelo, no para puntuarlo
-            states = [state(r[f"{k} lo"], r[f"{k} hi"]) for _, r in o.iterrows()]
-            obs_state = states[0] if len(set(states)) == 1 else "mixed: " + ", ".join(sorted(set(states)))
-            lo, hi = o[f"{k} lo"].min(), o[f"{k} hi"].max()
+            lo, hi = o[f"{k} lo"], o[f"{k} hi"]; st = state(lo, hi)
             for model in MODELS:
-                v = S[(S.model == model) & (S.window == wsim)][k].values
-                can = {"positive": bool((v > thr).any()), "negative": bool((v < -thr).any()), "zero": bool((np.abs(v) <= thr).any())}
-                state_ok = all(can[x] for x in set(states))
-                overlap = bool(v.max() >= lo and v.min() <= hi)
+                P = predictions(S, model, SIM_WINDOW[o.window]); v = P[k].values
+                t = 1.96 / np.sqrt(max(P.n_simulated.mean() - 3, 1))            # umbral con las personas que suma cada punto
+                can = {"positive": bool((v > t).any()), "negative": bool((v < -t).any()), "zero": bool((np.abs(v) <= t).any())}
                 inside = float(np.mean((v >= lo) & (v <= hi)))
-                rows.append(dict(window=win, observable=k, observed_state=obs_state, observed_median=o[k].median(),
-                                 fraction_of_simulations_within_observed_ci=inside,
-                                 observed_ci_lo=lo, observed_ci_hi=hi, model=model, simulated_min=v.min(), simulated_max=v.max(),
+                rows.append(dict(cohort=o.cohort, window=o.window, observable=k, observed=o[k], observed_ci_lo=lo, observed_ci_hi=hi,
+                                 observed_state=st, model=model, n_grid_points=len(v), simulated_min=v.min(),
+                                 simulated_median=float(np.median(v)), simulated_max=v.max(),
                                  model_can_be_positive=can["positive"], model_can_be_negative=can["negative"], model_can_be_zero=can["zero"],
-                                 state_reproduced=state_ok, interval_overlaps=overlap, model_can_reproduce=state_ok and overlap))
+                                 state_reproduced=can[st], fraction_of_grid_points_within_ci=inside,
+                                 never_within_ci=inside == 0.0))
     return pd.DataFrame(rows)
 
 
-def joint(O, S):
-    """Fraccion de las simulaciones de cada modelo en la que TODOS los observables puntuados caen a la
-    vez dentro del intervalo de confianza observado."""
-    keys = [k for k in OBS if not k.startswith("O3")]; rows = []
-    for win, wsim in (("morning biopsy", "morning biopsy"), ("post mortem, any hour", "any hour")):
-        o = O[O.window == win]
-        if not len(o): continue
+def joint(O, COV, S):
+    """El criterio conjunto, cohorte por cohorte: que fraccion de las simulaciones de cada modelo es
+    compatible con los seis observables de la cohorte a la vez (ver la cabecera)."""
+    thr = float(stats.chi2.ppf(0.95, len(OBS))); rows = []
+    for _, o in O.iterrows():
+        zc = fz([o[k] for k in OBS]); C = np.asarray(COV[o.cohort])
         for model in MODELS:
-            q = S[(S.model == model) & (S.window == wsim)]
-            ok = np.all([(q[k].values >= o[f"{k} lo"].min()) & (q[k].values <= o[f"{k} hi"].max()) for k in keys], axis=0)
-            rows.append(dict(window=win, model=model, n_simulations=len(q), n_all_within_ci=int(ok.sum()),
-                             fraction_all_within_ci=float(ok.mean()),
-                             **{f"fraction {k.split()[0]}": float(np.mean((q[k].values >= o[f"{k} lo"].min()) & (q[k].values <= o[f"{k} hi"].max()))) for k in keys}))
+            P = predictions(S, model, SIM_WINDOW[o.window])
+            D = fz(P[OBS].values) - zc
+            # incertidumbre de lo observado mas la de la prediccion, que depende de cuantas personas suma cada punto
+            d2 = np.array([d @ np.linalg.pinv(C * (1.0 + o.n / ns)) @ d for d, ns in zip(D, P.n_simulated.values)])
+            okj = d2 <= thr
+            oks = np.all([(P[k].values >= o[f"{k} sim_lo"]) & (P[k].values <= o[f"{k} sim_hi"]) for k in OBS], axis=0)
+            best = P.iloc[int(np.argmin(d2))]
+            rows.append(dict(cohort=o.cohort, window=o.window, n_observed=int(o.n), model=model, n_grid_points=len(P),
+                             seeds_per_point=float(P.n_seeds.mean()), people_per_point=float(P.n_simulated.mean()),
+                             n_compatible=int(okj.sum()), fraction_compatible=float(okj.mean()),
+                             min_distance=float(d2.min()), median_distance=float(np.median(d2)), distance_threshold=thr,
+                             n_all_within_simultaneous_ci=int(oks.sum()), fraction_all_within_simultaneous_ci=float(oks.mean()),
+                             closest_sd_F=best.sd_F, closest_rho_K=best.rho_K, closest_proxy_noise=best.proxy_noise,
+                             **{f"closest {k.split()[0]}": float(best[k]) for k in OBS}))
     return pd.DataFrame(rows)
 
 
 if __name__ == "__main__":
     os.makedirs(f"{OUT}/new", exist_ok=True)
     pd.set_option("display.width", 220)
-    O = observed()
+    O, COV = observed()
     if len(O):
         O.to_csv(f"{OUT}/new/competing_models_observed.tsv", sep="\t", index=False)
-        print("OBSERVADO, cohortes con dos tejidos por persona (IC 95 % por bootstrap de personas):")
+        pd.DataFrame([dict(cohort=c, observable_1=OBS[i], observable_2=OBS[j], covariance_fisher_z=M[i, j])
+                      for c, M in COV.items() for i in range(len(OBS)) for j in range(len(OBS))]
+                     ).to_csv(f"{OUT}/new/competing_models_observed_covariance.tsv", sep="\t", index=False)
+        print("OBSERVADO, cohortes con dos tejidos por persona (IC 95 % por bootstrap de personas; entre parentesis, el simultaneo):")
         for _, r in O.iterrows():
-            print(f"  {r.cohort} (n = {int(r.n)}, {r.window}): " + "; ".join(f"{k.split()[0]} {r[k]:+.2f} [{r[k + ' lo']:+.2f}, {r[k + ' hi']:+.2f}]" for k in OBS))
-    print(f"\nSIMULANDO {len(MODELS)} modelos, {len(SEEDS)} semillas:")
+            print(f"  {r.cohort} (n = {int(r.n)}, {r.window}):")
+            print("     " + "; ".join(f"{k.split()[0]} {r[k]:+.2f} [{r[k + ' lo']:+.2f}, {r[k + ' hi']:+.2f}] ({r[k + ' sim_lo']:+.2f}, {r[k + ' sim_hi']:+.2f})" for k in OBS))
     fs = f"{OUT}/new/competing_models_simulated.tsv"
     if os.environ.get("T2D_MODEL_REUSE") == "1" and os.path.exists(fs):
-        S = pd.read_csv(fs, sep="\t"); print(f"  (se reutilizan las {len(S)} simulaciones de {fs})")
+        S = pd.read_csv(fs, sep="\t"); print(f"\n(se reutilizan las {len(S)} simulaciones de {fs})")
     else:
+        print(f"\nSIMULANDO {len(MODELS)} modelos, {len(SEEDS)} semillas:")
         S = simulate(); S.to_csv(fs, sep="\t", index=False)
     print("\nSIMULADO, intervalo de cada observable al recorrer lo que no se conoce:")
     for win in ("morning biopsy", "any hour"):
@@ -286,18 +341,18 @@ if __name__ == "__main__":
             print(f"    {model:24s} " + "  ".join(f"{k.split()[0]} {q[k].min():+.2f}..{q[k].max():+.2f}" for k in OBS))
     if len(O):
         V = verdict(O, S); V.to_csv(f"{OUT}/new/competing_models_verdict.tsv", sep="\t", index=False)
-        J = joint(O, S); J.to_csv(f"{OUT}/new/competing_models_joint.tsv", sep="\t", index=False)
-        print("\nFRACCION de las simulaciones de cada modelo dentro del intervalo de confianza observado")
-        for win in J.window.unique():
-            print(f"  [{win}]")
-            for r in J[J.window == win].itertuples():
-                per = "  ".join(f"{c.split()[1]} {J.loc[r.Index, c]:.2f}" for c in J.columns if c.startswith("fraction O"))
-                print(f"    {r.model:24s} {per}   | todos a la vez: {r.n_all_within_ci} de {r.n_simulations} ({r.fraction_all_within_ci:.2f})")
-        print("\nESTADO: rasgos observados cuyo signo o intervalo cada modelo no alcanza en ninguna simulacion")
-        for win in V.window.unique():
-            print(f"  [{win}]")
+        J = joint(O, COV, S); J.to_csv(f"{OUT}/new/competing_models_joint.tsv", sep="\t", index=False)
+        print(f"\nCRITERIO CONJUNTO, cohorte por cohorte: puntos de la rejilla cuya prediccion (media de {J.seeds_per_point.max():.0f} semillas, "
+              f"{J.people_per_point.max():.0f} personas) es compatible con los seis observables a la vez (distancia <= {J.distance_threshold.iloc[0]:.1f})")
+        for c in J.cohort.unique():
+            print(f"  [{c}]")
+            for r in J[J.cohort == c].itertuples():
+                print(f"    {r.model:24s} {r.n_compatible:2d} de {r.n_grid_points:2d} ({r.fraction_compatible:.2f})   distancia minima {r.min_distance:8.1f}"
+                      f"   | dentro de los seis intervalos simultaneos: {r.n_all_within_simultaneous_ci} de {r.n_grid_points}")
+        print("\nPOR OBSERVABLE: los que ningun punto de la rejilla de un modelo predice dentro del intervalo observado")
+        for c in V.cohort.unique():
+            print(f"  [{c}]")
             for model in MODELS:
-                bad = V[(V.model == model) & (V.window == win) & ~V.model_can_reproduce]
-                print(f"    {model:24s} " + ("los produce todos" if not len(bad) else
-                      "; ".join(f"{r.observable.split()[0]} (observado {r.observed_state}, IC {r.observed_ci_lo:+.2f} a {r.observed_ci_hi:+.2f}; "
-                                f"modelo {r.simulated_min:+.2f} a {r.simulated_max:+.2f})" for r in bad.itertuples())))
+                bad = V[(V.cohort == c) & (V.model == model) & V.never_within_ci]
+                print(f"    {model:24s} " + ("ninguno" if not len(bad) else
+                      "; ".join(f"{r.observable.split()[0]} (observado {r.observed:+.2f}, {r.observed_state}; modelo {r.simulated_min:+.2f} a {r.simulated_max:+.2f})" for r in bad.itertuples())))
