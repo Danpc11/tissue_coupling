@@ -1,5 +1,63 @@
 # Changelog
 
+## v2.6.0: the three analyses that could refute the paper, and a full run on the real data
+
+v2.5.0 was run here from the public downloads to the last check, on another machine: 46 steps, the
+thirteen estimates, every figure, `verify_package` clean. The pooled estimate is 0.443 (0.348 to
+0.529), as on the authors' cluster. This release adds three steps, each run on the real data.
+
+### Added
+- **Four mechanisms against the same observables** (`python/model/competing_models.py`, step 20c).
+  The model of the paper has its conclusion written into it: the forcing is the cortisol rhythm
+  times receptor availability. Here it competes with no forcing, cortisol alone and receptor alone,
+  with the same oscillator, noise, sampling and estimator, over a grid of what is not known (how
+  much cortisol varies between people, how alike the receptor is in two tissues, how noisy mRNA is
+  as a measure of it). Six observables are computed in the same way in the simulations and in the
+  cohorts with two tissues per person.
+  With morning biopsies (AAGMEx): no forcing produces nothing; cortisol alone produces the
+  concordance between tissues but no relation with the receptor (−0.08 to 0.13, observed 0.20 in
+  that cohort); cortisol times receptor reproduces every feature; receptor alone reproduces the
+  signs but not the size of the concordance between tissues once the receptors are removed
+  (0.07 to 0.31, observed 0.39; the product gives 0.23 to 0.68).
+  **With post-mortem samples (GTEx) no model reproduces the data.** With biopsies at any hour all
+  three forced models predict that the relation between receptor and output vanishes (−0.06 to
+  0.06) and that the two tissues agree almost perfectly (0.9); the data give 0.28 to 0.32 and 0.56
+  to 0.61. Either deaths in GTEx are not spread over the 24 hours, or the association has a
+  component of level that does not depend on the hour, which a model that only moves amplitude
+  does not contain.
+- **The phase template against ZeitZeiger and tauFisher** (`32_benchmark_methods.py` and
+  `R/benchmark_supervised.R`, step 02f), on the same data and the same folds.
+  Leaving subjects out in GSE108539: template 1.53 h mean and 0.92 h median error; ZeitZeiger 1.95
+  and 1.11; tauFisher 2.32 and 2.00; chance 6.05.
+  Trained in muscle, tested in adipose tissue on another platform (GSE87761): template 3.03 h mean
+  and 2.10 h median with one offset learned from the other subjects; ZeitZeiger 2.93 h with no
+  offset at all once each gene is standardised within its cohort, 6.50 h without that step;
+  tauFisher 4.98 h. The template is on a par with ZeitZeiger and neither is better.
+- **What the amplitude estimator can and cannot separate** (`python/model/factorial_estimator.py`,
+  step 20d). Cell amplitude, phase dispersion between cells, fraction of rhythmic cells and noise
+  are varied independently. The inferred amplitude follows the collective amplitude (ρ = 0.85) and,
+  once that is removed, nothing of its three components is left (partial ρ of −0.02, 0.02 and
+  −0.02): two samples with the same collective amplitude are indistinguishable, however they got
+  there. A change of composition that does not touch the clock does not bias it. Without any rhythm
+  it still returns a number, half the size, and **the BMAL1–DBP antiphase check lets one cohort in
+  three through** (32% of 200), as it must when two unrelated phases are compared with a threshold
+  of 8 h out of 12.
+
+### Fixed
+- **Fig. 2a printed "P = 0e+00"** and the pooled table stored a P of exactly zero: one minus the
+  normal distribution function loses all precision for a large z. The tail is used instead and the
+  label reads "P < 10⁻¹⁵".
+- `verify_inputs.py` now sees the files an R script writes.
+
+### What the full run settles (all in `results/new/` after a run)
+- Specificity with the thirteen estimates: *NR3C1* at the 99.93rd percentile of 14,127 genes; ten
+  are above it, among them *BHLHE41*, *CRY2* and *NR3C2*; second of 44 nuclear receptors, after
+  *NR3C2*.
+- The signature table regenerated in full: insulin resistance against hydrocortisone, ρ = 0.70 over
+  nine output-arm genes (*P* = 0.016 against random sets of nine), against 0.71 over eight with the
+  versioned columns. Against Cushing, 0.67 (*P* = 0.065).
+- Nested leave-subject-out error of the template on the pipeline's own matrix: 0.92 h median.
+
 ## v2.5.0: answers to a second look by the same reviewer, and one new control
 
 This release contains v2.4.0, which was never published on its own.

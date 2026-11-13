@@ -73,6 +73,23 @@ needs `tqdm` and `anndata`, both in `requirements.txt`. Without it step 06 runs 
 estimator only, marks the CHIRAL rows as not run and says so; `T2D_REQUIRE_CHIRAL=1` makes that
 an error.
 
+### R packages for the comparison with other methods
+
+Step 02f compares the phase template with ZeitZeiger and tauFisher. Both are R packages that are
+not on CRAN:
+
+```bash
+# R 4.3 with the dependencies, for instance from conda-forge and bioconda
+micromamba create -p renv -c conda-forge -c bioconda r-base=4.3 r-abind r-bbmle r-data.table r-foreach \
+    bioconductor-limma r-pma r-statmod bioconductor-sva r-metacycle r-scales r-dplyr r-stringr r-nnet r-magrittr r-fda
+git clone --depth 1 https://github.com/hugheylab/zeitzeiger.git && renv/bin/R CMD INSTALL zeitzeiger
+git clone --depth 1 https://github.com/micnngo/tauFisher.git   && renv/bin/R CMD INSTALL tauFisher
+T2D_RSCRIPT=$PWD/renv/bin/Rscript bash run_all.sh
+```
+
+The versions used for the values in `CHANGELOG.md` were zeitzeiger 2.1.3 and tauFisher 1.0.0. Without
+R the step runs our own estimator only and says so.
+
 ## Versioned inputs under `data/reference/`, and how they compare with their regeneration
 
 These tables were shipped with the earlier releases, which had no code to produce most of them.

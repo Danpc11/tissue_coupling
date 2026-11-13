@@ -29,6 +29,7 @@ step "02 phase and amplitude template"         "${PY:-python3}" python/analyses/
 step "02c islets, T2D vs non-diabetic (PyDESeq2)" "${PY:-python3}" python/analyses/01c_islets_deseq2.py
 step "02d regenerate the versioned reference tables" "${PY:-python3}" python/analyses/00d_reference_tables.py
 step "02e template benchmark in adipose, GSE87761" "${PY:-python3}" python/analyses/02e_gse87761_benchmark.py
+step "02f the template against ZeitZeiger and tauFisher" "${PY:-python3}" python/analyses/32_benchmark_methods.py
 step "03 case-control analysis, Fig. 1b-d"     "${PY:-python3}" python/analyses/01b_fig1_signature_test.py
 step "04 leave-one-out, myotubes"              "${PY:-python3}" python/analyses/11_loo_validation_myotubes.py
 step "05 leave-one-out, muscle in vivo"        "${PY:-python3}" python/analyses/12_loo_validation_invivo.py
@@ -58,6 +59,8 @@ step "18 phenotype ontology by tissue"         "${PY:-python3}" python/analyses/
 step "19 entrainment tongue"                   "${PY:-python3}" python/model/make_tongue.py
 step "20 synthetic single-biopsy cohorts"      "${PY:-python3}" python/model/make_fig7_data.py
 step "20b the model's prediction with measured phases" "${PY:-python3}" python/analyses/29_signature_from_phases.py
+step "20c four mechanisms against the same observables" "${PY:-python3}" python/model/competing_models.py
+step "20d what the amplitude estimator can and cannot separate" "${PY:-python3}" python/model/factorial_estimator.py
 step "21 amplitude dispersion"                 "${PY:-python3}" python/analyses/10_amplitude_dispersion.py
 step "22 estimator noise by group"             "${PY:-python3}" python/analyses/15_dispersion_noise_by_group.py
 
@@ -87,4 +90,10 @@ if awk -F'\t' '$2 == "CHIRAL" && $9 == "ok" { found = 1 } END { exit !found }' "
 else
   echo "CHIRAL concordance (step 06): NOT regenerated in this run. The implementation was not found;"
   echo "  bash download_public.sh clones it. Everything else is complete."
+fi
+if awk -F'\t' '$2 == "ZeitZeiger" && $3 == "ok" { found = 1 } END { exit !found }' "$T2D_OUT/new/benchmark_methods.tsv" 2>/dev/null; then
+  echo "ZeitZeiger and tauFisher (step 02f): run."
+else
+  echo "ZeitZeiger and tauFisher (step 02f): NOT run. They are R packages that are not on CRAN; see docs/DATA.md."
+  echo "  The table has the rows of our own estimator only."
 fi

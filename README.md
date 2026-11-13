@@ -47,6 +47,11 @@ implementation that is not on PyPI; `download_public.sh` clones it at a fixed re
 absent the step still runs with our own estimator, writes the CHIRAL rows as not run and says so
 at the end of the pipeline. `T2D_REQUIRE_CHIRAL=1` makes its absence an error.
 
+The comparison with ZeitZeiger and tauFisher (step 02f) needs R and those two packages, which are
+not on CRAN (`docs/DATA.md` says how to install them). Without them the step writes the rows of
+our own estimator, marks the others as not run and the pipeline says so at the end.
+`T2D_RSCRIPT` selects the `Rscript` to use and `T2D_REQUIRE_R=1` makes their absence an error.
+
 Stochastic routines use NumPy `default_rng` with seed 0. Continuous integration runs on Python 3.11.
 
 **All thirteen estimates or none.** The meta-analysis lists the thirteen cohort and tissue
@@ -71,7 +76,8 @@ The file names date from earlier numberings of the figures.
 | path | contents |
 |---|---|
 | `python/analyses/` | the analysis steps |
-| `python/model/` | the forced-oscillator model and the data it generates |
+| `python/model/` | the forced-oscillator model and the data it generates; four mechanisms scored against the same observables (`competing_models.py`); what the amplitude estimator can and cannot separate (`factorial_estimator.py`) |
+| `R/` | the one R script, which runs ZeitZeiger and tauFisher for step 02f |
 | `python/figures/` | the figures |
 | `python/lib/gene_sets.py` | the registry of gene sets |
 | `data/reference/` | versioned inputs, and how each compares with its regeneration (`docs/DATA.md`) |

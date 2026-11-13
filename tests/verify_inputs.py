@@ -106,6 +106,9 @@ def main():
     # no cualquier fichero cuyo nombre empiece por GSE, GTEx o AAGMEx
     saved, saved_patterns = saved_by_helper()
     writes |= set(saved)
+    # lo que escriben los scripts de R que algun paso llama (write.table sobre file.path(dir, "nombre"))
+    for f in glob.glob(f"{ROOT}/R/*.R"):
+        writes |= set(re.findall(r'write\.table\([^\n]*?file\.path\([^,]+,\s*"([\w.\-]+\.tsv)"\)', open(f, encoding="utf-8").read()))
     produced_by_prepare = lambda b: b in saved or any(p.fullmatch(b) for p in saved_patterns)
     # descargas publicas que lista 00_prepare_data.py y el usuario coloca en data/raw
     external = lambda b: ("GRCh38" in b or b.startswith("GTEx_Analysis") or b.endswith(".gct")
