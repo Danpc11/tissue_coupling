@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Precalcula los datos de la figura 7 (lento: ~3 min). Guarda en results/new/fig7_data.npz"""
-import os,sys,warnings; warnings.filterwarnings("ignore")
+"""Precalcula los datos de la Figura 5 del articulo (el nombre del fichero viene de una numeracion anterior; lento: ~3 min). Guarda en results/new/fig7_data.npz"""
+import os,sys,warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 HERE=os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0,HERE); sys.path.insert(0,os.path.join(HERE,"../lib"))
 import forced_clock as fc

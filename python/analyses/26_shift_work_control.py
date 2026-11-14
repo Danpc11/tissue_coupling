@@ -23,7 +23,7 @@ Salida: results/new/GSE107537_shift_response.tsv, una fila por participante con 
 import os as _os, sys as _sys
 _RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
-import gzip, io, re, numpy as np, pandas as pd, sys, warnings; warnings.filterwarnings("ignore")
+import gzip, io, re, numpy as np, pandas as pd, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 from scipy import stats
 from gene_sets import SETS
 # anotacion: TC id -> simbolo, del campo gene_assignment

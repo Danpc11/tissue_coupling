@@ -30,7 +30,7 @@ A la matriz se le aplica el estimador del articulo (ordenamiento libre y proyecc
 Sin datos. Salidas: results/new/factorial_estimator.tsv (una fila por escenario) y
 results/new/factorial_estimator_samples.tsv (las muestras del escenario de referencia).
 """
-import os, sys, warnings; warnings.filterwarnings("ignore")
+import os, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 from scipy import stats
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.join(HERE, "../lib"))

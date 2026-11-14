@@ -6,10 +6,10 @@ que descartarlo como explicacion. Requiere GTEx_Analysis_v11_Annotations_SampleA
 import os as _os, sys as _sys
 _RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
-import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore")
+import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 from scipy import stats
 from gene_sets import SETS, resolve
-SA=pd.read_csv((_RAW + "/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt" if _os.path.exists(_RAW + "/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt") else "data/gtex/SampleAttributes.txt"),sep="\t",low_memory=False)
+SA=pd.read_csv(_RAW + "/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt",sep="\t",low_memory=False)
 SA["donor"]=SA.SAMPID.str.split("-").str[:2].str.join("-")
 PH=pd.read_pickle(f"{_OUT}/new/GTEx_pheno.pkl"); agemid={'20-29':25,'30-39':35,'40-49':45,'50-59':55,'60-69':65,'70-79':75}
 def sc(X,g):

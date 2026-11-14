@@ -1,7 +1,7 @@
 import os as _os, sys as _sys
 _RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
-import pandas as pd, numpy as np, sys, gzip, warnings; warnings.filterwarnings("ignore")
+import pandas as pd, numpy as np, sys, gzip, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 from scipy import stats
 from gene_sets import SETS, resolve
 ann=pd.read_csv(f"{_RAW}/Human_GRCh38_p13_annot_tsv.gz",sep="\t",usecols=["GeneID","Symbol"],dtype=str)
@@ -34,7 +34,7 @@ syn=pd.read_csv(f"{_OUT}/new/ncbi_synonym_map.tsv",sep="\t",index_col=0)["curren
 rng=np.random.default_rng(0); rows=[]
 gmt={}
 _hpo=f"{_RAW}/msigdb/c5.hpo.v2026.2.Hs.symbols.gmt"      # donde lo deja download_public.sh
-for l in open(_hpo if _os.path.exists(_hpo) else "data/msigdb/c5_hpo_v2026_2_Hs_symbols.gmt"):
+for l in open(_hpo):
     p=l.rstrip("\n").split("\t"); gmt[p[0]]=set(p[2:])
 WANT=["HP_TRUNCAL_OBESITY","HP_INCREASED_URINARY_CORTISOL_LEVEL","HP_INSULIN_RESISTANCE",
       "HP_HYPERGLYCEMIA","HP_TYPE_II_DIABETES_MELLITUS","HP_OBESITY","HP_ABNORMAL_CIRCULATING_CORTISOL_CONCENTRATION",

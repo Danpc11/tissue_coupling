@@ -12,7 +12,7 @@ Dos cautelas implementadas:
   - Los simbolos de gen se resuelven contra el registro con tabla de sinonimos, porque las
     matrices depositadas conservan la anotacion de su plataforma, que puede tener quince anos.
 """
-import os, sys, gzip, warnings; warnings.filterwarnings("ignore")
+import os, sys, gzip, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../lib"))
 
@@ -25,11 +25,10 @@ GEO = {
     # --- analisis principal: dos tejidos de la misma persona ---
     "GSE95674":  "AAGMEx adipose, 256 samples, Illumina HumanHT-12 v4 (primary)",
     "GSE95675":  "AAGMEx muscle, 255 samples; 232 individuals have both tissues (primary)",
-    "GSE41168":  "28 women, paired muscle and adipose, Affymetrix U133 Plus 2.0 (replication)",
+    "GSE41168":  "muscle and adipose before treatment, 35 people per tissue, 28 with both, Affymetrix U133 Plus 2.0 (replication)",
     # --- plantilla de fase: cohortes con hora de muestreo conocida ---
     "GSE108539": "serial vastus lateralis biopsies every 4 h over 24 h, n = 10 (phase template)",
-    "GSE104674": "adipose tissue at four circadian times, n = 12 (phase reference)",
-    "GSE107537":  "10 h sleep delay under controlled laboratory conditions, blood (external control for the estimator)",
+    "GSE107537":  "10 h sleep delay under controlled laboratory conditions, blood, recorded hours (external control of the clock-output gene set, by cosinor)",
     # --- validacion farmacologica ---
     "GSE148640": "hydrocortisone vs placebo in adipose tissue, within-person, n = 10",
     # --- definicion del nucleo de respuesta a la insulina ---
@@ -38,15 +37,14 @@ GEO = {
     "GSE182120": "muscle, NGT vs type 2 diabetes",
     "GSE25462":  "muscle, family history of type 2 diabetes",
     "GSE159984": "pancreatic islets, 27 T2D / 58 non-diabetic donors + 45 cultured preparations",
-    "GSE78721":  "adipose, limb, 68 type 2 diabetes vs 62 normal (Affymetrix PrimeView)",
+    "GSE78721":  "adipose, 130 samples of 95 people, type 2 diabetes vs normal; one sample per person is used (Affymetrix PrimeView)",
     "GSE26637":  "adipose, fasting and hyperinsulinaemia in the same 10 people",
     # --- eje receptor-reloj: cohortes anadidas en v1.1 ---
     "GSE66446":  "Cushing syndrome adipose, 5 vs 11",
     "GSE17992":  "dexamethasone 4 days, muscle (n=10) and adipose (n=4), two-colour arrays",
     "GSE129843": "muscle, six biopsies per person per condition, recorded times",
-    "GSE182117": "synchronised myotubes, 8 time points, 11 donors",
+    "GSE182117": "synchronised myotubes, time course in two conditions, 12 donors (validation of the amplitude estimator against cosinor)",
     "GSE87761":  "adipose under constant routine, recorded times",
-    "GSE11868":  "3 h hyperinsulinaemic clamp, 6 lean subjects",
     "GSE40589":  "adipose, saline infusion vs euglycaemic and hyperglycaemic clamp at the same clock times (time-matched control for the clamp)",
 }
 GTEX = "https://gtexportal.org/home/datasets/   (gene reads and sample annotations, v11)"

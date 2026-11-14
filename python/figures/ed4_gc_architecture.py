@@ -11,7 +11,7 @@ A  chord diagram: transcription factors whose inferred activity correlates with 
 B  correlation of each FOXO3 target with the glucocorticoid axis score.
 The ranking of TF activity against clock output is Fig. 4A and is not repeated here.
 """
-import os, sys, warnings; warnings.filterwarnings("ignore")
+import os, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
@@ -26,6 +26,9 @@ A=pd.read_pickle(f"{OUT}/new/AAGMEx_adipose_log2.pkl"); Ac=A.sub(A.mean(0),axis=
 def sc(X,g):
     gg=[r for r in (resolve(x,X.index) for x in g) if r]; Z=X.loc[gg]; return ((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T.mean(0)
 gc=sc(Ac,SETS["Glucocorticoid"]["genes"])
+# Los genes de la propia puntuacion no pueden contar como dianas: un factor cuyo regulon los contiene
+# correlacionaria con ella por construccion (el receptor de androgenos pasaba de 0.25 a 0.35 por dos).
+GCSET={r for r in (resolve(x,Ac.index) for x in SETS["Glucocorticoid"]["genes"]) if r}
 d=pd.read_csv(f"{RAW}/dorothea_ABC.tsv",sep="\t",low_memory=False,
               usecols=["source_genesymbol","target_genesymbol","is_stimulation","is_inhibition"])
 d["mor"]=np.where(d.is_stimulation&~d.is_inhibition,1,np.where(d.is_inhibition&~d.is_stimulation,-1,0))
@@ -33,7 +36,7 @@ d=d[d.mor!=0].drop_duplicates(["source_genesymbol","target_genesymbol"])
 def activity(tf):
     r=d[d.source_genesymbol==tf]
     g=[(resolve(t,Ac.index),m) for t,m in zip(r.target_genesymbol,r.mor)]
-    g=[(a,b) for a,b in g if a]
+    g=[(a,b) for a,b in g if a and a not in GCSET]
     if len(g)<8: return None
     Z=Ac.loc[[a for a,_ in g]]; Z=((Z.T-Z.mean(1))/(Z.std(1)+1e-9)).T
     w=np.array([b for _,b in g]); return (Z.values*w[:,None]).sum(0)/np.sqrt(len(w))
@@ -44,9 +47,9 @@ for tf in d.source_genesymbol.unique():
 S=pd.Series(act).sort_values()
 # Los cinco factores con mayor correlacion de actividad inferida con el eje glucocorticoide
 TFS=list(S.reindex(S.abs().sort_values(ascending=False).index).head(5).index)
-rho_t={g:stats.spearmanr(Ac.loc[g],gc).statistic for g in Ac.index if g in set(d.target_genesymbol)}
-# Dianas curadas de esos factores que correlacionan por encima de 0.45 en valor absoluto
-THR=float(os.environ.get("ED4_THR","0.30"))
+rho_t={g:stats.spearmanr(Ac.loc[g],gc).statistic for g in Ac.index if g in set(d.target_genesymbol) and g not in GCSET}
+# Dianas curadas de esos factores que correlacionan por encima del umbral en valor absoluto
+THR=float(os.environ.get("T2D_ED4_THR","0.30"))
 conn=set(d[d.source_genesymbol.isin(TFS)].target_genesymbol)
 TG=[g for g,v in sorted(rho_t.items(),key=lambda x:-abs(x[1])) if g in conn and abs(v)>THR]
 print(f"{len(TFS)} TF, {len(TG)} dianas con |rho| > {THR}")

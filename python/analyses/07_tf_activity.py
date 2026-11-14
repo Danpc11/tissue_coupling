@@ -10,7 +10,7 @@ _RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT",
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
 import os
 import pandas as pd, numpy as np, sys, gzip, warnings
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 from scipy import stats
 from gene_sets import SETS, resolve
 RAW=os.environ.get("T2D_RAW","data/raw")

@@ -88,7 +88,6 @@ def implementation():
         _load()
     except ImportError:
         return None
-    mod = sys.modules.get("pychiral") or sys.modules.get("scritmo.pychiral") or sys.modules.get("scritmo")
     name = "pyCHIRAL" if "pychiral" in sys.modules else "scRITMO"
     src = PYCHIRAL_SRC if name == "pyCHIRAL" else SCRITMO_SRC
     try:

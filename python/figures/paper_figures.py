@@ -7,7 +7,7 @@ F4 Regulation and specificity F5 The model
 Schematic panels are left as labelled empty frames: they are drawn by hand, because
 AI-generated images are not accepted by the publishers.
 """
-import os, sys, warnings; warnings.filterwarnings("ignore")
+import os, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy import stats

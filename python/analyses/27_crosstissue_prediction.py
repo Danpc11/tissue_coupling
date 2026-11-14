@@ -26,7 +26,7 @@ Salidas: results/new/crosstissue_prediction.tsv         una fila por ajuste
          results/new/crosstissue_prediction_null.tsv    R2 de cada conjunto al azar
          results/new/oof_predictions_adipose_to_muscle.tsv  prediccion fuera de pliegue por donante
 """
-import os, sys, warnings; warnings.filterwarnings("ignore")
+import os, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 from scipy import stats
 from sklearn.model_selection import KFold

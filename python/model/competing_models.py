@@ -78,7 +78,7 @@ Entradas (si existen): results/new/AAGMEx_*_log2.pkl, GTEx_*.pkl, GTEx_pheno.pkl
 Salidas (results/new/): competing_models_observed.tsv, _observed_covariance.tsv, _simulated.tsv,
           _joint.tsv, _verdict.tsv, _calibration.tsv, _seed_stability.tsv
 """
-import os, sys, gzip, pickle, warnings; warnings.filterwarnings("ignore")
+import os, sys, gzip, pickle, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 from scipy import stats
 HERE = os.path.dirname(os.path.abspath(__file__))

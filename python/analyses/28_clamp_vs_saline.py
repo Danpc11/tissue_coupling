@@ -42,7 +42,7 @@ Salidas en results/new/:
     clamp_vs_saline_pairing_pairs.tsv   correlacion de identidad de cada par
     clamp_vs_saline_pairing_matrix.tsv  matriz de correlaciones de identidad, antes x despues
 """
-import os, sys, gzip, io, warnings; warnings.filterwarnings("ignore")
+import os, sys, gzip, io, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 from scipy import stats
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.join(HERE, "../lib"))

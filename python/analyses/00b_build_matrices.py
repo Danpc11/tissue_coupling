@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Construye las matrices intermedias `results/new/*.pkl` que leen los pasos 02-27.
 
-Reconstruccion (rama repro-hugo, nov 2026): la version publicada del repositorio no incluia el
+Reconstruccion (Hugo Tovar, nov 2026): la version publicada del repositorio no incluia el
 paso que convierte las descargas publicas en estas matrices. Las convenciones de aqui se dedujeron
 de lo que cada script consumidor espera (indice = simbolo actual, columnas = GSM o donante, log2)
 y de Methods "Cohorts and preprocessing":
@@ -20,7 +20,7 @@ servidor.
 Uso:  python python/analyses/00b_build_matrices.py [cohorte ...]
 """
 import os, sys, gzip, glob, re, io, warnings, importlib.util
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -369,21 +369,12 @@ def gse148640():
     diff = pd.DataFrame({pats[h]: vals[h].values - vals[p].values for p, h in zip(pla, hc)}, index=d.gene.values)
     diff = diff.groupby(level=0).mean()
     diff.to_pickle(f"{OUT}/GSE148640_diff_genes.pkl")
-    print(f"GSE148640: {diff.shape} -> {OUT}/GSE148640_diff_genes.pkl; PER1 sube en {(diff.loc['PER1']>0).sum()}/10")
-
-
-def gtex_link():
-    """data/gtex/SampleAttributes.txt, la ruta no documentada que leen 08 y las suplementarias."""
-    gt = "data/gtex/SampleAttributes.txt"
-    if not os.path.exists(gt):
-        os.makedirs("data/gtex", exist_ok=True)
-        os.symlink(os.path.abspath(f"{RAW}/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt"), gt)
-        print(f"enlace {gt}")
+    print(f"GSE148640: {diff.shape} -> {OUT}/GSE148640_diff_genes.pkl; PER1 sube en {(diff.loc['PER1']>0).sum()}/{diff.shape[1]}")
 
 
 STEPS = dict(synonyms=synonym_map, aagmex=aagmex, gse41168=gse41168, gpl570=gpl570_case_control, gse78721=gse78721,
              gse182120=gse182120, gse182117=gse182117, gse129843=gse129843, gse66446=gse66446,
-             gse13070=gse13070, gse148640=gse148640, gtex=gtex, gse108539=gse108539_recount3, gtex_link=gtex_link)
+             gse13070=gse13070, gse148640=gse148640, gtex=gtex, gse108539=gse108539_recount3)
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(STEPS)

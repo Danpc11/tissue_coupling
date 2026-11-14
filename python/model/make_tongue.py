@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Barrido de la lengua de entrainment: forzamiento efectivo F*K frente a período intrínseco."""
-import os,sys,warnings; warnings.filterwarnings("ignore")
+import os,sys,warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np
 HERE=os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0,HERE)
 import forced_clock as fc

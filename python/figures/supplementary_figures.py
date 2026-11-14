@@ -3,7 +3,7 @@
 
 Descriptions live in FIGURE_CAPTIONS.md; panels carry only their letter and a provenance line.
 """
-import os, sys, warnings; warnings.filterwarnings("ignore")
+import os, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy import stats
@@ -189,13 +189,8 @@ def ed7():
     for dt, c in ((0.2, GR), (0.1, GC), (0.05, AD), (0.02, IS)):
         amps = []
         for fk in np.linspace(0, .2, 9):
-            n = 60; rng = np.random.default_rng(3); taus = rng.normal(24, 1.2, n); om = 2 * np.pi / taus
-            ph = rng.uniform(0, 2 * np.pi, n); rr = np.ones(n)
-            for t in np.arange(0, 15 * 24, dt):
-                d = 2 * np.pi * t / 24 - ph
-                ph = ph + dt * (om + fk * np.sin(d) / np.maximum(rr, 1e-3))
-                rr = np.clip(rr + dt * (.05 * rr * (1 - rr) + fk * np.cos(d)), 1e-3, 10)
-            amps.append(fc.ensemble(ph % (2 * np.pi), rr)[0])
+            # las ecuaciones del modelo, no una copia: solo cambia el paso de integracion
+            amps.append(fc.ensemble(*fc.simulate_population(1.0, float(fk), n_cells=60, sigma_tau=1.2, days=15, dt=dt, seed=3))[0])
         ax.plot(np.linspace(0, .2, 9), amps, "o-", ms=3, color=c, label=f"dt = {dt} h")
     ax.set(xlabel="effective forcing  F · K", ylabel="ensemble amplitude")
     ax.legend(frameon=False, loc="lower right")
@@ -226,13 +221,7 @@ def ed7():
     for sig, c in ((0.6, GC), (1.2, AD), (2.0, MU)):
         Rs = []
         for fk in np.linspace(0, .12, 10):
-            n = 80; rng = np.random.default_rng(11); taus = rng.normal(24, sig, n); om = 2 * np.pi / taus
-            ph = rng.uniform(0, 2 * np.pi, n); rr = np.ones(n); dt = .05
-            for t in np.arange(0, 15 * 24, dt):
-                d = 2 * np.pi * t / 24 - ph
-                ph = ph + dt * (om + fk * np.sin(d) / np.maximum(rr, 1e-3))
-                rr = np.clip(rr + dt * (.05 * rr * (1 - rr) + fk * np.cos(d)), 1e-3, 10)
-            Rs.append(fc.ensemble(ph % (2 * np.pi), rr)[2])
+            Rs.append(fc.ensemble(*fc.simulate_population(1.0, float(fk), n_cells=80, sigma_tau=sig, days=15, dt=.05, seed=11))[2])
         ax.plot(np.linspace(0, .12, 10), Rs, "o-", ms=3, color=c, label=f"period s.d. = {sig} h")
     ax.set(xlabel="effective forcing  F · K", ylabel="ensemble synchrony R")
     ax.legend(frameon=False, loc="lower right")
@@ -245,7 +234,7 @@ def ed1():
     PH = pd.read_pickle(f"{OUT}/new/GTEx_pheno.pkl")
     agemid = {'20-29': 25, '30-39': 35, '40-49': 45, '50-59': 55, '60-69': 65, '70-79': 75}
     _sa = f"{RAW}/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt"
-    SA = pd.read_csv(_sa if os.path.exists(_sa) else "data/gtex/SampleAttributes.txt", sep="\t", low_memory=False)
+    SA = pd.read_csv(_sa, sep="\t", low_memory=False)
     SA["donor"] = SA.SAMPID.str.split("-").str[:2].str.join("-")
     TIS = [("adipose sc", "GTEx_adipose_sc", "Adipose - Subcutaneous", AD),
            ("adipose visceral", "GTEx_adipose_visc", "Adipose - Visceral (Omentum)", IS),
@@ -254,7 +243,13 @@ def ed1():
     rows = []
     for lab, fn, smtsd, c in TIS:
         X = pd.read_pickle(f"{OUT}/new/{fn}.pkl"); Xc = X.sub(X.mean(0), axis=1)
-        sa = SA[SA.SMTSD == smtsd].drop_duplicates("donor").set_index("donor").reindex(X.columns)
+        # RIN e isquemia de la muestra cuya expresion esta en la matriz (00b guarda cual), igual que el paso 09
+        _sm = f"{OUT}/new/{fn}_samples.tsv"
+        if os.path.exists(_sm):
+            used = pd.read_csv(_sm, sep="\t", index_col=0).iloc[:, 0].reindex(X.columns)
+            sa = SA.set_index("SAMPID").reindex(used.values); sa.index = X.columns
+        else:
+            sa = SA[SA.SMTSD == smtsd].drop_duplicates("donor").set_index("donor").reindex(X.columns)
         p_ = PH.reindex(X.columns)
         H = pd.get_dummies(p_.DTHHRDY.fillna(-1).astype(int), prefix="h").values.astype(float)
         isch = sa.SMTSISCH.astype(float); isch = isch.fillna(isch.median()).values
