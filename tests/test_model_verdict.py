@@ -15,7 +15,9 @@ Sin simulaciones ni datos: se construyen lo observado y lo predicho.
   8. Donde el diseno no fija la ventana de muestreo, se recorren todas; donde la fija, solo esa.
   9. Una covarianza que no define una region (no finita, nula, no definida positiva) se rechaza.
  10. La calibracion usa personas independientes de las que definen la prediccion, del tamano exacto
-     de la cohorte observada, y de mas de una poblacion.
+     de la cohorte observada, de mas de una poblacion y de cohortes completamente nuevas; y puntua
+     cada cohorte con sus propias personas, con la misma funcion que puntua los datos.
+ 12. La matriz de confusion genera cohortes bajo cada mecanismo y les aplica el procedimiento entero.
  11. La cache de simulaciones solo se reutiliza si su manifiesto coincide con el codigo y los
      parametros actuales.
 """
@@ -139,18 +141,26 @@ check("casi singular: se descarta esa direccion y el numero de condicion es el d
 tiny = np.eye(3); tiny[2, 2] = -1e-14                        # negativo solo por redondeo
 check("un autovalor negativo del tamano del redondeo se trata como cero", cm.region(tiny)[1] == 2)
 
-print("10. La calibracion no usa lo que calibra, y respeta el tamano de la cohorte")
+print("10. La calibracion no usa lo que calibra, respeta el tamano de la cohorte y mide igual que en los datos")
 seeds2 = [0, 1]; pt = (cm.SD_F[0], cm.RHO_K[1], cm.PROXY[1], cm.MORNING)
 ENS = dict(cm.ensemble_of((names[2], pt[0], pt[1], sd)) for sd in seeds2)
-c = cm.calibrate(pd.Series(dict(cohort="A", n=57)), ENS, names[2], pt, seeds2, reps=6, boot=25, pools=2)
+c = cm.calibrate(pd.Series(dict(cohort="A", n=57)), ENS, names[2], pt, seeds2, reps=6, boot=25, pools=2, fresh=3)
 check("las cohortes de calibracion tienen el tamano de la observada", c["n_calibration_cohort"] == 57 and c["n_observed"] == 57)
 check("salen de una poblacion varias veces mayor", c["population_size"] == 3 * 57)
 check("de dos poblaciones independientes, con su intervalo", c["independent_populations"] == 2 and c["calibrated_threshold_min"] <= c["calibrated_threshold_max"])
-check("con semillas que ninguna prediccion usa", cm.CALIBRATION_SEED > max(cm.SEEDS) and all(k[5] in (0, 1) for k in cm._POOLS))
-a1 = cm.independent_population(names[2], pt, 30, 0); a2 = cm.independent_population(names[2], pt, 30, 1)
+check("con semillas que ninguna prediccion usa", cm.CALIBRATION_SEED > max(cm.SEEDS))
+check("y ademas con cohortes completamente nuevas", c["fresh_cohorts"] == 3 and np.isfinite(c["calibrated_threshold_fresh_cohorts"]))
+check("y deja escrito cuanto cambia con la otra estandarizacion", np.isfinite(c["calibrated_threshold_if_standardised_over_population"]))
+p0 = cm.independent_population(names[2], pt, 90, 0); p1 = cm.independent_population(names[2], pt, 90, 1)
 m0 = cm.measured(ENS, names[2], pt[0], pt[1], 0, pt[3], pt[2])
-check("y que no repiten a las personas de la prediccion ni entre si",
-      not np.allclose(a1[0][:30], m0[0][:30]) and not np.allclose(a1[0], a2[0]))
+check("las poblaciones no repiten a las personas de la prediccion ni entre si",
+      not np.allclose(p0["rec"]["A"][:30], m0[0][:30]) and not np.allclose(p0["rec"]["A"], p1["rec"]["A"]))
+idx = np.arange(0, 90, 3)
+own = cm.cohort_from(p0, idx); pool = cm.cohort_from(p0, idx, "over the whole population")
+check("la puntuacion de una cohorte extraida usa sus propias personas", np.allclose(own[2], cm.gene_score(p0["expr"]["A"][:, idx])))
+check("que no es lo mismo que estandarizar con toda la poblacion", not np.allclose(own[2], pool[2]) and np.allclose(own[0], pool[0]))
+Xd = pd.DataFrame(p0["expr"]["A"][:, idx], index=cm.OUTPUT_GENES)
+check("y es la misma funcion que puntua los datos", np.allclose(cm.score(Xd, cm.OUTPUT_GENES).values, own[2]))
 
 print("11. La cache solo vale si su manifiesto coincide")
 M1 = cm.manifest([0, 1, 2]); M2 = cm.manifest([0, 1, 2, 3])
@@ -167,6 +177,23 @@ with tempfile.TemporaryDirectory() as d:
 check("sin manifiesto no se reutiliza", not no_manifest)
 check("con un manifiesto de otra configuracion tampoco", not other)
 check("con el mismo si, y solo si se pide", same and not not_asked)
+
+print("12. La matriz de confusion aplica el procedimiento entero a cohortes de cada mecanismo")
+ENS4 = dict(cm.ensemble_of((m, sf, rk, sd)) for m in names for sf in cm.SD_F[:1] for rk in cm.RHO_K[1:2] for sd in seeds2)
+S4 = pd.DataFrame([dict(model=m, sd_F=sf, rho_K=rk, proxy_noise=cm.PROXY[1], window=cm.MORNING, seed=sd,
+                        **cm.observables(*cm.measured(ENS4, m, sf, rk, sd, cm.MORNING, cm.PROXY[1])))
+                   for (m, sf, rk, sd) in ENS4])
+pts = {m: (cm.SD_F[0], cm.RHO_K[1], cm.PROXY[1], cm.MORNING) for m in names}
+CF = cm.confusion(pd.Series(dict(cohort="A", n=60, window="morning biopsy")), None, S4, ENS4, pts, seeds2, thr=12.6, reps=8, boot=20)
+check("una fila por mecanismo generador y modelo candidato", len(CF) == 16 and set(CF.generating_model) == set(names))
+check("frecuencias entre cero y uno", bool(((CF.accepted_fraction >= 0) & (CF.accepted_fraction <= 1)).all()))
+check("en cada mecanismo generador, algun modelo es el mas cercano en cada cohorte",
+      bool(np.allclose(CF.groupby("generating_model").closest_fraction.sum(), 1.0)))
+A = CF.pivot(index="generating_model", columns="candidate_model", values="accepted_fraction")
+Dm = CF.pivot(index="generating_model", columns="candidate_model", values="median_min_distance")
+check("cuando genera el producto, el producto queda mas cerca que la ausencia de forzamiento, y se acepta mas",
+      Dm.loc[names[2], names[2]] < Dm.loc[names[2], names[0]] and A.loc[names[2], names[2]] >= A.loc[names[2], names[0]],
+      f"distancia mediana {Dm.loc[names[2], names[2]]:.1f} frente a {Dm.loc[names[2], names[0]]:.1f} (cohortes de 60 personas: aqui se prueba el procedimiento, no su potencia)")
 
 print("\nTODO CORRECTO" if not fails else f"\nFALLAN {len(fails)}: {fails}")
 sys.exit(1 if fails else 0)
