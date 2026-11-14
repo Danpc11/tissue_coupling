@@ -88,7 +88,10 @@ All through environment variables; none is needed for a standard run.
 | `T2D_CLOCK_COHORT`, `T2D_CLAMP_TEMPLATE` | `GSE108539`, 800 | the time-course cohort the phase template is built from, and how many template genes the clamp analysis projects on |
 | `T2D_MODEL_N`, `T2D_MODEL_SEEDS` | 200, 10 | people per simulated cohort and seeds per grid point in the comparison of mechanisms |
 | `T2D_MODEL_WORKERS` | all cores, at most 32 | processes for the integrations of that step |
-| `T2D_MODEL_BOOT`, `T2D_MODEL_CALIB`, `T2D_MODEL_CALIB_BOOT`, `T2D_MODEL_CALIB_POOLS` | 500, 100, 150, 2 | bootstrap of the observed values; replicates, bootstrap per replicate and independent populations of the calibration |
+| `T2D_MODEL_BOOT` | 500 | bootstrap of the observed values in the comparison of mechanisms |
+| `T2D_MODEL_CALIB`, `T2D_MODEL_CALIB_BOOT`, `T2D_MODEL_CALIB_POOLS`, `T2D_MODEL_CALIB_FRESH` | 100, 150, 2, 30 | calibration of the joint region: replicates per population, bootstrap per replicate, independent populations, and entirely new cohorts per observed cohort |
+| `T2D_MODEL_CALIB_COMPARE` | `1` | also calibrates with the score standardised over the whole synthetic population, to record how much it differs; `0` skips it |
+| `T2D_MODEL_CONFUSION` | 100 | cohorts generated under each mechanism for the confusion matrix |
 | `T2D_MODEL_REUSE` | unset | `1` reuses the simulations of a previous run if their manifest matches the current code and parameters |
 | `T2D_ED4_THR` | 0.30 | the correlation above which Supplementary Fig. 4 draws a target of a transcription factor |
 | `T2D_ARCHS4_DL`, `T2D_ARCHS4` | unset, `data/raw/archs4/human_gene_v2.latest.h5` | the optional ARCHS4 route for the islet counts (`00c_archs4_counts.py`): `1` makes `download_public.sh` fetch the file, and the second says where it is. Not used in a standard run |
@@ -169,7 +172,7 @@ simulated phases).
 | `tests/test_phase_template.py` | the validation of the phase template uses nothing from the held-out subject: on pure noise its error is that of chance | no |
 | `tests/test_single_sample.py` | "single sample" means one sample per person scored against a fixed reference: a lone sample is refused, and its value does not depend on which others accompany it | no |
 | `tests/test_model_null.py` | on simulated cohorts the estimator recovers the effect of the receptor gain when the model has one and finds none when it has none | no |
-| `tests/test_model_verdict.py` | the criterion that compares the competing models, on values built by hand: three states per observable, with state and interval required at the same grid point; a joint region, cohort by cohort, on the effective rank of the covariance; predictions averaged over seeds; the sampling window fixed where the design fixes it and scanned where it does not; a covariance that defines no region is refused; calibration uses people independent of the predictions, at the exact size of the observed cohort; a cache is reused only if its manifest matches | no |
+| `tests/test_model_verdict.py` | the criterion that compares the competing models, on values built by hand: three states per observable, with state and interval required at the same grid point; a joint region, cohort by cohort, on the effective rank of the covariance; predictions averaged over seeds; the sampling window fixed where the design fixes it and scanned where it does not; a covariance that defines no region is refused; calibration uses people independent of the predictions, at the exact size of the observed cohort; a cache is reused only if its manifest matches; every cohort, observed, predicted or drawn for calibration, is scored with its own people by one function; the confusion matrix applies the whole procedure to cohorts of each mechanism | no |
 | `tests/test_clamp_vs_saline.py` | runs step 14b on a small simulated series with a known answer and checks the contents of its output | no |
 | `tests/smoke_test.py` | the phase estimator recovers a known phase | no |
 | `tests/verify_package.py` | arithmetic and consistency of the tables of a real run | yes |
