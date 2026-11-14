@@ -11,7 +11,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 RAW=$ROOT/data/raw
 UA='Mozilla/5.0'
-mkdir -p "$RAW/msigdb" "$RAW/_soft" "$ROOT/data/msigdb"
+mkdir -p "$RAW/msigdb" "$RAW/_soft"
 cd "$RAW"
 get () {  # get <url> <destino>
   local url=$1 dst=$2
@@ -26,8 +26,8 @@ listdir () { curl -s -A "$UA" "$1" | grep -o 'href="[^"]*"' | sed 's/href="//; s
 
 echo "### $(date)  inicio"
 echo "## 1. Matrices de serie (GEO FTP)"
-for a in GSE11868 GSE13070 GSE17992 GSE25462 GSE26637 GSE41168 GSE66446 GSE78721 GSE87761 \
-         GSE40589 GSE95674 GSE95675 GSE104674 GSE107537 GSE108539 GSE129843 GSE148640 GSE159984 GSE182117 GSE182120; do
+for a in GSE13070 GSE17992 GSE25462 GSE26637 GSE41168 GSE66446 GSE78721 GSE87761 \
+         GSE40589 GSE95674 GSE95675 GSE107537 GSE108539 GSE129843 GSE148640 GSE159984 GSE182117 GSE182120; do
   n=${a:0:$((${#a}-3))}nnn
   files=$(listdir "https://ftp.ncbi.nlm.nih.gov/geo/series/$n/$a/matrix/" | grep '_series_matrix.txt.gz$')
   [ -z "$files" ] && echo "  [FALLO] $a: sin matrices listadas"
@@ -42,7 +42,6 @@ while read -r a f; do
 done <<'LIST'
 GSE108539 GSE108539_norm_reads_count.txt.gz
 GSE148640 GSE148640_processed.txt.gz
-GSE104674 GSE104674_rawCounts.txt.gz
 GSE182117 GSE182117_counts.tsv.gz
 GSE182117 GSE182117_logCPM_batchCorrected.tsv.gz
 GSE129843 GSE129843_README.txt
@@ -83,8 +82,6 @@ M=https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2026.2.Hs
 for c in h.all c2.all c5.all c5.hpo c8.all; do
   get $M/$c.v2026.2.Hs.symbols.gmt msigdb/$c.v2026.2.Hs.symbols.gmt
 done
-# el script 09_hpo_by_tissue.py lee data/msigdb/c5_hpo_v2026_2_Hs_symbols.gmt (nombre con guiones bajos)
-for f in msigdb/*.gmt; do b=$(basename "$f"); ln -sfn "../raw/msigdb/$b" "$ROOT/data/msigdb/$(echo "$b" | sed 's/\.gmt$//; s/\./_/g').gmt"; done
 
 echo "## 6. DoRothEA A-C (OmniPath)"
 get 'https://omnipathdb.org/interactions?datasets=dorothea&dorothea_levels=A,B,C&organisms=9606&genesymbols=yes&fields=dorothea_level,sources,references' dorothea_ABC.tsv
@@ -133,7 +130,6 @@ done
 get "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE66nnn/GSE66446/suppl/GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt.gz" GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt.gz
 # la serie tiene dos plataformas; 00_prepare_data.py busca el nombre sin sufijo
 [ -s GSE159984-GPL16791_series_matrix.txt.gz ] && ln -sfn GSE159984-GPL16791_series_matrix.txt.gz GSE159984_series_matrix.txt.gz
-mkdir -p "$ROOT/data/gtex"; ln -sfn ../raw/GTEx_Analysis_v11_Annotations_SampleAttributesDS.txt "$ROOT/data/gtex/SampleAttributes.txt"
 
 echo "## 9. recount3: GSE108539 (SRP127581), sustituto de las cuentas NCBI de la plantilla de fase"
 mkdir -p recount3

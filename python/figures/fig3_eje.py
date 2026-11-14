@@ -6,7 +6,7 @@ b  distribución de la salida del reloj por quintiles de NR3C1, cada punto una p
 c  señalización glucocorticoide frente a reloj, estratificado living / post mortem
 d  diseño dentro del donante: cuánto del efecto es del individuo y cuánto del tejido
 """
-import os,sys,warnings; warnings.filterwarnings("ignore")
+import os,sys,warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy import stats

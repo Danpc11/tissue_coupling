@@ -1,7 +1,7 @@
 import os as _os, sys as _sys
 _RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
-import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore")
+import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 from scipy import stats
 import phase as ph
 X=pd.read_pickle(f"{_OUT}/new/GSE13070_entrez.pkl"); Xc=X.sub(X.mean(0),axis=1)

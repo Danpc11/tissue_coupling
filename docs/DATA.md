@@ -2,16 +2,20 @@
 
 ## Public downloads expected under `data/raw/`
 
-Twenty GEO series and GTEx v11. `bash download_public.sh` fetches all of them, with the platform
+Eighteen GEO series and GTEx v11. `bash download_public.sh` fetches all of them, with the platform
 tables and annotation files the pipeline reads, and `python/analyses/00_prepare_data.py` lists
 each one and stops the run if any is missing.
 
-GSE11868, GSE13070, GSE17992, GSE25462, GSE26637, GSE40589, GSE41168, GSE66446, GSE78721, GSE87761,
-GSE95674, GSE95675, GSE104674, GSE107537, GSE108539, GSE129843, GSE148640, GSE159984, GSE182117,
-GSE182120.
+GSE13070, GSE17992, GSE25462, GSE26637, GSE40589, GSE41168, GSE66446, GSE78721, GSE87761, GSE95674,
+GSE95675, GSE107537, GSE108539, GSE129843, GSE148640, GSE159984, GSE182117, GSE182120.
 
-Nineteen of them are the ones listed, with tissue, platform, sample number and role, in
-Supplementary Table S1 of the manuscript. The twentieth, GSE40589, was added in v2.2.0 as a
+**Two series listed in Supplementary Table S1 are not used.** GSE104674 (adipose tissue at four
+circadian times) and GSE11868 (a 3 h clamp in six lean subjects) were downloaded and listed by the
+releases up to v2.9.1, and no step read them. They are no longer downloaded. The series the
+analyses use are therefore seventeen of the nineteen in that table, plus GSE40589.
+
+Seventeen of them are listed, with tissue, platform, sample number and role, in
+Supplementary Table S1 of the manuscript. The eighteenth, GSE40589, was added in v2.2.0 as a
 time-matched control for the clamp (last section); its place in the manuscript is not decided.
 
 GSE107537 is the external control for the estimator: a controlled 10-h delay of the habitual sleep
@@ -72,6 +76,15 @@ another revision; `PYCHIRAL_SRC` or `SCRITMO_SRC` point the pipeline at another 
 needs `tqdm` and `anndata`, both in `requirements.txt`. Without it step 06 runs with our own
 estimator only, marks the CHIRAL rows as not run and says so; `T2D_REQUIRE_CHIRAL=1` makes that
 an error.
+
+### The islet counts, and a fallback that is not equivalent
+
+The islet estimates use the counts NCBI generates for GSE159984 (HISAT2 and featureCounts against
+RefSeq), which `download_public.sh` fetches. `python/analyses/00c_archs4_counts.py` is a fallback
+for machines that cannot reach that server: it extracts the same samples from ARCHS4, quantified
+with kallisto against GENCODE, and writes them under the name the pipeline reads. The counts are
+not identical, so islet numbers obtained that way are not the ones reported; nothing in the
+outputs records which source was used, so whoever uses the fallback has to say so.
 
 ### R packages for the comparison with other methods
 

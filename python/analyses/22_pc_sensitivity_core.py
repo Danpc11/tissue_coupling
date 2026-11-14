@@ -7,7 +7,7 @@ senal sistemica que afecta a muchos genes a la vez vive tambien ahi: el ajuste e
 contra composicion y posible sobrecorreccion. Se reporta como analisis de sensibilidad, no como
 resultado principal.
 """
-import os, sys, warnings; warnings.filterwarnings("ignore")
+import os, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 from scipy import stats
 HERE=os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0,os.path.join(HERE,"../lib"))

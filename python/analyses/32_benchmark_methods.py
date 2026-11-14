@@ -24,7 +24,7 @@ T2D_RSCRIPT indica que Rscript usar; T2D_REQUIRE_R=1 convierte la ausencia en un
 
 Salidas: results/new/benchmark_methods.tsv, benchmark_methods_predictions_*.tsv
 """
-import os, sys, shutil, subprocess, tempfile, importlib.util, warnings; warnings.filterwarnings("ignore")
+import os, sys, shutil, subprocess, tempfile, importlib.util, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.join(HERE, "../lib"))
 RAW = os.environ.get("T2D_RAW", "data/raw"); OUT = os.environ.get("T2D_OUT", "results")

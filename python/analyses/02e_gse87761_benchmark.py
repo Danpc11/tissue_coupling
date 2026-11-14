@@ -30,7 +30,7 @@ Salidas: results/new/gse87761_benchmark.tsv (resumen por lista de genes y forma 
          results/new/gse87761_phases.tsv (fase inferida por muestra, lista de genes reloj)
 """
 import os, sys, importlib.util, warnings
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))

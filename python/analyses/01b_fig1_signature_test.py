@@ -19,7 +19,7 @@ es una prueba competitiva y sobrestima la significacion de conjuntos de genes co
 Salidas: results/fig1_de_per_cohort.tsv, fig1_signature_genes.tsv, fig1_set_enrichment.tsv
 """
 import os, sys, gzip, glob, warnings
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 from scipy import stats
 HERE=os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0,os.path.join(HERE,"../lib"))

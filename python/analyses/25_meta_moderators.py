@@ -1,7 +1,7 @@
 import os as _os, sys as _sys
 _RAW = _os.environ.get("T2D_RAW", "data/raw"); _OUT = _os.environ.get("T2D_OUT", "results")   # las mismas rutas que run_all.sh
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../lib"))
-import pandas as pd, numpy as np, warnings; warnings.filterwarnings("ignore")
+import pandas as pd, numpy as np, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 from scipy import stats
 R=pd.read_csv(f"{_OUT}/new/meta_per_cohort.tsv",sep="\t")
 q=R[R.contraste=="NR3C1~reloj"].copy()
@@ -23,12 +23,12 @@ def dl_tau2(z,se):
     C=w.sum()-(w**2).sum()/w.sum(); return max(0,(Q-(k-1))/C), Q, k
 tau2,Q,k=dl_tau2(q.z.values,q.se.values)
 print(f"{len(q)} estimaciones, {q.cohorte.nunique()} cohortes, I2 global {max(0,(Q-(k-1))/Q)*100:.0f}%")
-print(f"  tau2 base {tau2:.4f}  Q {Q:.1f} con {k-1} gl  (P {1-stats.chi2.cdf(Q,k-1):.1e})\n")
+print(f"  tau2 base {tau2:.4f}  Q {Q:.1f} con {k-1} gl  (P {stats.chi2.sf(Q,k-1):.1e})\n")
 for mod in ("post_mortem","log_n"):
     X=np.column_stack([np.ones(len(q)),q[mod].values]); w=1/(q.se.values**2+tau2)
     W=np.diag(w); b=np.linalg.solve(X.T@W@X, X.T@W@q.z.values)
     V=np.linalg.inv(X.T@W@X); se_b=np.sqrt(np.diag(V))
-    zt=b[1]/se_b[1]; p=2*(1-stats.norm.cdf(abs(zt)))
+    zt=b[1]/se_b[1]; p=2*stats.t.sf(abs(zt),k-2)        # t con k-2 grados de libertad: con trece estimaciones la normal da P demasiado pequenos
     res=q.z.values-X@b; Qr=(w*res**2).sum()
     R2=max(0,1-Qr/Q)*100
     print(f"  {mod:12s} beta {b[1]:+.3f} (se {se_b[1]:.3f}) P {p:.3f}  Q residual {Qr:.1f}  1-Qres/Q {R2:.0f}%  R2 (reduccion de tau2) {r2_tau2(X)*100:.0f}%")

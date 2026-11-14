@@ -14,7 +14,7 @@ y FDR con los nombres que usa 01b para las demas cohortes.
 Uso:  python python/analyses/01c_islets_deseq2.py
 """
 import os, sys, gzip, warnings
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 
 RAW = os.environ.get("T2D_RAW", "data/raw")

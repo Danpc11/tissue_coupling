@@ -33,7 +33,7 @@ Entradas: GSE95674 (adiposo) y GSE95675 (musculo) de AAGMEx; GSE41168 como repli
 Salidas (en results/): crosstissue_concordance_*.tsv, ci_*.tsv, qc_sex_pairing_AAGMEx.tsv,
          crosstissue_modules.tsv, connectivity_AAGMEx.tsv
 """
-import os, sys, gzip, warnings; warnings.filterwarnings("ignore")
+import os, sys, gzip, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 from scipy import stats
 from scipy.cluster.hierarchy import linkage, fcluster

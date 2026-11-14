@@ -94,7 +94,7 @@ PANELS = {
         source="Insulin-stimulated glucose uptake and phosphorylation."),
     "Receptor targets, disjoint": dict(
         genes=["MT1X", "MT2A", "CEBPB", "TSC22D1", "SESN3", "KLF9", "DUSP1", "ERRFI1"],
-        used_by="python/analyses/27_crosstissue_prediction.py, 02_meta_and_validation.py",
+        used_by="python/analyses/27_crosstissue_prediction.py",
         source="Glucocorticoid-receptor targets that share no gene with the 'Glucocorticoid' set, used as "
                "the outcome of the cross-tissue prediction so that no gene sits on both sides."),
     "Nuclear receptors": dict(

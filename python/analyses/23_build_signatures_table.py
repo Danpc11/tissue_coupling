@@ -33,7 +33,7 @@ AVISO de convencion: esta tabla NO usa el centrado por muestra. El centrado corr
 puntuaciones entre individuos; aqui se comparan diferencias entre grupos y centrar cambiaria las
 correlaciones. Mezclar las dos convenciones intercambia valores entre columnas.
 """
-import os, sys, warnings; warnings.filterwarnings("ignore")
+import os, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.join(HERE, "../lib"))
 from gene_sets import SETS
@@ -41,18 +41,11 @@ OUT = os.environ.get("T2D_OUT", "results"); RAW = os.environ.get("T2D_RAW", "dat
 REF = os.environ.get("T2D_REF", "data/reference")
 
 def col_hydrocortisone():
-    sys.path.insert(0, os.path.join(HERE))
-    src = open(os.path.join(HERE, "02_meta_and_validation.py")).read().split("if __name__")[0]
-    g = {"__file__": os.path.join(HERE, "02_meta_and_validation.py"), "__name__": "m2"}
-    exec(src, g)
-    f = f"{RAW}/GSE148640_processed.txt.gz"
-    d = pd.read_csv(f, sep="\t", skiprows=9, low_memory=False)
-    d = d.rename(columns={d.columns[1]: "gene"})
-    d = d[d.gene.notna() & (d.gene != "---")]
-    vals = d.iloc[:, 5:25].apply(pd.to_numeric, errors="coerce")
-    pla, trt = g["_hydrocortisone_arms"](raw=RAW, ncol=vals.shape[1])
-    d["delta"] = vals.iloc[:, trt].mean(1) - vals.iloc[:, pla].mean(1)
-    return d.groupby("gene").delta.mean().rename("hydrocortisone adipose (GSE148640)")
+    """Hidrocortisona menos placebo, media entre personas. La diferencia por persona, con los brazos
+    leidos de los metadatos y emparejados por paciente, la calcula 00b_build_matrices.py; aqui solo se
+    promedia, en vez de volver a leer el fichero y decidir otra vez que columna es cada brazo."""
+    D = pd.read_pickle(f"{OUT}/GSE148640_diff_genes.pkl")
+    return D.mean(1).rename("hydrocortisone adipose (GSE148640)")
 
 def col_cushing():
     X = pd.read_pickle(f"{OUT}/new/GSE66446_log2cpm.pkl")

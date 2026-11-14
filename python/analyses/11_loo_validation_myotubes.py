@@ -19,7 +19,7 @@ calcularon los valores publicados: las muestras del mismo donante en la OTRA con
 base. `amp_inf_donor_out` la construye sin ninguna muestra de ese donante, que es lo que el texto
 describe ("the whole donor was excluded"). Se escriben las dos y se informan las dos.
 """
-import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore")
+import pandas as pd, numpy as np, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 from scipy import stats
 import phase as ph
 X=pd.read_pickle(f"{_OUT}/new/GSE182117_log2cpm.pkl"); md=pd.read_pickle(f"{_OUT}/new/GSE182117_meta.pkl").set_index("gsm")

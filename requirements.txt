@@ -10,8 +10,6 @@ matplotlib>=3.9
 statsmodels>=0.14        # metarregresion de heterogeneidad (paso 12)
 pydeseq2>=0.5            # expresion diferencial de islotes (paso 02c)
 anndata>=0.10            # lo requiere pydeseq2
-openpyxl>=3.1            # tablas suplementarias en xlsx
-rdata>=0.11              # lectura de objetos R de algunas series
 
 tqdm>=4.60               # lo requiere CHIRAL (paso 06); el clon lo hace download_public.sh
 

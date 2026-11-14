@@ -6,6 +6,10 @@
 
 Code for the manuscript. `run_all.sh` recomputes its tables and figures from public data.
 
+The DOI badge points to the record of v1.0.0, the only release archived so far. That release
+cannot regenerate the results (see "Which version is the reference"); the release to cite is the
+latest tag, and its own record will replace the badge when it is deposited.
+
 Recomputing is not the same as reproducing the published numbers, and both are kept apart. Every
 figure is drawn from tables computed in the run. The tables shipped with earlier releases stay in
 `data/reference/` only so that each can be compared with its recomputation, and `docs/DATA.md`
@@ -57,11 +61,37 @@ not on CRAN (`docs/DATA.md` says how to install them). Without them the step wri
 our own estimator, marks the others as not run and the pipeline says so at the end.
 `T2D_RSCRIPT` selects the `Rscript` to use and `T2D_REQUIRE_R=1` makes their absence an error.
 
-Stochastic routines use NumPy `default_rng` with seed 0. Continuous integration runs on Python 3.11.
+Every stochastic routine draws from NumPy `default_rng` with an explicit, fixed seed, so two runs
+of the same release on the same inputs give the same tables. CHIRAL uses NumPy's global generator,
+which is seeded before each call. Continuous integration runs on Python 3.11.
 
 **All thirteen estimates or none.** The meta-analysis lists the thirteen cohort and tissue
 estimates of the manuscript and stops if one is missing, instead of pooling whatever is there.
 `T2D_ALLOW_PARTIAL=1` lets it continue, and the tables then say that they are incomplete.
+
+## Settings
+
+All through environment variables; none is needed for a standard run.
+
+| variable | default | what it does |
+|---|---|---|
+| `T2D_RAW`, `T2D_OUT`, `T2D_REF` | `data/raw`, `results`, `data/reference` | where the downloads, the outputs and the versioned tables are |
+| `T2D_ALLOW_PARTIAL` | unset | `1` lets the meta-analysis and the case-control figure continue when a cohort is missing; the tables are marked incomplete |
+| `T2D_REQUIRE_CHIRAL`, `T2D_REQUIRE_R` | unset | `1` makes the absence of CHIRAL, or of R with ZeitZeiger and tauFisher, an error instead of a recorded omission |
+| `T2D_RSCRIPT` | `Rscript` on the path | the `Rscript` used by step 02f |
+| `T2D_CENTER` | `1` | `0` turns per-sample centring off in the meta-analysis (the table already carries both) |
+| `T2D_GSE13070_SYMBOLS` | unset | `1` annotates GSE13070 by platform symbol in the meta-analysis, as before v2.8.0 |
+| `T2D_SIGNATURES` | `regenerated` | `published` makes Fig. 3h and 3i read the signature table with nine versioned columns |
+| `T2D_LOO_COLUMN` | `amp_ls_donor_out` | which amplitude Fig. 1f and 1g plot; `amp_inf` is the estimator as published |
+| `T2D_BOOT`, `T2D_PERM` | 400 and 3000 (cross-tissue axis), 5000 (clamp) | bootstrap and permutation counts of those two steps |
+| `T2D_NULL`, `T2D_BOOT_META` | 300, 500 | random gene sets in the cross-tissue prediction; bootstrap of the standard errors in the meta-analysis |
+| `T2D_CLOCK_COHORT`, `T2D_CLAMP_TEMPLATE` | `GSE108539`, 800 | the time-course cohort the phase template is built from, and how many template genes the clamp analysis projects on |
+| `T2D_MODEL_N`, `T2D_MODEL_SEEDS` | 200, 10 | people per simulated cohort and seeds per grid point in the comparison of mechanisms |
+| `T2D_MODEL_WORKERS` | all cores, at most 32 | processes for the integrations of that step |
+| `T2D_MODEL_BOOT`, `T2D_MODEL_CALIB`, `T2D_MODEL_CALIB_BOOT`, `T2D_MODEL_CALIB_POOLS` | 500, 100, 150, 2 | bootstrap of the observed values; replicates, bootstrap per replicate and independent populations of the calibration |
+| `T2D_MODEL_REUSE` | unset | `1` reuses the simulations of a previous run if their manifest matches the current code and parameters |
+| `T2D_ED4_THR` | 0.30 | the correlation above which Supplementary Fig. 4 draws a target of a transcription factor |
+| `T2D_ARCHS4_DL`, `T2D_ARCHS4` | unset, `data/raw/archs4/human_gene_v2.latest.h5` | the optional ARCHS4 route for the islet counts (`00c_archs4_counts.py`): `1` makes `download_public.sh` fetch the file, and the second says where it is. Not used in a standard run |
 
 ## Which script draws which figure
 
@@ -84,7 +114,7 @@ The file names date from earlier numberings of the figures.
 | `python/model/` | the forced-oscillator model and the data it generates; four mechanisms scored against the same observables (`competing_models.py`); what the amplitude estimator can and cannot separate (`factorial_estimator.py`) |
 | `R/` | the one R script, which runs ZeitZeiger and tauFisher for step 02f |
 | `python/figures/` | the figures |
-| `python/lib/gene_sets.py` | the registry of gene sets |
+| `python/lib/` | what several steps share: the registry of gene sets (`gene_sets.py`), the phase and amplitude estimators (`phase.py`), probe annotation for the Affymetrix arrays (`gpl570.py`), the islet cohort (`islets.py`), the projection on the phase template (`within_person_coupling.py`) and the interface to CHIRAL (`chiral_backend.py`) |
 | `data/reference/` | versioned inputs, and how each compares with its regeneration (`docs/DATA.md`) |
 | `tests/` | see below |
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Productores de las tablas de `data/reference/` que el repositorio publicado no regeneraba.
 
-Rama repro-hugo (nov 2026). Cada funcion recalcula una tabla desde los datos publicos y las
+Cada funcion recalcula una tabla desde los datos publicos y las
 matrices de 00b_build_matrices.py, la escribe en results/new/ con el mismo nombre y la compara
 con la version versionada en data/reference/ (filas comunes, correlacion por columna numerica).
 El resumen va a results/new/reference_tables_check.tsv.
@@ -14,7 +14,7 @@ centrar, la comparacion se hace sin centrar y la tabla escrita sigue la politica
 Uso:  python python/analyses/00d_reference_tables.py [tabla ...]
 """
 import os, sys, gzip, glob, re, warnings, importlib.util
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
 from scipy import stats
 
@@ -473,7 +473,9 @@ def t_gse17992():
     D = out["muscle"]
     ref = read_ref("GSE17992_dex_log2ratio_muscle.tsv"); common = D.index.intersection(ref.index)
     # escala: Agilent deposita log10 o log2; se elige la que mejor ajusta a la referencia
-    k = np.median((ref.loc[common].values / D.loc[common, ref.columns].values).ravel()[np.isfinite((ref.loc[common].values / D.loc[common, ref.columns].values).ravel())])
+    with np.errstate(divide="ignore", invalid="ignore"):          # 0/0 donde las dos tablas valen cero: se descartan justo despues
+        ratio = (ref.loc[common].values / D.loc[common, ref.columns].values).ravel()
+    k = np.median(ratio[np.isfinite(ratio)])
     print(f"    razon mediana referencia/nueva = {k:.3f} (log10 -> log2 seria 3.32)")
     compare("GSE17992_dex_log2ratio_muscle.tsv", D, note=f"razon mediana ref/nueva {k:.2f}; {p.tissue.value_counts().to_dict()}")
     return out

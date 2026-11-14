@@ -1,5 +1,72 @@
 # Changelog
 
+## v2.10.0: a third audit of the whole repository, code and documentation
+
+Every script and every document read again as a whole, and the pipeline run from the first step to
+the last on the real data with numerical warnings no longer silenced.
+
+### Fixed: things that could break a run or read the wrong file
+- **The step that builds the matrices stopped the pipeline** if a link to the GTEx annotation
+  already existed and pointed nowhere. The link was a shortcut relative to the working directory,
+  and where it did resolve it could make two steps read a file other than the one in `T2D_RAW`.
+  The same shortcut existed for MSigDB. Both are gone: every input is read from one place.
+- **Two routes computed the response to hydrocortisone**, one of them by loading an old module
+  through `exec`. They agree to 2e-16; one is kept and the module (`02_meta_and_validation.py`,
+  which also carried a superseded copy of the cross-tissue prediction) is removed.
+
+### Fixed: method
+- **Supplementary Fig. 4 scored transcription factors against genes of the score itself.** A factor
+  whose regulon contains genes of the glucocorticoid score correlates with it by construction. Step
+  17 already excluded clock genes for that reason; this figure did not exclude the glucocorticoid
+  ones. The androgen receptor was in its top five at 0.35 because of two such targets; without
+  them it is 0.25 and leaves. FOXO3, FOXO4, POU2F2 and RFX5 do not change.
+- **Supplementary Fig. 1 still took RIN and ischaemic time from another sample** of the donor, the
+  defect corrected in step 09 in v2.3.0 and not in the figure that shows the same quantities.
+- **Meta-regression *P* values used the normal distribution** with thirteen estimates. They use the
+  t distribution with k − 2 degrees of freedom.
+- Supplementary Fig. 7 carried two more copies of the model equations. It calls the model; the
+  values are identical to the last bit.
+
+### Fixed: what the documentation said and the code did not do
+- **Two series were downloaded and required, and no step read them**: GSE104674 and GSE11868. They
+  are in Supplementary Table S1 with a role each. The analyses use seventeen of the nineteen series
+  of that table, plus GSE40589. They are no longer downloaded, and `docs/DATA.md` says so.
+- **Seventeen settings were undocumented.** The README has a table of every environment variable
+  the code reads, with its default checked against the code.
+- The README said every stochastic routine uses seed 0, which stopped being true with several
+  seeds; it said nothing of the DOI badge pointing to v1.0.0, a release that cannot regenerate the
+  results; and its layout table omitted `python/lib/`.
+- Descriptions of cohorts in the input check were out of date: GSE41168 has 35 people per tissue
+  and 28 with both, not 28; GSE182117 has 12 donors, not 11; GSE78721 is used one sample per
+  person; and the sleep-delay series was called a control "for the estimator".
+
+### Removed
+- Three files that should never have been versioned: two `.DS_Store` and a pickle of GTEx
+  phenotypes that nothing read.
+- Two declared dependencies that no script imports, `rdata` and `openpyxl`.
+
+### Changed
+- **Numerical warnings are no longer silenced.** Thirty-four scripts ignored every warning. They now
+  ignore only deprecation notices from the libraries, so a division by zero or a non-finite value
+  shows. A complete run emits three kinds, all accounted for: one inside PyDESeq2, the ones CHIRAL
+  raises (which step 06 already counted and reported) and a 0/0 in a diagnostic ratio, now handled
+  where it happens.
+
+### Documented
+- CHIRAL uses NumPy's global random generator, which is seeded before each call; the README said
+  every routine used its own generator.
+- The optional ARCHS4 route for the islet counts is not equivalent to the NCBI counts the reported
+  numbers use, and nothing in the outputs records which was used. `docs/DATA.md` says so.
+
+### Validation
+The pipeline was run from step 00 to step 30 on the real data with this release: the thirteen
+estimates, eleven figures and the clamp figure, the ten tests and `verify_package` all pass, and
+the whole run emits two numerical warnings. Supplementary Fig. 4 draws 16 targets instead of 25
+once the genes of the score are excluded.
+
+### Not changed, and needs a decision
+- The order of authors in `CITATION.cff` differs from the manuscript in the second and third places.
+
 ## v2.9.1: the calibration of the joint criterion, made independent
 
 Four points of a further review of `python/model/competing_models.py`. All four were right.

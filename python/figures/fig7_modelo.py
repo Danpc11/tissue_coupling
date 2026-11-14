@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Figura 5 del articulo (el nombre del fichero viene de una numeracion anterior): el modelo de
 oscilador forzado. Requiere python/model/make_fig7_data.py y python/model/make_tongue.py."""
-import os,sys,warnings; warnings.filterwarnings("ignore")
+import os,sys,warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy import stats
