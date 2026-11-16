@@ -83,8 +83,10 @@ The islet estimates use the counts NCBI generates for GSE159984 (HISAT2 and feat
 RefSeq), which `download_public.sh` fetches. `python/analyses/00c_archs4_counts.py` is a fallback
 for machines that cannot reach that server: it extracts the same samples from ARCHS4, quantified
 with kallisto against GENCODE, and writes them under the name the pipeline reads. The counts are
-not identical, so islet numbers obtained that way are not the ones reported; nothing in the
-outputs records which source was used, so whoever uses the fallback has to say so.
+not identical, so islet numbers obtained that way are not the ones reported. The run records which
+source it read: `run_manifest.json` and `GSE159984_counts_provenance.tsv` give the source, the
+quantification, the file and its sha256 and that of the annotation, and `verify_package.py` fails
+if the counts are not the NCBI ones.
 
 ### R packages for the comparison with other methods
 

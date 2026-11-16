@@ -69,12 +69,30 @@ which is seeded before each call. Continuous integration runs on Python 3.11.
 estimates of the manuscript and stops if one is missing, instead of pooling whatever is there.
 `T2D_ALLOW_PARTIAL=1` lets it continue, and the tables then say that they are incomplete.
 
+## Two kinds of run, and each says which it is
+
+`bash run_all.sh` is the complete reproduction: every step with its default settings. It is the
+only run whose numbers are those of the manuscript.
+
+`T2D_PROFILE=quick bash run_all.sh` runs the same steps with fewer seeds, replicates and random
+sets in the expensive ones (the comparison of mechanisms and the cross-tissue nulls). It is for
+checking in a short time that everything works on a machine; its numbers are not to be cited.
+
+Step 01a writes `results/new/run_manifest.json` before anything is computed, with an identifier of
+the run and the instant it started; step 29z closes it with an inventory of every file the run
+wrote (`output_files.tsv`: size, sha256 and whether it is from this run). The manifest holds: the profile, every
+setting that differs from a complete reproduction, the release and commit, the versions of Python
+and the libraries, a sha256 of every input file (`input_files.tsv`) and where the islet counts
+come from. The end of the run and `tests/verify_package.py` read it and say, in so many words,
+whether the run is a complete reproduction.
+
 ## Settings
 
 All through environment variables; none is needed for a standard run.
 
 | variable | default | what it does |
 |---|---|---|
+| `T2D_PROFILE` | `full` | `quick` reduces the expensive settings; see above |
 | `T2D_RAW`, `T2D_OUT`, `T2D_REF` | `data/raw`, `results`, `data/reference` | where the downloads, the outputs and the versioned tables are |
 | `T2D_ALLOW_PARTIAL` | unset | `1` lets the meta-analysis and the case-control figure continue when a cohort is missing; the tables are marked incomplete |
 | `T2D_REQUIRE_CHIRAL`, `T2D_REQUIRE_R` | unset | `1` makes the absence of CHIRAL, or of R with ZeitZeiger and tauFisher, an error instead of a recorded omission |
@@ -91,7 +109,8 @@ All through environment variables; none is needed for a standard run.
 | `T2D_MODEL_BOOT` | 500 | bootstrap of the observed values in the comparison of mechanisms |
 | `T2D_MODEL_CALIB`, `T2D_MODEL_CALIB_BOOT`, `T2D_MODEL_CALIB_POOLS`, `T2D_MODEL_CALIB_FRESH` | 100, 150, 2, 30 | calibration of the joint region: replicates per population, bootstrap per replicate, independent populations, and entirely new cohorts per observed cohort |
 | `T2D_MODEL_CALIB_COMPARE` | `1` | also calibrates with the score standardised over the whole synthetic population, to record how much it differs; `0` skips it |
-| `T2D_MODEL_CONFUSION` | 100 | cohorts generated under each mechanism for the confusion matrix |
+| `T2D_MODEL_CONFUSION` | 50 | entirely new cohorts generated under each mechanism, in each of six scenarios, for the confusion matrix |
+| `T2D_MODEL_CALIB_ALL_TRUTHS` | unset | `1` calibrates every cohort under the closest point of each of the four models; by default only the cohorts whose design fixes the sampling window |
 | `T2D_MODEL_REUSE` | unset | `1` reuses the simulations of a previous run if their manifest matches the current code and parameters |
 | `T2D_ED4_THR` | 0.30 | the correlation above which Supplementary Fig. 4 draws a target of a transcription factor |
 | `T2D_ARCHS4_DL`, `T2D_ARCHS4` | unset, `data/raw/archs4/human_gene_v2.latest.h5` | the optional ARCHS4 route for the islet counts (`00c_archs4_counts.py`): `1` makes `download_public.sh` fetch the file, and the second says where it is. Not used in a standard run |
@@ -175,7 +194,7 @@ simulated phases).
 | `tests/test_model_verdict.py` | the criterion that compares the competing models, on values built by hand: three states per observable, with state and interval required at the same grid point; a joint region, cohort by cohort, on the effective rank of the covariance; predictions averaged over seeds; the sampling window fixed where the design fixes it and scanned where it does not; a covariance that defines no region is refused; calibration uses people independent of the predictions, at the exact size of the observed cohort; a cache is reused only if its manifest matches; every cohort, observed, predicted or drawn for calibration, is scored with its own people by one function; the confusion matrix applies the whole procedure to cohorts of each mechanism | no |
 | `tests/test_clamp_vs_saline.py` | runs step 14b on a small simulated series with a known answer and checks the contents of its output | no |
 | `tests/smoke_test.py` | the phase estimator recovers a known phase | no |
-| `tests/verify_package.py` | arithmetic and consistency of the tables of a real run | yes |
+| `tests/verify_package.py` | arithmetic and consistency of the tables of a real run; whether the run is a complete reproduction; where the islet counts come from; the tables of the comparison of mechanisms | yes |
 
 All but the last run in continuous integration and at the end of `run_all.sh`. A passing test suite
 means the code does what it says; it does not validate the biological interpretation.

@@ -94,21 +94,79 @@ if os.path.exists(fp):
     check("la prediccion declara n, pliegues y semilla", {"n", "folds", "seed"} <= set(d.columns))
     check("existen predicciones fuera de pliegue auditables",
           len(glob.glob(f"{RES}/new/oof_predictions_*.tsv")) > 0)
-    if G is not None:
-        import importlib; importlib.reload(G)
-        # predictor y resultado deben ser disjuntos: se comprueba en el propio script con assert
-        check("predictor y resultado son disjuntos (assert en 27_crosstissue_prediction.py)", True)
+    fg, ff = f"{RES}/new/crosstissue_prediction_genes.tsv", f"{RES}/new/crosstissue_prediction_folds.tsv"
+    if os.path.exists(fg) and os.path.exists(ff):
+        g = pd.read_csv(fg, sep="\t"); F = pd.read_csv(ff, sep="\t")
+        pred, outc = set(g[g.role == "predictor"].gene), set(g[g.role == "outcome"].gene)
+        check("predictor y resultado no comparten ningun gen", len(pred) > 0 and len(outc) > 0 and not (pred & outc),
+              f"{len(pred)} y {len(outc)} genes; en comun: {sorted(pred & outc) or 'ninguno'}")
+        if G is not None:
+            reg_p, reg_o = set(G.genes("Glucocorticoid")), set(G.panel("Receptor targets, disjoint"))
+            check("y son los del registro", pred <= reg_p and outc <= reg_o)
+        leak = [int(k) for k, q in F.groupby("fold") if set(q[q.role == "train"].donor) & set(q[q.role == "test"].donor)]
+        check("en ningun pliegue un donante entrena y se predice a la vez", not leak, f"pliegues con solape: {leak or 'ninguno'}")
+        tests = F[F.role == "test"]
+        check("cada donante se predice exactamente una vez", bool((tests.groupby("donor").size() == 1).all()) and tests.donor.nunique() == F.donor.nunique(),
+              f"{tests.donor.nunique()} donantes, {F.fold.nunique()} pliegues")
+        oof = pd.read_csv(glob.glob(f"{RES}/new/oof_predictions_*.tsv")[0], sep="\t")
+        m = oof.merge(tests[["donor", "fold"]], on="donor", suffixes=("", "_declared"))
+        check("las predicciones guardadas son las de esos pliegues", len(m) == len(oof) and bool((m.fold == m.fold_declared).all()))
+    else:
+        check("la prediccion exporta sus genes y sus pliegues", False, "lo escribe el paso 11b")
 else:
     check("existe el export de la prediccion", False,
           "corra el pipeline: el paso 11b escribe results/new/crosstissue_prediction.tsv")
 
-print("\n7. Un solo origen por fichero")
-stamps = {}
-for f in glob.glob(f"{RES}/*.tsv"):
-    stamps[os.path.basename(f)] = os.path.getmtime(f)
-if stamps:
-    span = (max(stamps.values()) - min(stamps.values())) / 3600
-    check("todos los TSV proceden de la misma corrida", span < 6.0, f"rango {span:.1f} h")
+print("\n7. Un solo origen: todo lo que hay en resultados lo escribio esta corrida")
+import json
+fm = f"{RES}/new/run_manifest.json"; fo = f"{RES}/new/output_files.tsv"
+if os.path.exists(fm) and os.path.exists(fo):
+    M0 = json.load(open(fm)); OF = pd.read_csv(fo, sep="\t")
+    check("los ficheros de salida llevan el identificador de la corrida", bool((OF.run_id == M0["run_id"]).all()), f"corrida {M0['run_id']}, {len(OF)} ficheros")
+    old = OF[~OF.written_by_this_run & ~OF.declared_cache]
+    check("ningun fichero es anterior al inicio de la corrida", not len(old),
+          ("anteriores: " + ", ".join(old.file.head(6))) if len(old) else f"{int(OF.declared_cache.sum())} son cache declarada y reutilizada")
+    now = {os.path.relpath(os.path.join(d, f), RES) for d, _, fs in os.walk(RES) for f in fs if not f.startswith(".")}
+    extra = sorted(now - set(OF.file) - {"new/output_files.tsv", "new/run_manifest.json"})
+    check("no hay ficheros que el inventario de la corrida no conozca", not extra, ", ".join(extra[:6]))
+else:
+    check("existen el manifiesto y el inventario de salidas de la corrida", False, "los escriben los pasos 01a y 29z")
+
+print("\n8. Que corrida es esta")
+if os.path.exists(fm):
+    M = json.load(open(fm))
+    check("la corrida registra su perfil, su version y sus entradas", all(k in M for k in ("profile", "release", "input_files_sha256", "settings")),
+          f"perfil {M.get('profile')}, version {M.get('release')}, {M.get('input_files')} ficheros de entrada")
+    check("las cuentas de islotes son las de las cifras del articulo (NCBI)", bool(M["islet_counts"]["is_the_reported_source"]), M["islet_counts"]["source"])
+    if M["scientific_reproduction"]:
+        print("  Es una REPRODUCCION COMPLETA: perfil full con los ajustes por defecto.")
+    else:
+        print(f"  AVISO: NO es una reproduccion completa (perfil {M['profile']}). Sirve para comprobar que el pipeline funciona; "
+              "sus cifras no son las del articulo.")
+        for k, v in M["settings_that_differ_from_a_full_reproduction"].items():
+            print(f"         {k} = {v['this_run']} (reproduccion completa: {v['full_reproduction']})")
+else:
+    check("existe el manifiesto de la corrida (run_manifest.json)", False, "lo escribe el paso 01a")
+
+print("\n9. Comparacion de mecanismos")
+CM = {k: f"{RES}/new/competing_models_{k}.tsv" for k in ("observed", "simulated", "joint", "verdict", "calibration", "confusion", "seed_stability")}
+missing = [k for k, f in CM.items() if not os.path.exists(f)]
+check("estan las siete tablas del paso 20c", not missing, "faltan: " + ", ".join(missing) if missing else "")
+if not missing:
+    J = pd.read_csv(CM["joint"], sep="\t"); CAL = pd.read_csv(CM["calibration"], sep="\t"); CF = pd.read_csv(CM["confusion"], sep="\t")
+    S = pd.read_csv(CM["simulated"], sep="\t", usecols=["model", "seed"]); O = pd.read_csv(CM["observed"], sep="\t")
+    check("los cuatro mecanismos se evaluan sobre el mismo numero de puntos en cada cohorte",
+          bool((J.groupby(["cohort", "scope"]).n_points.nunique() == 1).all()) and J.model.nunique() == 4)
+    check("todas las cohortes observadas tienen criterio conjunto y calibracion", set(O.cohort) == set(J.cohort) == set(CAL.cohort))
+    check("las cohortes de calibracion tienen el tamano de la observada", bool((CAL.n_calibration_cohort == CAL.n_observed).all()))
+    check("el umbral usado no es menor que el nominal ni que ninguno calibrado",
+          bool(np.all([J[J.cohort == c].distance_threshold.min() >= CAL[CAL.cohort == c][[x for x in ("nominal_threshold", "calibrated_threshold_max", "calibrated_threshold_fresh_cohorts") if x in CAL.columns]].max().max() - 1e-9
+                       for c in CAL.cohort.unique()])))
+    check("la matriz de confusion cubre los cuatro mecanismos como generadores y como candidatos",
+          CF.generating_model.nunique() == 4 and CF.candidate_model.nunique() == 4 and bool(((CF.accepted_fraction >= 0) & (CF.accepted_fraction <= 1)).all()),
+          f"{CF.scenario.nunique() if 'scenario' in CF.columns else 1} escenarios, {int(CF.iloc[0].get('independent_cohorts', CF.iloc[0].get('replicates', 0)))} cohortes por celda")
+    check("las semillas de la tabla simulada son las del criterio", int(J.seeds_per_point.max()) == S.seed.nunique(), f"{S.seed.nunique()} semillas")
+    check("existe el manifiesto de la cache de simulaciones", os.path.exists(f"{RES}/new/competing_models_cache_manifest.json"))
 
 print("\n" + ("TODO CORRECTO" if not FAIL else f"FALLAN {len(FAIL)}: {FAIL}"))
 sys.exit(1 if FAIL else 0)

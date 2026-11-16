@@ -183,8 +183,10 @@ ENS4 = dict(cm.ensemble_of((m, sf, rk, sd)) for m in names for sf in cm.SD_F[:1]
 S4 = pd.DataFrame([dict(model=m, sd_F=sf, rho_K=rk, proxy_noise=cm.PROXY[1], window=cm.MORNING, seed=sd,
                         **cm.observables(*cm.measured(ENS4, m, sf, rk, sd, cm.MORNING, cm.PROXY[1])))
                    for (m, sf, rk, sd) in ENS4])
-pts = {m: (cm.SD_F[0], cm.RHO_K[1], cm.PROXY[1], cm.MORNING) for m in names}
-CF = cm.confusion(pd.Series(dict(cohort="A", n=60, window="morning biopsy")), None, S4, ENS4, pts, seeds2, thr=12.6, reps=8, boot=20)
+o4 = pd.Series(cohort_row("A", [0.2, 0.4, 0.2, 0.1, 0.2, 0.35], window="morning biopsy", n=60)); C4 = np.eye(6) * 0.02
+SC = cm.scenarios(o4, C4, S4, 12.6)
+check("cuatro escenarios, cada uno con un punto por mecanismo", list(SC) == list(cm.SCENARIO_ORDER) and all(set(v) == set(names) for v in SC.values()))
+CF = cm.confusion(o4, C4, S4, ENS4, 12.6, reps=6, boot=20, which=["closest to the data"])
 check("una fila por mecanismo generador y modelo candidato", len(CF) == 16 and set(CF.generating_model) == set(names))
 check("frecuencias entre cero y uno", bool(((CF.accepted_fraction >= 0) & (CF.accepted_fraction <= 1)).all()))
 check("en cada mecanismo generador, algun modelo es el mas cercano en cada cohorte",
@@ -194,6 +196,8 @@ Dm = CF.pivot(index="generating_model", columns="candidate_model", values="media
 check("cuando genera el producto, el producto queda mas cerca que la ausencia de forzamiento, y se acepta mas",
       Dm.loc[names[2], names[2]] < Dm.loc[names[2], names[0]] and A.loc[names[2], names[2]] >= A.loc[names[2], names[0]],
       f"distancia mediana {Dm.loc[names[2], names[2]]:.1f} frente a {Dm.loc[names[2], names[0]]:.1f} (cohortes de 60 personas: aqui se prueba el procedimiento, no su potencia)")
+CF2 = cm.confusion(o4, C4, S4, ENS4, 12.6, reps=6, boot=20, which=["closest to the data"])
+check("y da lo mismo al repetirlo: cada cohorte tiene su semilla, fija", bool(np.allclose(CF.median_min_distance, CF2.median_min_distance)))
 
 print("\nTODO CORRECTO" if not fails else f"\nFALLAN {len(fails)}: {fails}")
 sys.exit(1 if fails else 0)

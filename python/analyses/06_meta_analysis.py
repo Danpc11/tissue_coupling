@@ -137,6 +137,9 @@ if os.path.exists(f"{RAW}/GSE159984_raw_counts.tsv.gz"):
         if L.shape[1]<10: print(f"  GSE159984 {lab}: {L.shape[1]} muestras en el fichero de cuentas; se omite"); continue
         add("GSE159984",lab,L,[],grp=(_dx.reindex(L.columns).values if lab.endswith("(donantes)") and _dx.reindex(L.columns).notna().all() else None))
 R=pd.DataFrame(rows)
+# de donde salen las cuentas de islotes: NCBI y ARCHS4 no dan las mismas cifras, y la tabla debe decir cual
+_src=islets.counts_source(RAW)["source"] if os.path.exists(f"{RAW}/GSE159984_raw_counts.tsv.gz") else ""
+R["counts_source"]=np.where(R.cohorte=="GSE159984",_src,"")
 pd.DataFrame(ALLG).to_pickle(f"{OUT}/new/meta_all_genes_rho.pkl")    # gen x estimacion: lo lee 30_receptor_specificity.py
 have=set(zip(R.cohorte,R.tejido)); missing=[m for m in MANIFEST if m not in have]
 R["complete"]=not missing

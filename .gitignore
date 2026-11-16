@@ -1,7 +1,12 @@
 __pycache__/
 *.pyc
+.DS_Store
+# data: only the versioned reference tables are part of the repository. Everything else under
+# data/ is a download or a local link and must never be committed.
+data/*
+!data/reference/
+!data/raw/
 data/raw/*
 !data/raw/.gitkeep
 results/*
 !results/.gitkeep
-.DS_Store

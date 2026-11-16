@@ -1,5 +1,113 @@
 # Changelog
 
+## v2.13.0: checks that check, a run that can be told from another, and where the mechanisms separate
+
+This release contains v2.12.0, which was not published on its own. A further review, made on
+v2.11.0; two of its four points were already answered by v2.12.0 and are taken further here.
+
+### Fixed
+- **A check of `verify_package.py` could not fail.** "Predictor and outcome are disjoint" passed
+  `True` whatever the genes were. The cross-tissue prediction now writes the genes on each side
+  (`crosstissue_prediction_genes.tsv`) and, for every fold, which donors train and which are
+  predicted (`crosstissue_prediction_folds.tsv`), and the check reads them: the two gene lists share
+  nothing and are those of the registry, no donor trains and is predicted in the same fold, every
+  donor is predicted exactly once, and the stored predictions are those of the declared folds.
+- **"All files come from the same run" compared modification times** with a window of six hours,
+  and only among the tables of one directory: two runs in an afternoon passed and a long run could
+  fail. Step 01a now gives the run an identifier and records the instant it starts; a new step,
+  29z, walks the whole results directory and writes an inventory (`output_files.tsv`) with the
+  size and sha256 of every file and whether it was written after the run started. The check is
+  that nothing is older than the run, except a cache that the step using it declared and validated,
+  and that no file is unknown to the inventory.
+- The source of the islet counts, recorded in the manifest since v2.12.0, now also travels with the
+  numbers: `meta_per_cohort.tsv` has a `counts_source` column for the islet estimates.
+
+### The confusion matrix, graded by how alike the two mechanisms are
+The review asked for scenarios in which the product and receptor alone are very similar,
+moderately different and clearly different. There are now six scenarios. With entirely new cohorts
+of the size of AAGMEx (16 per cell), fraction in which the other model is accepted:
+
+| scenario | product true → receptor alone accepted | receptor alone true → product accepted |
+|---|---|---|
+| closest to the data | 0.81 | 0.88 |
+| centre of the grid | 0.94 | 0.75 |
+| edge of compatibility | 1.00 | 1.00 |
+| most alike | 1.00 | 0.88 |
+| moderately different | 0.12 | 1.00 |
+| most different | 0.00 | 0.75 |
+
+**The two mechanisms can be told apart in one direction and in part of the grid.** Where cortisol
+varies much between people (the two last scenarios, with a between-person spread of 0.5), receptor
+alone is rejected when the product is true. The converse never holds: when receptor alone is true
+the product is accepted, because a product with little variation in cortisol behaves like receptor
+alone. So the data can refute receptor alone, and cannot refute the product. In AAGMEx receptor
+alone is not refuted, and the grid points of the product that fit are those with the smaller
+spread of cortisol: what the data do not show is a large contribution of between-person variation
+in the cortisol rhythm. Neither forced-with-receptor model is confused with no forcing or with
+cortisol alone in any scenario.
+
+## v2.12.0: what kind of run this is, and the comparison of mechanisms under every truth
+
+A further review. Its first point, that `run_all.sh` did not run the comparison of mechanisms, was
+not so (it has been step 20c since v2.6.0, with its test since v2.8.0), but two things behind it
+were right, and so were the other three points.
+
+### Added: every run says what it is
+- **Two profiles.** `bash run_all.sh` is the complete reproduction, the only run whose numbers are
+  those of the manuscript. `T2D_PROFILE=quick` runs the same steps with fewer seeds, replicates and
+  random sets in the expensive ones, to check in a short time that everything works.
+- **A run manifest** (`results/new/run_manifest.json`, step 01a), written before anything is
+  computed: the profile, every setting that differs from a complete reproduction, release and
+  commit, versions of Python and the libraries, and a sha256 of every input file
+  (`input_files.tsv`). The end of the run and `verify_package.py` state whether it is a complete
+  reproduction.
+- **Where the islet counts come from.** The NCBI and ARCHS4 routes are not equivalent and nothing
+  recorded which was read. The manifest and `GSE159984_counts_provenance.tsv` now give the source,
+  the quantification, the file and its sha256 and that of the annotation; `verify_package.py` fails
+  if the counts are not the NCBI ones.
+- **`verify_package.py` checks the comparison of mechanisms**, which it ignored: the seven tables
+  exist, the four mechanisms are evaluated on the same grid points, calibration cohorts have the
+  size of the observed one, the threshold used is not below any calibrated one, the confusion
+  matrix covers the four mechanisms both ways, and the seeds of the simulated table are those of
+  the criterion.
+
+### Fixed, in the comparison of mechanisms
+- **The threshold was calibrated under one mechanism, the closest to the data**, chosen by looking
+  at them. Where the design fixes the sampling window it is now calibrated under the closest point
+  of each of the four mechanisms, and the largest threshold is used. In AAGMEx the 95th percentiles
+  are 17.3, 16.4, 13.9 and 13.5 with no forcing, cortisol alone, the product and receptor alone as
+  the truth. With 17.3 the result is the same: no forcing 0 of 18 grid points (closest distance
+  63.5), cortisol alone 0 (22.4), cortisol times receptor 3 (6.3), receptor alone 4 (8.3).
+- **The confusion matrix was computed at one point of the grid and by resampling one population.**
+  It is now computed in four scenarios (the point of each mechanism closest to the data, the centre
+  of the grid, the edge of compatibility, and where the product and receptor alone predict most
+  alike) and with entirely new cohorts, each with its own seed. With 16 cohorts per cell, on the
+  real AAGMEx design:
+
+  | generated by → accepted | closest to data | centre | edge | most alike |
+  |---|---|---|---|---|
+  | product → receptor alone | 0.81 | 0.94 | 1.00 | 1.00 |
+  | receptor alone → product | 0.88 | 0.75 | 1.00 | 0.88 |
+  | product → no forcing, cortisol alone | 0.00, 0.06 | 0.00, 0.00 | 0.00, 0.00 | 0.00, 0.00 |
+  | cortisol alone → product, receptor alone | 0.12, 0.00 | 0.19, 0.00 | 0.00, 0.00 | 0.06, 0.00 |
+  | no forcing → any other | 0.00 | 0.00 | 0.00 | 0.00 |
+
+  The conclusion of v2.11.0 holds over the grid, not only at one point: the observables tell the
+  mechanisms in which the receptor acts from those in which it does not, and do not tell the
+  product from receptor alone anywhere. The default is 50 cohorts per cell.
+
+### Fixed: 513 MB of data were committed by mistake in v2.10.0
+- v2.10.0 removed `data/gtex/` and `data/msigdb/` from `.gitignore` because the pipeline stopped
+  creating links there. Where those directories already existed locally, the next `git add -A`
+  committed their contents: 22 GTEx expression files (513 MB) and 15 dangling links. They are
+  removed from the tree, and `.gitignore` now ignores everything under `data/` except the versioned
+  reference tables, so no local download can be committed again. They remain in the history of
+  v2.10.0 and v2.11.0 until it is rewritten.
+
+### Changed
+- The confusion matrix and the calibration run in parallel (`T2D_MODEL_WORKERS`); every cohort of
+  the confusion matrix has a fixed seed, so the table is the same in every run.
+
 ## v2.11.0: what the comparison of mechanisms can and cannot tell apart
 
 Three points of a further review of `python/model/competing_models.py`. All three were right, and

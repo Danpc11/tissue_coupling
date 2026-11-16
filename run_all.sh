@@ -13,6 +13,18 @@ cd "$(dirname "${BASH_SOURCE[0]}")"        # las rutas son relativas a la raiz d
 export T2D_RAW="${T2D_RAW:-data/raw}"
 export T2D_OUT="${T2D_OUT:-results}"
 export T2D_REF="${T2D_REF:-data/reference}"
+# Dos perfiles, y la corrida dice cual es (results/new/run_manifest.json):
+#   full   la reproduccion completa, con los ajustes por defecto. Es la unica cuyas cifras son las del articulo.
+#   quick  los mismos pasos con menos semillas, replicas y conjuntos al azar en los pasos caros, para
+#          comprobar en poco tiempo que todo funciona. Sus cifras NO son las del articulo.
+export T2D_PROFILE="${T2D_PROFILE:-full}"
+case "$T2D_PROFILE" in
+  full) ;;
+  quick) export T2D_MODEL_SEEDS="${T2D_MODEL_SEEDS:-3}" T2D_MODEL_CALIB="${T2D_MODEL_CALIB:-20}" T2D_MODEL_CALIB_BOOT="${T2D_MODEL_CALIB_BOOT:-40}" \
+                T2D_MODEL_CALIB_FRESH="${T2D_MODEL_CALIB_FRESH:-5}" T2D_MODEL_CALIB_COMPARE="${T2D_MODEL_CALIB_COMPARE:-0}" \
+                T2D_MODEL_CONFUSION="${T2D_MODEL_CONFUSION:-8}" T2D_NULL="${T2D_NULL:-100}" ;;
+  *) echo "T2D_PROFILE debe ser full o quick, no '$T2D_PROFILE'"; exit 2 ;;
+esac
 # CHIRAL (paso 06) se busca en $T2D_RAW/pychiral, donde lo clona download_public.sh. Si no esta,
 # el paso lo dice y sigue con el estimador propio; T2D_REQUIRE_CHIRAL=1 lo vuelve obligatorio.
 mkdir -p "$T2D_OUT/new" "$T2D_OUT/figs"
@@ -22,6 +34,7 @@ step "00 every script compiles"                "${PY:-python3}" tests/test_synta
 
 # --- data ------------------------------------------------------------------------------
 step "01 prepare the public series"            "${PY:-python3}" python/analyses/00_prepare_data.py
+step "01a record what this run is"              "${PY:-python3}" python/analyses/00a_run_manifest.py
 step "01b build the expression matrices"       "${PY:-python3}" python/analyses/00b_build_matrices.py
 
 # --- the estimator and its validation (Fig. 1) -------------------------------------------
@@ -82,10 +95,23 @@ step "29b3 single sample and fixed reference"  "${PY:-python3}" tests/test_singl
 step "29b4 estimator on a model with no effect" "${PY:-python3}" tests/test_model_null.py
 step "29b5 three-state verdict of the competing models" "${PY:-python3}" tests/test_model_verdict.py
 step "29c integration test, step 14b"          "${PY:-python3}" tests/test_clamp_vs_saline.py
+step "29z inventory of what this run wrote"     "${PY:-python3}" tests/write_output_manifest.py
 step "30 verify the package"                   "${PY:-python3}" tests/verify_package.py "$T2D_OUT"
 
 # --- what this run did not do ---------------------------------------------------------------------
 printf '\n=== run complete\n'
+"${PY:-python3}" - <<'PYEOF'
+import json, os
+m = json.load(open(os.path.join(os.environ["T2D_OUT"], "new", "run_manifest.json")))
+if m["scientific_reproduction"]:
+    print(f"Profile: full. This is a complete reproduction of release {m['release']}.")
+else:
+    print(f"Profile: {m['profile']}. This is NOT a complete reproduction: its numbers are not those of the manuscript.")
+    for k, v in m["settings_that_differ_from_a_full_reproduction"].items():
+        print(f"  {k} = {v['this_run']} (complete reproduction: {v['full_reproduction']})")
+if not m["islet_counts"]["is_the_reported_source"]:
+    print(f"Islet counts: {m['islet_counts']['source']}. NOT the source of the reported numbers.")
+PYEOF
 if awk -F'\t' '$2 == "CHIRAL" && $9 == "ok" { found = 1 } END { exit !found }' "$T2D_OUT/new/chiral_concordance.tsv" 2>/dev/null; then
   echo "CHIRAL concordance (step 06): regenerated."
 else

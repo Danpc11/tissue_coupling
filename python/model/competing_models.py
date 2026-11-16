@@ -67,8 +67,15 @@ poblacion sintetica mayor y se puntua con sus propias personas, no con las de es
 
 QUE DISTINGUEN LOS SEIS OBSERVABLES. Que un modelo sea compatible con los datos dice poco si otro
 tambien lo seria aunque fuera falso. competing_models_confusion.tsv lo mide: se generan cohortes
-bajo cada mecanismo y se les aplica el procedimiento entero; la tabla da, para cada mecanismo
-generador, con que frecuencia se acepta cada modelo.
+nuevas bajo cada mecanismo y se les aplica el procedimiento entero; la tabla da, para cada
+mecanismo generador, con que frecuencia se acepta cada modelo. Se hace en seis escenarios (el punto
+mas parecido a los datos, el centro de la rejilla, el borde de la compatibilidad, y tres en que el
+producto y solo receptor se parecen mucho, medianamente y lo menos posible), porque un solo punto
+no dice que pasa en los demas.
+
+CON QUE VERDAD SE CALIBRA. El umbral se calibra generando cohortes de un mecanismo. Donde el diseno
+fija la ventana se hace con el punto mas cercano de cada uno de los cuatro modelos, y se usa el
+umbral mayor: asi no depende de haber elegido el mecanismo mirando los datos.
 
 LA CACHE. T2D_MODEL_REUSE=1 reutiliza las integraciones y la tabla simulada de una corrida anterior,
 pero solo si su manifiesto (competing_models_cache_manifest.json: huella del codigo que las genera
@@ -534,38 +541,102 @@ def _set_ens(ens):
     global _ENS; _ENS = ens
 
 
-def confusion(o, C_unused, S, ENS, points, seeds, thr, reps=100, boot=100, pool_factor=3):
+def point_distances(o, C, S, model, nseeds=None):
+    """Las predicciones de un modelo en las ventanas que admite la cohorte, con su distancia a lo observado."""
+    P, Z, _ = predictions(S, model, ALLOWED[o.window], nseeds)
+    d2, _, _ = distance(Z, fz([o[k] for k in OBS]), C, o.n, P.n_simulated.values)
+    return P.assign(distance=d2), Z
+
+
+def scenarios(o, C, S, thr):
+    """En que puntos de la rejilla se generan las cohortes de la matriz de confusion. Un solo punto dice
+    poco de la capacidad del procedimiento, asi que son cuatro, elegidos por lo que preguntan:
+
+      closest to the data        el punto de cada modelo que mas se parece a lo observado: el caso real.
+      centre of the grid         los valores centrales de lo que no se conoce: un caso sin elegir.
+      edge of compatibility      el punto compatible de cada modelo mas alejado de lo observado (o el mas
+                                 cercano, si no tiene ninguno): donde el procedimiento esta al limite.
+      product and receptor alone tres puntos del producto, cada uno con el punto de solo receptor que mas
+        most alike,              se le parece: donde menos se distinguen, un caso intermedio y donde
+        moderately different,    mas. Si ni en el ultimo se separan, no se separan en ningun punto de
+        most different           la rejilla. Los otros dos modelos se generan con los parametros del
+                                 producto."""
+    D = {m: point_distances(o, C, S, m) for m in MODELS}
+    pt = lambda r: (float(r.sd_F), float(r.rho_K), float(r.proxy_noise), r.window)
+    w = ALLOWED[o.window][0]
+    out = {"closest to the data": {m: pt(D[m][0].sort_values("distance").iloc[0]) for m in MODELS},
+           "centre of the grid": {m: (SD_F[(len(SD_F) - 1) // 2], RHO_K[len(RHO_K) // 2], PROXY[len(PROXY) // 2], w) for m in MODELS}}
+    edge = {}
+    for m in MODELS:
+        P = D[m][0]; ok = P[P.distance <= thr]
+        edge[m] = pt(ok.sort_values("distance").iloc[-1] if len(ok) else P.sort_values("distance").iloc[0])
+    out["edge of compatibility"] = edge
+    m2, m3 = "M2 cortisol x receptor", "M3 receptor only"
+    if m2 in MODELS and m3 in MODELS:
+        # Cuanto se parece cada punto del producto a su punto mas parecido de solo receptor. Tres casos,
+        # de menos a mas separables: si ni en el mas distinto se distinguen, no se distinguen en la rejilla.
+        Z2, Z3 = D[m2][1], D[m3][1]
+        gap = ((Z2[:, None, :] - Z3[None, :, :]) ** 2).sum(2); near = gap.min(1); order = np.argsort(near)
+        for name, i in (("product and receptor alone most alike", order[0]),
+                        ("product and receptor alone moderately different", order[len(order) // 2]),
+                        ("product and receptor alone most different", order[-1])):
+            p2, p3 = pt(D[m2][0].iloc[int(i)]), pt(D[m3][0].iloc[int(np.argmin(gap[int(i)]))])
+            out[name] = {m: (p3 if m == m3 else p2) for m in MODELS}
+    return out
+
+
+SCENARIO_ORDER = ("closest to the data", "centre of the grid", "edge of compatibility", "product and receptor alone most alike",
+                  "product and receptor alone moderately different", "product and receptor alone most different")
+_S = None
+def _set_state(ens, S):
+    global _ENS, _S; _ENS = ens; _S = S
+
+
+def _confusion_worker(args):
+    """Cohortes COMPLETAMENTE NUEVAS de un mecanismo en un punto, cada una con su semilla, y el
+    procedimiento entero aplicado a cada una. No comparten personas entre si ni con las predicciones."""
+    o, scenario, gen, point, thr, reps, boot, nseeds = args
+    o = pd.Series(o); n = int(o.n); wins = ALLOWED[o.window]
+    PRED = {m: predictions(_S, m, wins, nseeds) for m in MODELS}
+    gi = list(MODELS).index(gen); si = SCENARIO_ORDER.index(scenario) if scenario in SCENARIO_ORDER else len(SCENARIO_ORDER)
+    rng = np.random.default_rng([CALIBRATION_SEED, 500, gi, si])
+    acc = {m: 0 for m in MODELS}; closest = {m: 0 for m in MODELS}; dist = {m: [] for m in MODELS}
+    for k in range(reps):
+        pool = 5000 + 100000 * si + 1000 * gi + k                 # una semilla distinta para cada cohorte
+        pop = independent_population(gen, point, n, pool)
+        est, C = _as_observed(cohort_from(pop), rng, boot)
+        _POOLS.pop((gen, point[0], point[1], point[3], point[2], pool), None)
+        dmin = {}
+        for m in MODELS:
+            P, Z, _ = PRED[m]
+            d2, _, _ = distance(Z, est, C, n, P.n_simulated.values); dmin[m] = float(d2.min()); dist[m].append(dmin[m])
+            acc[m] += int(dmin[m] <= thr)
+        closest[min(dmin, key=dmin.get)] += 1
+    return [dict(cohort=o.cohort, n_cohort=n, scenario=scenario, generating_model=gen, generating_sd_F=point[0],
+                 generating_rho_K=point[1], generating_proxy_noise=point[2], generating_window=point[3], candidate_model=m,
+                 independent_cohorts=reps, accepted_fraction=acc[m] / reps, closest_fraction=closest[m] / reps,
+                 median_min_distance=float(np.median(dist[m])), threshold=thr) for m in MODELS]
+
+
+def confusion(o, C, S, ENS, thr, reps=50, boot=100, nseeds=None, workers=1, which=None):
     """Matriz de confusion del procedimiento entero: si el mecanismo verdadero fuera cada uno de los
     cuatro, con que frecuencia se aceptaria cada modelo?
 
-    Para cada mecanismo se generan cohortes independientes del tamano de la observada, en el punto de
-    su rejilla que mas se parece a los datos (el caso mas dificil de distinguir), y a cada una se le
-    aplica la comparacion completa: sus observables, su covarianza, y la distancia a las predicciones
-    de TODOS los puntos de TODOS los modelos, con el mismo umbral que se usa con los datos. Un modelo
-    queda aceptado si algun punto de su rejilla es compatible. Se informa tambien cual queda mas cerca.
-    Si dos mecanismos se aceptan casi siempre el uno bajo el otro, los seis observables no los separan
-    con una cohorte de este tamano, y eso es lo que hay que saber antes de leer el resultado."""
-    wins = ALLOWED[o.window]; n = int(o.n)
-    PRED = {m: predictions(S, m, wins) for m in MODELS}
-    rows = []
-    for gen in MODELS:
-        pop = independent_population(gen, points[gen], pool_factor * n, 500)
-        N = len(pop["rec"]["A"]); rng = np.random.default_rng([CALIBRATION_SEED, 500, list(MODELS).index(gen)])
-        acc = {m: 0 for m in MODELS}; closest = {m: 0 for m in MODELS}; dist = {m: [] for m in MODELS}
-        for _ in range(reps):
-            est, C = _as_observed(cohort_from(pop, rng.choice(N, n, replace=False)), rng, boot)
-            dmin = {}
-            for m in MODELS:
-                P, Z, _ = PRED[m]
-                d2, _, _ = distance(Z, est, C, n, P.n_simulated.values); dmin[m] = float(d2.min()); dist[m].append(dmin[m])
-                acc[m] += int(dmin[m] <= thr)
-            closest[min(dmin, key=dmin.get)] += 1
-        for m in MODELS:
-            rows.append(dict(cohort=o.cohort, n_cohort=n, generating_model=gen, generating_sd_F=points[gen][0],
-                             generating_rho_K=points[gen][1], generating_proxy_noise=points[gen][2], candidate_model=m,
-                             replicates=reps, accepted_fraction=acc[m] / reps, closest_fraction=closest[m] / reps,
-                             median_min_distance=float(np.median(dist[m])), threshold=thr))
-    return pd.DataFrame(rows)
+    Para cada escenario (ver scenarios) y cada mecanismo se generan cohortes nuevas del tamano de la
+    observada, y a cada una se le aplica la comparacion completa: sus observables, su covarianza, y la
+    distancia a las predicciones de TODOS los puntos de TODOS los modelos, con el mismo umbral que se
+    usa con los datos. Un modelo queda aceptado si algun punto de su rejilla es compatible. Si dos
+    mecanismos se aceptan casi siempre el uno bajo el otro, los seis observables no los separan con una
+    cohorte de este tamano, y eso es lo que hay que saber antes de leer el resultado."""
+    from concurrent.futures import ProcessPoolExecutor
+    SC = scenarios(o, C, S, thr)
+    tasks = [(dict(o), name, gen, pts[gen], thr, reps, boot, nseeds) for name, pts in SC.items() if (which is None or name in which) for gen in MODELS]
+    if workers <= 1:                                         # sin procesos aparte: mismo resultado, mas lento
+        _set_state(ENS, S); parts = [_confusion_worker(t) for t in tasks]
+    else:
+        with ProcessPoolExecutor(min(workers, len(tasks)), initializer=_set_state, initargs=(ENS, S)) as ex:
+            parts = list(ex.map(_confusion_worker, tasks))
+    return pd.DataFrame([r for part in parts for r in part])
 
 
 # ------------------------------------------------------------------ la cache y su manifiesto
@@ -639,22 +710,29 @@ if __name__ == "__main__":
         kw = dict(reps=int(os.environ.get("T2D_MODEL_CALIB", 100)), boot=int(os.environ.get("T2D_MODEL_CALIB_BOOT", 150)),
                   pools=int(os.environ.get("T2D_MODEL_CALIB_POOLS", 2)), fresh=int(os.environ.get("T2D_MODEL_CALIB_FRESH", 30)),
                   compare=os.environ.get("T2D_MODEL_CALIB_COMPARE", "1") == "1")
+        # Con que mecanismo como verdad se calibra? Con el mas cercano a los datos, la respuesta depende de
+        # haberlo elegido mirandolos. Donde el diseno fija la ventana se calibra con el punto mas cercano de
+        # CADA modelo y se usa el umbral mayor; en las demas cohortes, con el mas cercano
+        # (T2D_MODEL_CALIB_ALL_TRUTHS=1 lo hace con todos en todas).
+        all_truths = os.environ.get("T2D_MODEL_CALIB_ALL_TRUTHS") == "1"
         tasks = []
         for _, o in O.iterrows():
-            q = J0[(J0.cohort == o.cohort) & (J0.scope == "windows allowed by the design")].sort_values("min_distance").iloc[0]
-            tasks.append((dict(cohort=o.cohort, n=o.n), q.model, (q.closest_sd_F, q.closest_rho_K, q.closest_proxy_noise, q.closest_window), seeds, kw))
+            q = J0[(J0.cohort == o.cohort) & (J0.scope == "windows allowed by the design")].sort_values("min_distance")
+            for r in (q.itertuples() if (all_truths or len(ALLOWED[o.window]) == 1) else q.head(1).itertuples()):
+                tasks.append((dict(cohort=o.cohort, n=o.n), r.model, (r.closest_sd_F, r.closest_rho_K, r.closest_proxy_noise, r.closest_window), seeds, kw))
         workers = max(1, min(int(os.environ.get("T2D_MODEL_WORKERS", os.cpu_count() or 1)), len(tasks)))
         print(f"\nCALIBRANDO la region conjunta: {len(tasks)} cohortes, {workers} procesos", flush=True)
         cal = []; thr = {}
         with ProcessPoolExecutor(workers, initializer=_set_ens, initargs=(ENS,)) as ex:
             for c in ex.map(_calibration_worker, tasks):
-                cal.append(c); thr[c["cohort"]] = threshold_from(c)
-                print(f"  calibrada {c['cohort']} (n = {c['n_calibration_cohort']}): cobertura del umbral nominal {c['coverage_min'] * 100:.0f} a "
+                cal.append(c); thr[c["cohort"]] = max(thr.get(c["cohort"], 0.0), threshold_from(c))
+                print(f"  calibrada {c['cohort']} con {c['truth_model'].split()[0]} como verdad (n = {c['n_calibration_cohort']}): cobertura del umbral nominal {c['coverage_min'] * 100:.0f} a "
                       f"{c['coverage_max'] * 100:.0f} % entre poblaciones" + (f", {c['coverage_fresh_cohorts'] * 100:.0f} % en {c['fresh_cohorts']} cohortes nuevas" if "fresh_cohorts" in c else ""), flush=True)
-        CAL = pd.DataFrame(cal); CAL.to_csv(f"{OUT}/new/competing_models_calibration.tsv", sep="\t", index=False)
+        CAL = pd.DataFrame(cal); CAL["threshold_used_for_the_cohort"] = CAL.cohort.map(thr)
+        CAL.to_csv(f"{OUT}/new/competing_models_calibration.tsv", sep="\t", index=False)
         print("\nCALIBRACION de la region conjunta: cohortes generadas del propio modelo, del tamano de la observada")
         for r in CAL.itertuples():
-            print(f"  {r.cohort}: cohortes de {r.n_calibration_cohort} personas; rango efectivo {r.effective_rank}; el umbral nominal ({r.nominal_threshold:.1f}) "
+            print(f"  {r.cohort}, verdad {r.truth_model.split()[0]}: cohortes de {r.n_calibration_cohort} personas; rango efectivo {r.effective_rank}; el umbral nominal ({r.nominal_threshold:.1f}) "
                   f"cubre {r.coverage_of_nominal_threshold * 100:.0f} % ({r.coverage_min * 100:.0f} a {r.coverage_max * 100:.0f}); "
                   f"percentil 95 de las distancias {r.calibrated_threshold_min:.1f} a {r.calibrated_threshold_max:.1f}; se usa {thr[r.cohort]:.1f}")
         if "coverage_if_standardised_over_population" in CAL:
@@ -681,17 +759,16 @@ if __name__ == "__main__":
         CF = []
         for _, o in O.iterrows():
             if len(ALLOWED[o.window]) > 1: continue
-            Jc = J[(J.cohort == o.cohort) & (J.scope == "windows allowed by the design")].set_index("model")
-            pts = {m: (Jc.loc[m, "closest_sd_F"], Jc.loc[m, "closest_rho_K"], Jc.loc[m, "closest_proxy_noise"], Jc.loc[m, "closest_window"]) for m in MODELS}
-            cf = confusion(o, None, S, ENS, pts, seeds, thr[o.cohort], reps=int(os.environ.get("T2D_MODEL_CONFUSION", 100)),
-                           boot=int(os.environ.get("T2D_MODEL_CALIB_BOOT", 150)))
+            cf = confusion(o, COV[o.cohort], S, ENS, thr[o.cohort], reps=int(os.environ.get("T2D_MODEL_CONFUSION", 50)),
+                           boot=int(os.environ.get("T2D_MODEL_CALIB_BOOT", 150)), workers=workers)
             CF.append(cf)
-            print(f"\nMATRIZ DE CONFUSION, {o.cohort} (n = {int(o.n)}): fraccion de cohortes en las que se acepta cada modelo, segun cual las genera")
-            A = cf.pivot(index="generating_model", columns="candidate_model", values="accepted_fraction").loc[list(MODELS), list(MODELS)]
-            print("    " + " " * 26 + "".join(f"{m.split()[0]:>8s}" for m in MODELS) + "    (mas cercano)")
-            for g in MODELS:
-                cl = cf[cf.generating_model == g].set_index("candidate_model").closest_fraction
-                print(f"    genera {g:22s}" + "".join(f"{A.loc[g, m]:8.2f}" for m in MODELS) + "    " + ", ".join(f"{m.split()[0]} {cl[m]:.2f}" for m in MODELS if cl[m] > 0))
+            print(f"\nMATRIZ DE CONFUSION, {o.cohort} (n = {int(o.n)}): fraccion de {int(cf.independent_cohorts.iloc[0])} cohortes nuevas en las que se acepta cada modelo")
+            for sc in cf.scenario.unique():
+                q = cf[cf.scenario == sc]
+                A = q.pivot(index="generating_model", columns="candidate_model", values="accepted_fraction").loc[list(MODELS), list(MODELS)]
+                print(f"  [{sc}]\n    " + " " * 26 + "".join(f"{m.split()[0]:>8s}" for m in MODELS))
+                for g in MODELS:
+                    print(f"    genera {g:22s}" + "".join(f"{A.loc[g, m]:8.2f}" for m in MODELS))
         if CF: pd.concat(CF).to_csv(f"{OUT}/new/competing_models_confusion.tsv", sep="\t", index=False)
         # 3. depende de cuantas semillas se usen?
         st = []

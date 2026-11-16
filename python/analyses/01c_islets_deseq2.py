@@ -45,6 +45,9 @@ if __name__ == "__main__":
     C = C[~C.index.str.isdigit()].groupby(level=0).sum()
     C = C[(C > 5).sum(1) >= 10]
     md = donor_metadata().reindex(C.columns)
+    src = islets.counts_source(RAW)                       # de donde salen las cuentas: no es indiferente
+    print(f"cuentas de islotes: {src['source']}" + ("" if src["is_the_reported_source"] else "  -> NO es la fuente de las cifras del articulo"))
+    pd.DataFrame([src]).to_csv(f"{OUT}/new/GSE159984_counts_provenance.tsv", sep="\t", index=False)
     print(f"GSE159984 donantes: {C.shape[1]} muestras ({(md.group=='T2D').sum()} T2D / {(md.group=='ND').sum()} ND), {C.shape[0]} genes")
     dds = DeseqDataSet(counts=C.T.astype(int), metadata=md, design="~group", quiet=True,
                        n_cpus=int(os.environ.get("OMP_NUM_THREADS", "8")))

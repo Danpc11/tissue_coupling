@@ -25,6 +25,8 @@ con el que se obtuvo el valor publicado.
 Salidas: results/new/crosstissue_prediction.tsv         una fila por ajuste
          results/new/crosstissue_prediction_null.tsv    R2 de cada conjunto al azar
          results/new/oof_predictions_adipose_to_muscle.tsv  prediccion fuera de pliegue por donante
+         results/new/crosstissue_prediction_genes.tsv   los genes de cada lado
+         results/new/crosstissue_prediction_folds.tsv   en cada pliegue, que donantes entrenan y cuales se predicen
 """
 import os, sys, warnings; warnings.filterwarnings("ignore", category=FutureWarning); warnings.filterwarnings("ignore", category=DeprecationWarning)
 import numpy as np, pandas as pd
@@ -161,6 +163,14 @@ def run(nfold=5, seed=0):
     d.to_csv(f"{OUT}/new/crosstissue_prediction.tsv", sep="\t", index=False)
     pd.DataFrame(null).to_csv(f"{OUT}/new/crosstissue_prediction_null.tsv", sep="\t", index=False)
     out_oof.to_csv(f"{OUT}/new/oof_predictions_adipose_to_muscle.tsv", sep="\t", index=False)
+    # Lo que hace falta para comprobar desde fuera que no hay fuga: que genes hay a cada lado y, en
+    # cada pliegue, que donantes entrenan y cuales se predicen.
+    pd.DataFrame([dict(role="predictor", tissue="adipose", gene=g) for g in gx] + [dict(role="outcome", tissue="muscle", gene=g) for g in gy]
+                 ).to_csv(f"{OUT}/new/crosstissue_prediction_genes.tsv", sep="\t", index=False)
+    parts = []
+    for fi, (tr, te) in enumerate(KFold(nfold, shuffle=True, random_state=seed).split(np.arange(len(donors)))):
+        parts += [dict(fold=fi, donor=donors[i], role="train") for i in tr] + [dict(fold=fi, donor=donors[i], role="test") for i in te]
+    pd.DataFrame(parts).to_csv(f"{OUT}/new/crosstissue_prediction_folds.tsv", sep="\t", index=False)
     return d
 
 
