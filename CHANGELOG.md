@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.13.1: author order
+
+- `CITATION.cff` listed the second and third authors in the opposite order to the manuscript. The
+  order is now that of the manuscript: Mejía-Arratia, Escutia-Guadarrama, Pérez-Calixto M., Cervera,
+  Vázquez-Victorio, Tovar, Pérez-Calixto D.
+- The history of the repository was rewritten after this release to remove the 513 MB of GTEx files
+  committed by mistake in v2.10.0. Commit identifiers from v2.10.0 onwards changed; the tags were
+  kept and point to the rewritten commits, whose content is the same without those files.
+
 ## v2.13.0: checks that check, a run that can be told from another, and where the mechanisms separate
 
 This release contains v2.12.0, which was not published on its own. A further review, made on
