@@ -1,13 +1,23 @@
 # Changelog
 
+## v2.13.2: a correction about the rewritten history
+
+- On 17 November 2026 the history was rewritten to remove the 513 MB of GTEx files committed by
+  mistake in v2.10.0; the repository went from 526 MB to 13 MB. The entry of v2.13.1 said that
+  commit identifiers changed from v2.10.0 onwards. **Every commit identifier changed**, back to the
+  first release. The 21 tags were kept and the content of each is what it was: the tree of every
+  release up to v2.9.1 is identical to the last bit, and those of v2.10.0 and v2.11.0 are the same
+  without the GTEx files and the links. The Zenodo record of v1.0.0 was made from commit `50863ac`,
+  which is now `1571c7d` with the same content. The branch `repro-hugo` keeps the old identifiers
+  and no longer shares history with `main`; its work was merged in v2.0.0.
+
 ## v2.13.1: author order
 
 - `CITATION.cff` listed the second and third authors in the opposite order to the manuscript. The
   order is now that of the manuscript: Mejía-Arratia, Escutia-Guadarrama, Pérez-Calixto M., Cervera,
   Vázquez-Victorio, Tovar, Pérez-Calixto D.
 - The history of the repository was rewritten after this release to remove the 513 MB of GTEx files
-  committed by mistake in v2.10.0. Commit identifiers from v2.10.0 onwards changed; the tags were
-  kept and point to the rewritten commits, whose content is the same without those files.
+  committed by mistake in v2.10.0.
 
 ## v2.13.0: checks that check, a run that can be told from another, and where the mechanisms separate
 
