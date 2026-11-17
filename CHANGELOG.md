@@ -1,5 +1,42 @@
 # Changelog
 
+## v2.13.3: after the first complete reproduction on the authors' cluster
+
+Release 2.13.2 was run from the public downloads to the last check on the authors' cluster: profile
+full, 52 steps, the thirteen estimates, 176 output files, 49 minutes, `verify_package` clean. Its
+numbers are those obtained on the other machine: pooled 0.416 (0.330 to 0.495), three-level 0.458
+(0.284 to 0.603), *NR3C1* at the 99.93rd percentile and second of 44 nuclear receptors after
+*NR3C2*. This release fixes what that run and its log showed.
+
+### Corrected: a number given in v2.4.0
+- **The model's prediction with measured phases (step 20b).** v2.4.0 reported that the predicted
+  pattern correlates with the observed one at ρ = 0.74 (*P* = 0.027) at 08:00. That was computed with
+  the versioned phase template. With the template a complete run regenerates, the signs still
+  agree in 8 of 8 genes, and the correlation at 08:00, the hour fixed in the model, is 0.52
+  (*P* = 0.10); it is 0.81 (*P* = 0.008) at 10:00. What holds is the direction of every gene; the
+  correlation of the pattern at the prespecified hour does not reach significance.
+
+### Fixed
+- **A section of `verify_package.py` checked nothing.** "Benjamini-Hochberg in the enrichments"
+  looked for files that no step has written for many releases, found none and printed its heading.
+  It now recomputes the false discovery rate from the *P* values of the four case-control tables,
+  and fails if it finds no table to check.
+- **The input check passed with inputs missing.** It looked only at the series matrices and two
+  GTEx annotation files. In the run above the islet counts were absent, because NCBI had answered
+  the download with a CAPTCHA page, and the step still said the series was present. It now checks
+  every file the pipeline reads (counts and tables of the series, recount3, the GTEx counts,
+  platform and gene annotation, MSigDB) and that a `.gz` file is a gzip, so a web page saved under
+  the name of a file is caught at the first step.
+- The run manifest reported "uncommitted changes" when the only difference was an untracked file,
+  such as the log of the run itself. It now counts changes to tracked files, and gives untracked
+  files separately.
+- The Anderson-Darling test is called with its variant stated, where SciPy has that parameter:
+  SciPy 1.19 will remove the argument whose default it relied on.
+- The lines of the calibration with entirely new cohorts did not say which mechanism was the truth.
+
+### Documented
+- How to obtain the islet counts when NCBI answers with a CAPTCHA (`docs/DATA.md`).
+
 ## v2.13.2: a correction about the rewritten history
 
 - On 17 November 2026 the history was rewritten to remove the 513 MB of GTEx files committed by
@@ -633,7 +670,8 @@ reach, and all eleven figures were rendered with the edited code.
   biopsy at a fixed hour sees each gene pulled towards its mean in proportion to its amplitude.
   With the phases and amplitudes measured in the time-course cohort instead of the ones written in
   the model, the predicted sign agrees in 8 of 8 genes and the predicted pattern correlates with
-  the observed one at ρ = 0.74 (P = 0.027 against random template genes) at 08:00, the hour of the
+  the observed one at ρ = 0.74 (P = 0.027 against random template genes; with the versioned template.
+  With the template of a complete run it is 0.52, P = 0.10: see v2.13.3) at 08:00, the hour of the
   model; 0.31 at 06:00 and 0.86 at 10:00.
 - **The signature correlation against its background** (step 16). Over the eight output-arm genes
   the insulin-resistance and hydrocortisone profiles correlate at 0.71; over all 6,108 genes at

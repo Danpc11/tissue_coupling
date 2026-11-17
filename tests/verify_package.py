@@ -77,15 +77,19 @@ else:
     check("existen los exports del metaanalisis", False,
           "corra el pipeline: pasos 10 y 11 escriben meta_per_cohort.tsv y meta_pooled.tsv")
 
-print("\n5. Benjamini-Hochberg en los enriquecimientos")
-for f in glob.glob(f"{RES}/enrich_*.tsv"):
-    d = pd.read_csv(f, sep="\t")
-    if not {"p", "fdr"} <= set(d.columns): continue
-    d = d.sort_values("p").reset_index(drop=True); m = len(d)
-    q = np.minimum.accumulate((d.p.values * m / np.arange(1, m + 1))[::-1])[::-1].clip(max=1)
-    check(f"{os.path.basename(f)}: FDR correcto", np.allclose(q, d.fdr.values, atol=1e-9),
-          f"max dif {np.max(np.abs(q - d.fdr.values)):.2e}")
-    check(f"{os.path.basename(f)}: FDR monotono", (d.fdr.diff().dropna() >= -1e-12).all())
+print("\n5. Benjamini-Hochberg en la expresion diferencial")
+# Las tablas gen a gen de casos frente a controles (paso 03) llevan P y FDR. Se recalcula el FDR desde P.
+# La de islotes no entra: su valor ajustado es el de PyDESeq2, que filtra genes antes de ajustar.
+de = sorted(f for f in glob.glob(f"{RES}/fig1_de_GSE*.tsv"))
+check("hay tablas de expresion diferencial que comprobar", len(de) >= 4, f"{len(de)} tablas")
+for f in de:
+    d = pd.read_csv(f, sep="\t", index_col=0)
+    if not {"P", "FDR"} <= set(d.columns):
+        check(f"{os.path.basename(f)} lleva P y FDR", False, str(list(d.columns))); continue
+    d = d.dropna(subset=["P", "FDR"]).sort_values("P"); m = len(d)
+    q = np.minimum.accumulate((d.P.values * m / np.arange(1, m + 1))[::-1])[::-1].clip(max=1)
+    check(f"{os.path.basename(f)}: el FDR es el de Benjamini-Hochberg sobre sus P", bool(np.allclose(q, d.FDR.values, atol=1e-9)),
+          f"{m} genes, max dif {np.max(np.abs(q - d.FDR.values)):.1e}")
 
 print("\n6. Prediccion sin fuga de informacion")
 fp = f"{RES}/new/crosstissue_prediction.tsv"

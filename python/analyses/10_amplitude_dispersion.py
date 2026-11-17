@@ -21,7 +21,13 @@ def permutation_ratio(a,b,fn,n=5000):
     return obs,(np.sum(np.abs(np.log(null))>=abs(np.log(obs)))+1)/(len(null)+1)
 def ad_p(a,b):
     """P de Anderson-Darling. scipy lo acota entre 0.001 y 0.25: en los extremos es una cota."""
-    p=stats.anderson_ksamp([a,b]).pvalue
+    import inspect, warnings as _w
+    # scipy 1.17 anadio `variant` y retirara `midrank` en 1.19: se fija la variante que era la de por
+    # defecto (midrank=True), donde el parametro existe. El aviso de que P esta acotado se recoge abajo.
+    kw={"variant":"midrank"} if "variant" in inspect.signature(stats.anderson_ksamp).parameters else {}
+    with _w.catch_warnings():
+        _w.simplefilter("ignore",UserWarning)
+        p=stats.anderson_ksamp([a,b],**kw).pvalue
     return p, (">= 0.25" if p>=0.25 else "<= 0.001" if p<=0.001 else f"{p:.4f}")
 IQR=lambda v: np.subtract(*np.percentile(v,[75,25]))
 RNG=lambda v: np.percentile(v,95)-np.percentile(v,5)

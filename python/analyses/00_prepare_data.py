@@ -62,6 +62,33 @@ ANNOT = {
     "GTEx_Analysis_v11_Annotations_SubjectPhenotypesDS.txt": "sex, age bracket, Hardy scale",
 }
 
+# Lo que el pipeline lee ademas de las matrices de serie. Si falta algo de aqui, o si un .gz no es un
+# gzip (NCBI devuelve a veces una pagina de CAPTCHA con el nombre del fichero), la corrida fallaria
+# pasos mas tarde; se dice aqui, antes de calcular nada.
+FILES = {
+    "cuentas y tablas de las series": [
+        "GSE159984_raw_counts.tsv.gz", "GSE159984-GPL9115_series_matrix.txt.gz", "GSE159984-GPL16791_series_matrix.txt.gz",
+        "GSE129843_RESTRICT.txt.gz", "GSE129843_README.txt", "GSE182117_counts.tsv.gz", "GSE148640_processed.txt.gz"],
+    "recount3 (GSE108539 y GSE66446)": [f"recount3/sra.{k}.{s}.{e}" for s in ("SRP127581", "SRP055749")
+                                         for k, e in (("gene_sums", "G026.gz"), ("sra", "MD.gz"), ("recount_qc", "MD.gz"))],
+    "GTEx, cuentas por tejido": [f"gene_reads_v11_{t}.gct.gz" for t in ("muscle_skeletal", "adipose_subcutaneous", "adipose_visceral_omentum")],
+    "anotacion de plataformas y de genes": ["GPL570_annot.txt", "GPL15207_annot.txt", "GPL15331_annot.txt", "GPL17586_annot.txt",
+                                            "GPL4133_annot.txt", "GPL6848_annot.txt", "GPL24324-69524.txt",
+                                            "_soft/Homo_sapiens.gene_info.gz", "Human_GRCh38_p13_annot_tsv.gz", "dorothea_ABC.tsv"],
+    "MSigDB v2026.2": [f"msigdb/{c}.v2026.2.Hs.symbols.gmt" for c in ("h.all", "c2.cp.reactome", "c2.cp.wikipathways", "c2.cp.kegg_medicus",
+                       "c2.cp.pid", "c2.cgp", "c3.tft.gtrd", "c3.mir.mirdb", "c4.all", "c5.go.bp", "c5.hpo", "c7.all", "c8.all")],
+}
+
+
+def state(path):
+    """presente, FALTA, o NO ES GZIP para un .gz que no empieza por la firma de gzip."""
+    if not os.path.exists(path): return "FALTA"
+    if path.endswith(".gz"):
+        with open(path, "rb") as fh:
+            if fh.read(2) != b"\x1f\x8b": return "NO ES GZIP"
+    return "presente"
+
+
 def report():
     missing = 0
     print("Datos requeridos\n")
@@ -76,6 +103,15 @@ def report():
         p = os.path.join(RAW, f)
         ok = os.path.exists(p); missing += 0 if ok else 1
         print(f"  [{'presente' if ok else 'FALTA   '}] {f}")
+    for title, files in FILES.items():
+        bad = [(f, state(os.path.join(RAW, f))) for f in files]; bad = [(f, s) for f, s in bad if s != "presente"]
+        missing += len(bad)
+        print(f"\n{title}: {len(files) - len(bad)} de {len(files)} presentes")
+        for f, s in bad:
+            print(f"  [{s:10s}] {f}" + ("   <- NCBI devolvio una pagina web en vez del fichero: descarguelo con el navegador (docs/DATA.md)" if s == "NO ES GZIP" else ""))
+    for a in GEO:
+        s = state(os.path.join(RAW, f"{a}_series_matrix.txt.gz"))
+        if s == "NO ES GZIP": missing += 1; print(f"  [NO ES GZIP] {a}_series_matrix.txt.gz")
     print("\nLos ficheros que falten deben descargarse manualmente: GEO y GTEx requieren")
     print("aceptar sus terminos, de modo que este script no los descarga por ti.")
     return missing

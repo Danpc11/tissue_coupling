@@ -742,7 +742,7 @@ if __name__ == "__main__":
                   f"diferencia mediana del umbral {np.median(CAL.calibrated_threshold_if_standardised_over_population - CAL.calibrated_threshold):+.2f}")
         q = CAL[CAL.get("fresh_cohorts", pd.Series(dtype=float)).notna()] if "fresh_cohorts" in CAL else CAL.iloc[:0]
         for r in q.itertuples():
-            print(f"  {r.cohort}: con {int(r.fresh_cohorts)} cohortes completamente nuevas, cobertura {r.coverage_fresh_cohorts * 100:.0f} % y "
+            print(f"  {r.cohort}, verdad {r.truth_model.split()[0]}: con {int(r.fresh_cohorts)} cohortes completamente nuevas, cobertura {r.coverage_fresh_cohorts * 100:.0f} % y "
                   f"percentil 95 {r.calibrated_threshold_fresh_cohorts:.1f} (por remuestreo: {r.coverage_of_nominal_threshold * 100:.0f} % y {r.calibrated_threshold:.1f})")
         # 2. criterio con el umbral calibrado
         J = joint(O, COV, S, thr); J.to_csv(f"{OUT}/new/competing_models_joint.tsv", sep="\t", index=False)

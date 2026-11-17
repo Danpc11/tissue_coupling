@@ -77,6 +77,21 @@ needs `tqdm` and `anndata`, both in `requirements.txt`. Without it step 06 runs 
 estimator only, marks the CHIRAL rows as not run and says so; `T2D_REQUIRE_CHIRAL=1` makes that
 an error.
 
+### When NCBI answers with a CAPTCHA
+
+The counts NCBI generates (GSE159984) are served from a page that sometimes returns a CAPTCHA to
+non-interactive clients. `download_public.sh` retries and says so, and the first step of the
+pipeline stops if the file is missing or is not a gzip. In that case download it with a browser:
+
+    https://www.ncbi.nlm.nih.gov/geo/download/?type=rnaseq_counts&acc=GSE159984&format=file&file=GSE159984_raw_counts_GRCh38.p13_NCBI.tsv.gz
+
+and place it in `data/raw/` as `GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz` (an underscore
+before `p13`), with a link to it under the name the pipeline reads:
+
+    ln -sfn GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz data/raw/GSE159984_raw_counts.tsv.gz
+
+It is about 5.5 MB and its first column is `GeneID`.
+
 ### The islet counts, and a fallback that is not equivalent
 
 The islet estimates use the counts NCBI generates for GSE159984 (HISAT2 and featureCounts against

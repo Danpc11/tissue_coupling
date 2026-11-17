@@ -72,7 +72,10 @@ if __name__ == "__main__":
              started_epoch=time.time(), written=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
              profile=profile, scientific_reproduction=(profile == "full" and not changed),
              settings_that_differ_from_a_full_reproduction=changed, settings=effective,
-             release=release, git_commit=git("rev-parse", "HEAD"), git_uncommitted_changes=bool(git("status", "--porcelain")),
+             release=release, git_commit=git("rev-parse", "HEAD"),
+             git_uncommitted_changes=bool(git("status", "--porcelain", "--untracked-files=no")),     # cambios en ficheros versionados
+             git_untracked_files=len((git("status", "--porcelain", "--untracked-files=all") or "").splitlines())
+                                 - len((git("status", "--porcelain", "--untracked-files=no") or "").splitlines()),
              versions=versions(), input_files=len(rows),
              input_files_sha256=hashlib.sha256("".join(r["sha256"] for r in rows).encode()).hexdigest(),
              islet_counts=isl)
@@ -80,6 +83,7 @@ if __name__ == "__main__":
     print(f"corrida {M['run_id']}")
     print(f"perfil de la corrida: {profile}" + ("" if M["scientific_reproduction"] else "  -> NO es una reproduccion completa: sus cifras no son las del articulo"))
     for k, v in changed.items(): print(f"  {k} = {v['this_run']} (reproduccion completa: {v['full_reproduction']})")
-    print(f"version {release}, commit {M['git_commit'] or 'desconocido'}" + (" con cambios sin confirmar" if M["git_uncommitted_changes"] else ""))
+    print(f"version {release}, commit {M['git_commit'] or 'desconocido'}" + (" con CAMBIOS SIN CONFIRMAR en ficheros versionados" if M["git_uncommitted_changes"] else "")
+          + (f" ({M['git_untracked_files']} ficheros sin versionar, que no cuentan como cambio)" if M["git_untracked_files"] else ""))
     print(f"{len(rows)} ficheros de entrada con su huella en {OUT}/new/input_files.tsv")
     print(f"cuentas de islotes: {isl['source']}" + ("" if isl["is_the_reported_source"] else "  -> NO es la fuente de las cifras del articulo"))
