@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.13.6: the table of gene symbols is versioned; texts brought up to date
+
+- **Why the islet estimates differed between two machines, and the fix.** On the authors' cluster
+  they were 0.317 and 0.560; on another machine, 0.323 and 0.555. The cause is the table that turns
+  NCBI GeneIDs into symbols: one machine had NCBI's annotation file, the other the substitute that
+  `download_public.sh` derives from NCBI Gene when NCBI's page answers with a CAPTCHA. With the
+  derived table the second machine gives 0.317 and 0.560 and a pooled estimate of 0.416, those of
+  the cluster. Because NCBI Gene is updated continuously, deriving the table at download time does
+  not give a fixed result either, so the table behind the reported numbers is now versioned
+  (`data/reference/ncbi_counts/GeneID_to_symbol_for_GSE159984.tsv.gz`, 0.5 MB, with its sha256)
+  and installed by `download_public.sh`. A run that reads another table is flagged by its manifest
+  and fails a check of `verify_package.py`.
+- The abstract of `CITATION.cff`, which an archive shows as the description of the record, still
+  presented the model as the product of the cortisol rhythm and receptor availability. It
+  describes what the code does now.
+- The README states what the MIT licence covers and what it does not: the versioned data files
+  keep the terms of their sources.
+- `docs/DATA.md` no longer says that the place of GSE40589 in the manuscript "is not decided"; it
+  says what is the case, that the series is used by step 14b and is not in Supplementary Table S1
+  as submitted.
+
 ## v2.13.5: the islet counts are versioned
 
 - **The counts NCBI generates for GSE159984 are now in the repository**

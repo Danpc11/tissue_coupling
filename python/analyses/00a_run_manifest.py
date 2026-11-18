@@ -87,3 +87,5 @@ if __name__ == "__main__":
           + (f" ({M['git_untracked_files']} ficheros sin versionar, que no cuentan como cambio)" if M["git_untracked_files"] else ""))
     print(f"{len(rows)} ficheros de entrada con su huella en {OUT}/new/input_files.tsv")
     print(f"cuentas de islotes: {isl['source']}" + ("" if isl["is_the_reported_source"] else "  -> NO es la fuente de las cifras del articulo"))
+    if isl.get("annotation_is_the_versioned_table") is False:
+        print("  la tabla de simbolos NO es la versionada: las estimaciones de islotes diferiran en la tercera cifra (bash download_public.sh la instala)")

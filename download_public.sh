@@ -88,10 +88,24 @@ get 'https://omnipathdb.org/interactions?datasets=dorothea&dorothea_levels=A,B,C
 
 echo "## 7. Anotacion de genes NCBI (sustituto de Human.GRCh38.p13.annot.tsv.gz)"
 get https://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz _soft/Homo_sapiens.gene_info.gz
-if [ ! -s Human_GRCh38_p13_annot_tsv.gz ]; then
-  # columnas que leen los scripts: GeneID y Symbol (gene_info las trae con ese mismo nombre)
+# La tabla GeneID -> simbolo con la que se leen las cuentas de islotes. La de NCBI sale de la misma pagina
+# con CAPTCHA que las cuentas, y derivarla de gene_info da un resultado que cambia cada vez que NCBI
+# actualiza ese fichero (las estimaciones de islotes se mueven en la tercera cifra). Por eso va versionada,
+# con su huella, la que usaron las cifras del articulo: se instala esa y no se deriva nada.
+VA="$ROOT/data/reference/ncbi_counts/GeneID_to_symbol_for_GSE159984.tsv.gz"
+if [ -s "$VA" ]; then
+  if [ -s Human_GRCh38_p13_annot_tsv.gz ] && cmp -s "$VA" Human_GRCh38_p13_annot_tsv.gz; then
+    echo "  [ya]    Human_GRCh38_p13_annot_tsv.gz (la tabla versionada)"
+  else
+    if [ -s Human_GRCh38_p13_annot_tsv.gz ]; then
+      mv Human_GRCh38_p13_annot_tsv.gz Human_GRCh38_p13_annot_tsv.gz.previous
+      echo "  [aviso] habia otra tabla de anotacion; se guarda como Human_GRCh38_p13_annot_tsv.gz.previous"
+    fi
+    cp "$VA" Human_GRCh38_p13_annot_tsv.gz && echo "  [ok]    Human_GRCh38_p13_annot_tsv.gz (tabla versionada en data/reference/ncbi_counts)"
+  fi
+elif [ ! -s Human_GRCh38_p13_annot_tsv.gz ]; then
   zcat _soft/Homo_sapiens.gene_info.gz | awk -F'\t' 'BEGIN{OFS="\t"; print "GeneID","Symbol","Description","Synonyms","GeneType"} NR>1{print $2,$3,$9,$5,$10}' | gzip > Human_GRCh38_p13_annot_tsv.gz.part && mv Human_GRCh38_p13_annot_tsv.gz.part Human_GRCh38_p13_annot_tsv.gz
-  echo "  [ok]    Human_GRCh38_p13_annot_tsv.gz (DERIVADO de gene_info; ver README_descarga.md)"
+  echo "  [ok]    Human_GRCh38_p13_annot_tsv.gz (DERIVADO de gene_info: no es la tabla de las cifras del articulo)"
 fi
 ln -sfn Human_GRCh38_p13_annot_tsv.gz Human_GRCh38_p13_annot.tsv.gz
 

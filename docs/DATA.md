@@ -16,7 +16,8 @@ analyses use are therefore seventeen of the nineteen in that table, plus GSE4058
 
 Seventeen of them are listed, with tissue, platform, sample number and role, in
 Supplementary Table S1 of the manuscript. The eighteenth, GSE40589, was added in v2.2.0 as a
-time-matched control for the clamp (last section); its place in the manuscript is not decided.
+time-matched control for the clamp (step 14b; last section). It is not in Supplementary Table S1
+of the manuscript as submitted.
 
 GSE107537 is the external control for the estimator: a controlled 10-h delay of the habitual sleep
 period with recorded sampling times, in blood mononuclear cells. Its platform annotation (GPL24324)
@@ -94,6 +95,16 @@ are this file. It is the file as NCBI distributes it, unmodified, obtained from
     https://www.ncbi.nlm.nih.gov/geo/download/?type=rnaseq_counts&acc=GSE159984&format=file&file=GSE159984_raw_counts_GRCh38.p13_NCBI.tsv.gz
 
 The original data are those of GEO series GSE159984, which is the source to cite.
+
+**The table of gene symbols is versioned too.** The counts are indexed by NCBI GeneID, and the
+symbol each one receives decides which genes are kept and the library size. NCBI's own annotation
+file comes from the same page with the CAPTCHA, and the substitute derived from NCBI Gene changes
+whenever that resource is updated. With NCBI's file the two islet estimates are 0.323 and 0.555;
+with the derived table, 0.317 and 0.560, which are the reported ones. The table that gives the
+reported numbers is kept as `data/reference/ncbi_counts/GeneID_to_symbol_for_GSE159984.tsv.gz`
+(0.5 MB, the GeneIDs of the counts file only), and `download_public.sh` installs it under the name
+the pipeline reads. A run made with another table is flagged by its manifest and by
+`verify_package.py`.
 
 ### The islet counts, and a fallback that is not equivalent
 

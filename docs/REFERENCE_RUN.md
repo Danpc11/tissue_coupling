@@ -13,12 +13,13 @@ cluster, from the public downloads to the last check.
 | input files | 76 |
 | output files | 176 |
 | duration | 49 minutes, with 32 processes in the comparison of mechanisms |
-| islet counts | NCBI |
+| islet counts | NCBI, read with the table of symbols derived from NCBI Gene; both are versioned since v2.13.6 |
 | final check | `verify_package.py` clean; "This is a complete reproduction of release 2.13.2" |
 | not run | the comparison with ZeitZeiger and tauFisher (step 02f), for lack of the two R packages on that machine; its numbers come from a run on another machine |
 
-Releases 2.13.3 and 2.13.4 change checks, messages and documentation, not the analyses; the run was
-not repeated with them.
+Releases 2.13.3 to 2.13.6 change checks, messages, documentation and how two inputs are obtained,
+not the analyses; the run was not repeated with them. The islet estimates of that run (0.317 and
+0.560) are reproduced on another machine with the versioned inputs of v2.13.6.
 
 The record of that run is its `run_manifest.json`, with `input_files.tsv` and `output_files.tsv`:
 the sha256 of every input and of every output. They are to be deposited with the archived release,

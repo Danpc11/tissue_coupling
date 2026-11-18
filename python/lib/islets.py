@@ -74,6 +74,9 @@ def counts_source(raw):
     same = (sha(ref) == sha(path)) if os.path.exists(ref) else None
     if same is False and ok:
         src += " (but not the file versioned in data/reference/ncbi_counts)"
-    return dict(source=src, quantification=quant, is_the_reported_source=ok, is_the_versioned_file=same, file=real, sha256=sha(path),
+    refa = os.path.join(os.environ.get("T2D_REF", "data/reference"), "ncbi_counts", "GeneID_to_symbol_for_GSE159984.tsv.gz")
+    same_ann = (sha(refa) == sha(ann)) if (os.path.exists(refa) and os.path.exists(ann)) else None
+    return dict(source=src, quantification=quant, is_the_reported_source=ok, is_the_versioned_file=same,
+                annotation_is_the_versioned_table=same_ann, file=real, sha256=sha(path),
                 annotation_file=os.path.basename(ann) if os.path.exists(ann) else None,
                 annotation_sha256=sha(ann) if os.path.exists(ann) else None)

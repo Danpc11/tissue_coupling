@@ -181,6 +181,11 @@ if os.path.exists(fm):
     check("la corrida registra su perfil, su version y sus entradas", all(k in M for k in ("profile", "release", "input_files_sha256", "settings")),
           f"perfil {M.get('profile')}, version {M.get('release')}, {M.get('input_files')} ficheros de entrada")
     check("las cuentas de islotes son las de las cifras del articulo (NCBI)", bool(M["islet_counts"]["is_the_reported_source"]), M["islet_counts"]["source"])
+    if M["islet_counts"].get("is_the_versioned_file") is not None:
+        check("y son el fichero versionado en el repositorio", bool(M["islet_counts"]["is_the_versioned_file"]))
+    if M["islet_counts"].get("annotation_is_the_versioned_table") is not None:
+        check("leidas con la tabla de simbolos versionada", bool(M["islet_counts"]["annotation_is_the_versioned_table"]),
+              "con otra tabla las estimaciones de islotes cambian en la tercera cifra; bash download_public.sh instala la versionada")
     if M["scientific_reproduction"]:
         print("  Es una REPRODUCCION COMPLETA: perfil full con los ajustes por defecto.")
     else:

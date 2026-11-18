@@ -202,3 +202,11 @@ means the code does what it says; it does not validate the biological interpreta
 ## Citation
 
 See `CITATION.cff`. Cite the Zenodo record of the tagged release you used.
+
+## Licence
+
+The code is under the MIT licence (`LICENSE`). The data files kept in the repository are not
+ours to license: the tables in `data/reference/` are derived from the public series listed in
+`docs/DATA.md`, and `data/reference/ncbi_counts/` holds the gene counts NCBI generates for
+GSE159984 as NCBI distributes them, with a table of gene symbols derived from NCBI Gene. They keep
+the terms of their sources, which are the ones to cite.
