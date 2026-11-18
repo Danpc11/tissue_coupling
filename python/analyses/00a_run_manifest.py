@@ -70,7 +70,10 @@ if __name__ == "__main__":
     commit = git("rev-parse", "HEAD")
     M = dict(run_id=f"{datetime.datetime.now(datetime.timezone.utc):%Y%m%dT%H%M%SZ}-{(commit or 'nogit')[:8]}-{uuid.uuid4().hex[:6]}",
              started_epoch=time.time(), written=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-             profile=profile, scientific_reproduction=(profile == "full" and not changed),
+             profile=profile,
+             # Tres cosas distintas (ver tests/close_run_manifest.py): con que configuracion se corre, si la
+             # verificacion pasa y que componentes se calculan. Aqui solo se conoce la primera.
+             reference_configuration=(profile == "full" and not changed), verification_passed=False,
              settings_that_differ_from_a_full_reproduction=changed, settings=effective,
              release=release, git_commit=git("rev-parse", "HEAD"),
              git_uncommitted_changes=bool(git("status", "--porcelain", "--untracked-files=no")),     # cambios en ficheros versionados
@@ -81,7 +84,7 @@ if __name__ == "__main__":
              islet_counts=isl)
     json.dump(M, open(f"{OUT}/new/run_manifest.json", "w"), indent=1)
     print(f"corrida {M['run_id']}")
-    print(f"perfil de la corrida: {profile}" + ("" if M["scientific_reproduction"] else "  -> NO es una reproduccion completa: sus cifras no son las del articulo"))
+    print(f"perfil de la corrida: {profile}" + ("" if M["reference_configuration"] else "  -> NO es la configuracion de referencia: sus cifras no son las del articulo"))
     for k, v in changed.items(): print(f"  {k} = {v['this_run']} (reproduccion completa: {v['full_reproduction']})")
     print(f"version {release}, commit {M['git_commit'] or 'desconocido'}" + (" con CAMBIOS SIN CONFIRMAR en ficheros versionados" if M["git_uncommitted_changes"] else "")
           + (f" ({M['git_untracked_files']} ficheros sin versionar, que no cuentan como cambio)" if M["git_untracked_files"] else ""))

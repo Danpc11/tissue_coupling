@@ -79,12 +79,24 @@ sets in the expensive ones (the comparison of mechanisms and the cross-tissue nu
 checking in a short time that everything works on a machine; its numbers are not to be cited.
 
 Step 01a writes `results/new/run_manifest.json` before anything is computed, with an identifier of
-the run and the instant it started; step 29z closes it with an inventory of every file the run
-wrote (`output_files.tsv`: size, sha256 and whether it is from this run). The manifest holds: the profile, every
-setting that differs from a complete reproduction, the release and commit, the versions of Python
-and the libraries, a sha256 of every input file (`input_files.tsv`) and where the islet counts
-come from. The end of the run and `tests/verify_package.py` read it and say, in so many words,
-whether the run is a complete reproduction.
+the run and the instant it started: the profile, every setting that differs from the reference,
+the release and commit, the versions of Python and the libraries, a sha256 of every input file
+(`input_files.tsv`) and where the islet counts come from. Step 29z adds an inventory of every file
+the run wrote (`output_files.tsv`: size, sha256 and whether it is from this run).
+
+The last step, 31, closes the manifest and prints what the run is. It keeps three things apart,
+because none implies the others:
+
+| field | what it says |
+|---|---|
+| `reference_configuration` | the run used profile full with the default settings |
+| `verification_passed` | `tests/verify_package.py` finished without a failure; only the last step sets it, and the pipeline reaches that step only if the verification passed |
+| `components` | whether the two analyses that depend on external software were computed: the concordance with CHIRAL (step 06) and the comparison with ZeitZeiger and tauFisher (step 02f) |
+
+and it draws two conclusions from them: `reproduces_main_results`, which needs the reference
+configuration, the verification and the versioned islet inputs; and `reproduces_everything`, which
+needs the two external components as well. A run without R reproduces the main results and says
+that it does not reproduce everything.
 
 ## Settings
 

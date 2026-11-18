@@ -112,35 +112,50 @@ if os.path.exists(fp):
         tests = F[F.role == "test"]
         check("cada donante se predice exactamente una vez", bool((tests.groupby("donor").size() == 1).all()) and tests.donor.nunique() == F.donor.nunique(),
               f"{tests.donor.nunique()} donantes, {F.fold.nunique()} pliegues")
-        oofs = sorted(glob.glob(f"{RES}/new/oof_predictions_*.tsv"))
-        check("hay tablas de prediccion que comprobar", len(oofs) > 0, ", ".join(os.path.basename(x) for x in oofs))
-        for fo_ in oofs:                                     # todas, no solo la primera
-            oof = pd.read_csv(fo_, sep="\t"); nm = os.path.basename(fo_)
-            m = oof.merge(tests[["donor", "fold"]], on="donor", suffixes=("", "_declared"))
-            check(f"{nm}: una fila por donante, sin repetir", oof.donor.is_unique and set(oof.donor) == set(tests.donor), f"{len(oof)} filas")
-            check(f"{nm}: las predicciones son las de los pliegues declarados", len(m) == len(oof) and bool((m.fold == m.fold_declared).all()))
-        # Recalculo independiente: con el diseno exportado y los pliegues declarados se vuelve a ajustar cada
-        # pliegue aqui, usando solo sus donantes de entrenamiento. Si el paso hubiera usado algo mas, no saldria lo mismo.
-        fdz = f"{RES}/new/crosstissue_prediction_design.tsv"; fo1 = f"{RES}/new/oof_predictions_adipose_to_muscle.tsv"
-        if os.path.exists(fdz) and os.path.exists(fo1):
+        # Recalculo independiente de TODAS las configuraciones: con el diseno exportado y los pliegues declarados
+        # se vuelve a ajustar cada pliegue aqui, con codigo propio y solo con sus donantes de entrenamiento. Si
+        # el paso hubiera usado algo mas, no saldria lo mismo.
+        fdz, fall = f"{RES}/new/crosstissue_prediction_design.tsv", f"{RES}/new/oof_predictions_all_settings.tsv"
+        if os.path.exists(fdz) and os.path.exists(fall):
             from sklearn.linear_model import RidgeCV
-            Dz = pd.read_csv(fdz, sep="\t"); oof = pd.read_csv(fo1, sep="\t").set_index("donor").reindex(Dz.donor)
+            Dz = pd.read_csv(fdz, sep="\t"); ALL = pd.read_csv(fall, sep="\t")
             col = lambda k: Dz[[c for c in Dz.columns if c.startswith(k + ":")]].to_numpy(float)
-            Yx, Yy, H = col("x"), col("y"), col("h")
-            Cx, Cy = np.column_stack([col("cx"), H]), np.column_stack([col("cy"), H])
-            pred = np.full(len(Dz), np.nan); obs = np.full(len(Dz), np.nan); pos = {d: i for i, d in enumerate(Dz.donor)}
-            for k, q in F.groupby("fold"):
-                tr = np.array([pos[d] for d in q[q.role == "train"].donor]); te = np.array([pos[d] for d in q[q.role == "test"].donor])
-                def prep(Y, C):
-                    b, *_ = np.linalg.lstsq(C[tr], Y[tr], rcond=None); R = Y - C @ b
-                    return (R - R[tr].mean(0)) / (R[tr].std(0) + 1e-9)
-                y = prep(Yy, Cy).mean(1); Z = prep(Yx, Cx)
-                pred[te] = RidgeCV(alphas=np.logspace(-2, 3, 20)).fit(Z[tr], y[tr]).predict(Z[te]); obs[te] = y[te]
-            check("las predicciones se reproducen ajustando cada pliegue solo con sus donantes de entrenamiento",
-                  bool(np.allclose(pred, oof.predicted.values, atol=1e-6) and np.allclose(obs, oof.observed.values, atol=1e-6)),
-                  f"max dif {np.nanmax(np.abs(pred - oof.predicted.values)):.1e}")
+            pos = {d: i for i, d in enumerate(Dz.donor)}
+            folds = [(np.array([pos[d] for d in q[q.role == "train"].donor]), np.array([pos[d] for d in q[q.role == "test"].donor])) for _, q in F.groupby("fold")]
+
+            def recompute(setting, centring):
+                """Las predicciones fuera de pliegue de una configuracion, ajustadas aqui desde el diseno."""
+                Yx, Yy = (col("x"), col("y")) if centring == "none" else (col("xc"), col("yc"))
+                extra = None if setting == "raw" else col("h")
+                Cx, Cy = (col("cx"), col("cy")) if extra is None else (np.column_stack([col("cx"), extra]), np.column_stack([col("cy"), extra]))
+                pred = np.full(len(Dz), np.nan); obs = np.full(len(Dz), np.nan)
+                for tr, te in folds:
+                    def prep(Y, C):
+                        b, *_ = np.linalg.lstsq(C[tr], Y[tr], rcond=None); R = Y - C @ b
+                        return (R - R[tr].mean(0)) / (R[tr].std(0) + 1e-9)
+                    y = prep(Yy, Cy).mean(1)
+                    if setting == "covariates only":
+                        Zc = col("z"); keep = Zc[tr].std(0) > 0; Z = (Zc[:, keep] - Zc[tr][:, keep].mean(0)) / Zc[tr][:, keep].std(0)
+                    else:
+                        Z = prep(Yx, Cx)
+                    pred[te] = RidgeCV(alphas=np.logspace(-2, 3, 20)).fit(Z[tr], y[tr]).predict(Z[te]); obs[te] = y[te]
+                return obs, pred
+
+            configs = ALL[["setting", "centring"]].drop_duplicates()
+            check("la prediccion exporta sus seis configuraciones", len(configs) == 6, f"{len(configs)} configuraciones")
+            for st, ce in configs.itertuples(index=False):
+                q = ALL[(ALL.setting == st) & (ALL.centring == ce)].set_index("donor").reindex(Dz.donor)
+                m = q.reset_index().merge(tests[["donor", "fold"]], on="donor", suffixes=("", "_declared"))
+                okf = q.index.is_unique and set(q.index) == set(tests.donor) and bool((m.fold == m.fold_declared).all())
+                obs, pred = recompute(st, ce)
+                ok = bool(np.allclose(pred, q.predicted.values, atol=1e-6) and np.allclose(obs, q.observed.values, atol=1e-6))
+                check(f"{st}, centrado {ce}: un donante por fila en su pliegue, y las predicciones se reproducen", okf and ok,
+                      f"max dif {np.nanmax(np.abs(pred - q.predicted.values)):.1e}")
+            main = pd.read_csv(f"{RES}/new/oof_predictions_adipose_to_muscle.tsv", sep="\t").set_index("donor").reindex(Dz.donor)
+            q = ALL[(ALL.setting == "death-adjusted") & (ALL.centring == "none")].set_index("donor").reindex(Dz.donor)
+            check("la tabla del analisis principal es una de esas seis", bool(np.allclose(main.predicted.values, q.predicted.values)))
         else:
-            check("la prediccion exporta su diseno para poder recalcularla", False, "lo escribe el paso 11b")
+            check("la prediccion exporta su diseno y sus seis configuraciones para poder recalcularlas", False, "lo escribe el paso 11b")
     else:
         check("la prediccion exporta sus genes y sus pliegues", False, "lo escribe el paso 11b")
 else:
@@ -186,13 +201,14 @@ if os.path.exists(fm):
     if M["islet_counts"].get("annotation_is_the_versioned_table") is not None:
         check("leidas con la tabla de simbolos versionada", bool(M["islet_counts"]["annotation_is_the_versioned_table"]),
               "con otra tabla las estimaciones de islotes cambian en la tercera cifra; bash download_public.sh instala la versionada")
-    if M["scientific_reproduction"]:
-        print("  Es una REPRODUCCION COMPLETA: perfil full con los ajustes por defecto.")
+    if M.get("reference_configuration", M.get("scientific_reproduction")):
+        print("  Configuracion de REFERENCIA: perfil full con los ajustes por defecto.")
     else:
-        print(f"  AVISO: NO es una reproduccion completa (perfil {M['profile']}). Sirve para comprobar que el pipeline funciona; "
+        print(f"  AVISO: NO es la configuracion de referencia (perfil {M['profile']}). Sirve para comprobar que el pipeline funciona; "
               "sus cifras no son las del articulo.")
         for k, v in M["settings_that_differ_from_a_full_reproduction"].items():
-            print(f"         {k} = {v['this_run']} (reproduccion completa: {v['full_reproduction']})")
+            print(f"         {k} = {v['this_run']} (referencia: {v['full_reproduction']})")
+    print("  Que la verificacion ha pasado y que componentes se calcularon lo escribe el paso 31 (close_run_manifest.py).")
 else:
     check("existe el manifiesto de la corrida (run_manifest.json)", False, "lo escribe el paso 01a")
 

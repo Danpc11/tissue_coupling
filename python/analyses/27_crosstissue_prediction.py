@@ -25,7 +25,8 @@ con el que se obtuvo el valor publicado.
 Salidas: results/new/crosstissue_prediction.tsv         una fila por ajuste
          results/new/crosstissue_prediction_null.tsv    R2 de cada conjunto al azar
          results/new/oof_predictions_adipose_to_muscle.tsv  prediccion fuera de pliegue por donante
-         results/new/crosstissue_prediction_design.tsv  el diseno del analisis principal: predictores, resultado y covariables
+         results/new/oof_predictions_all_settings.tsv   lo mismo para las seis configuraciones
+         results/new/crosstissue_prediction_design.tsv  el diseno de las seis: predictores, resultado y covariables
          results/new/crosstissue_prediction_genes.tsv   los genes de cada lado
          results/new/crosstissue_prediction_folds.tsv   en cada pliegue, que donantes entrenan y cuales se predicen
 """
@@ -119,7 +120,7 @@ def run(nfold=5, seed=0):
     L = load()
     if L is None: return None
     X, donors, tech, hardy, cov = L
-    rows = []; out_oof = None; observed_r2 = None
+    rows = []; out_oof = None; observed_r2 = None; all_oof = []; XY = {}
     for centring in ("none", "per sample"):
         E = X if centring == "none" else {k: v.sub(v.mean(0), axis=1) for k, v in X.items()}
         gx = [g for g in GC if g in E["adipose"].index]; gy = [g for g in TARGET if g in E["muscle"].index]
@@ -133,14 +134,10 @@ def run(nfold=5, seed=0):
                              r2_fold_mean=r2f.mean(), r2_fold_min=r2f.min(), r2_fold_max=r2f.max(), r2_common_scale=r2c))
             print(f"  adipose -> muscle, {label:16s} centrado: {centring:10s} n={len(donors)}  R2={r2:+.3f}  rho={rho.statistic:+.3f}"
                   f"   por pliegue: media {r2f.mean():+.3f}, de {r2f.min():+.3f} a {r2f.max():+.3f}   en escala comun: {r2c:+.3f}")
+            all_oof.append(pd.DataFrame(dict(setting=label, centring=centring, donor=donors, fold=fold, observed=obs, predicted=pred)))
+            XY[centring] = (Yx, Yy, gx, gy)
             if label == "death-adjusted" and centring == "none":
                 out_oof = pd.DataFrame(dict(donor=donors, fold=fold, observed=obs, predicted=pred))
-                # el diseno exacto de este analisis: con el, quien quiera puede volver a ajustar cada pliegue
-                design = pd.concat([pd.DataFrame({"donor": donors}),
-                                    pd.DataFrame(Yx, columns=[f"x:{g}" for g in gx]), pd.DataFrame(Yy, columns=[f"y:{g}" for g in gy]),
-                                    pd.DataFrame(tech["adipose"], columns=[f"cx:{i}" for i in range(tech["adipose"].shape[1])]),
-                                    pd.DataFrame(tech["muscle"], columns=[f"cy:{i}" for i in range(tech["muscle"].shape[1])]),
-                                    pd.DataFrame(extra, columns=[f"h:{i}" for i in range(extra.shape[1])])], axis=1)
                 observed_r2 = r2c                 # los nulos se comparan en la escala comun
 
     # especificidad: el mismo calculo (ajustado por causa de muerte, sin centrar) con genes al azar
@@ -170,6 +167,15 @@ def run(nfold=5, seed=0):
     d.to_csv(f"{OUT}/new/crosstissue_prediction.tsv", sep="\t", index=False)
     pd.DataFrame(null).to_csv(f"{OUT}/new/crosstissue_prediction_null.tsv", sep="\t", index=False)
     out_oof.to_csv(f"{OUT}/new/oof_predictions_adipose_to_muscle.tsv", sep="\t", index=False)
+    # Las seis configuraciones y el diseno con el que se ajustaron, para poder recalcular cada una desde fuera:
+    # predictores y resultado sin centrar (x:, y:) y centrados por muestra (xc:, yc:), covariables tecnicas de
+    # cada tejido (cx:, cy:), circunstancia de la muerte (h:) y las covariables del modelo de comparacion (z:).
+    pd.concat(all_oof, ignore_index=True).to_csv(f"{OUT}/new/oof_predictions_all_settings.tsv", sep="\t", index=False)
+    block = lambda M, pre, names=None: pd.DataFrame(M, columns=[f"{pre}:{n}" for n in (names if names is not None else range(M.shape[1]))])
+    design = pd.concat([pd.DataFrame({"donor": donors}),
+                        block(XY["none"][0], "x", XY["none"][2]), block(XY["none"][1], "y", XY["none"][3]),
+                        block(XY["per sample"][0], "xc", XY["per sample"][2]), block(XY["per sample"][1], "yc", XY["per sample"][3]),
+                        block(tech["adipose"], "cx"), block(tech["muscle"], "cy"), block(hardy, "h"), block(cov, "z")], axis=1)
     design.to_csv(f"{OUT}/new/crosstissue_prediction_design.tsv", sep="\t", index=False)
     # Lo que hace falta para comprobar desde fuera que no hay fuga: que genes hay a cada lado y, en
     # cada pliegue, que donantes entrenan y cuales se predicen.

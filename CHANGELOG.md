@@ -1,5 +1,38 @@
 # Changelog
 
+## v2.13.7: what a run reproduced, every prediction recomputed, and the hour that was searched
+
+A further review. It was made on a cached view of the repository, at v2.13.3, so its remark on the
+date of the citation was already answered; the other four points were right.
+
+### Fixed
+- **"Complete reproduction" was decided by the configuration alone.** A run with the default
+  settings was called a complete reproduction whether or not the verification passed and whether
+  or not the analyses that need external software had run. The manifest now keeps three things
+  apart: `reference_configuration`, `verification_passed`, which only a new last step sets and only
+  after `verify_package.py` has finished without a failure, and `components`, which says whether
+  the concordance with CHIRAL and the comparison with ZeitZeiger and tauFisher were computed. From
+  them it states `reproduces_main_results` and `reproduces_everything`, and the end of the run
+  prints which of the two holds. The field `scientific_reproduction` is gone.
+- **Only one of the six cross-tissue predictions was recomputed by the verification.** The step
+  now exports the out-of-fold predictions of its six configurations (three models, with and
+  without per-sample centring) and the design they were fitted on, and `verify_package.py`
+  recomputes all six with one function, fitting every fold with its training donors only. The six
+  are reproduced to 1e-14.
+
+### Added: the best hour, corrected for having been searched
+The model's prediction with measured phases is evaluated at 08:00, the hour fixed in the model,
+and at five others. Two things were missing.
+- **A null that keeps the amplitude of the genes used**: each gene is replaced by a gene of the
+  phase template of its own amplitude decile, so only the phase is free. At 08:00 the correlation
+  of the pattern is 0.52, *P* = 0.087 against any template gene and *P* = 0.090 against genes
+  matched on amplitude; the signs agree in 8 of 8, *P* = 0.0002 under both.
+- **The search over hours, accounted for.** The largest correlation is at 10:00 (0.81). Compared
+  with the largest of the six hours in each null set, it has *P* = 0.030 against any template gene
+  and *P* = 0.034 matched on amplitude, not the 0.008 of that hour taken alone.
+08:00 remains the prespecified result. Neither null keeps the co-expression among the eight genes,
+which the template does not contain.
+
 ## v2.13.6: the table of gene symbols is versioned; texts brought up to date
 
 - **Why the islet estimates differed between two machines, and the fix.** On the authors' cluster

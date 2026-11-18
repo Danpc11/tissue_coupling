@@ -97,30 +97,7 @@ step "29b5 three-state verdict of the competing models" "${PY:-python3}" tests/t
 step "29c integration test, step 14b"          "${PY:-python3}" tests/test_clamp_vs_saline.py
 step "29z inventory of what this run wrote"     "${PY:-python3}" tests/write_output_manifest.py
 step "30 verify the package"                   "${PY:-python3}" tests/verify_package.py "$T2D_OUT"
+step "31 close the manifest and say what was reproduced" "${PY:-python3}" tests/close_run_manifest.py
 
 # --- what this run did not do ---------------------------------------------------------------------
 printf '\n=== run complete\n'
-"${PY:-python3}" - <<'PYEOF'
-import json, os
-m = json.load(open(os.path.join(os.environ["T2D_OUT"], "new", "run_manifest.json")))
-if m["scientific_reproduction"]:
-    print(f"Profile: full. This is a complete reproduction of release {m['release']}.")
-else:
-    print(f"Profile: {m['profile']}. This is NOT a complete reproduction: its numbers are not those of the manuscript.")
-    for k, v in m["settings_that_differ_from_a_full_reproduction"].items():
-        print(f"  {k} = {v['this_run']} (complete reproduction: {v['full_reproduction']})")
-if not m["islet_counts"]["is_the_reported_source"]:
-    print(f"Islet counts: {m['islet_counts']['source']}. NOT the source of the reported numbers.")
-PYEOF
-if awk -F'\t' '$2 == "CHIRAL" && $9 == "ok" { found = 1 } END { exit !found }' "$T2D_OUT/new/chiral_concordance.tsv" 2>/dev/null; then
-  echo "CHIRAL concordance (step 06): regenerated."
-else
-  echo "CHIRAL concordance (step 06): NOT regenerated in this run. The implementation was not found;"
-  echo "  bash download_public.sh clones it. Everything else is complete."
-fi
-if awk -F'\t' '$2 == "ZeitZeiger" && $3 == "ok" { found = 1 } END { exit !found }' "$T2D_OUT/new/benchmark_methods.tsv" 2>/dev/null; then
-  echo "ZeitZeiger and tauFisher (step 02f): run."
-else
-  echo "ZeitZeiger and tauFisher (step 02f): NOT run. They are R packages that are not on CRAN; see docs/DATA.md."
-  echo "  The table has the rows of our own estimator only."
-fi

@@ -52,29 +52,52 @@ if __name__ == "__main__":
     print(f"{len(D)} genes con fase medida y diferencia observada: {', '.join(D.index)}")
     print(D.round(2).to_string())
 
+    # Dos nulos, y en los dos se sacan primero los conjuntos de genes y luego se evaluan a todas las horas,
+    # para poder preguntar tambien por el maximo entre horas:
+    #   any template gene        genes de la plantilla tomados al azar, con su fase y su amplitud medidas.
+    #   matched on amplitude     cada gen se sustituye por uno de la plantilla de su mismo decil de amplitud:
+    #                            conserva cuanto oscilan los genes usados y deja libre solo la fase.
+    # Ninguno conserva la coexpresion entre los ocho genes, que la plantilla no contiene: siete son del brazo
+    # de salida y comparten fase, de modo que la coincidencia equivale a dos hechos (ese brazo esta cerca de
+    # su maximo a la hora de la biopsia y mas bajo en los resistentes; BMAL1, en antifase, va al reves).
     rng = np.random.default_rng(SEED); out = []
     P, A = phase.values, amp.values
-    for hour in (6.0, 7.0, 8.0, 9.0, 10.0, 11.0):
-        pred = predicted(D.measured_amplitude, D.measured_phase_h, hour)
-        r = stats.spearmanr(pred, D.observed_log2).statistic
-        null = np.empty(NNULL); null_agree = np.empty(NNULL)
-        for i in range(NNULL):
-            k = rng.choice(len(T), len(D), replace=False)
-            pk = predicted(A[k], P[k], hour)
-            null[i] = stats.spearmanr(pk, D.observed_log2.values).statistic
-            null_agree[i] = (np.sign(pk) == np.sign(D.observed_log2.values)).sum()
-        pval = (np.sum(null >= r) + 1) / (NNULL + 1)
+    HOURS = (6.0, 7.0, 8.0, 9.0, 10.0, 11.0)
+    decile = np.minimum((stats.rankdata(A) - 1) * 10 // len(A), 9).astype(int)
+    pools = [np.flatnonzero(decile == decile[list(T.index).index(resolve(g, T.index))]) for g in D.index]
+    draws = {"any template gene": np.array([rng.choice(len(T), len(D), replace=False) for _ in range(NNULL)]),
+             "matched on amplitude": np.array([[rng.choice(p) for p in pools] for _ in range(NNULL)])}
+    obs_v = D.observed_log2.values
+    rank_obs = stats.rankdata(obs_v); rank_obs = (rank_obs - rank_obs.mean()) / rank_obs.std()
+    def rho_rows(M):                                         # Spearman de cada fila de M con lo observado
+        R = stats.rankdata(M, axis=1); R = (R - R.mean(1, keepdims=True)) / R.std(1, keepdims=True)
+        return (R * rank_obs).mean(1)
+    NULL = {k: np.array([rho_rows(predicted(A[d], P[d], h)) for h in HOURS]) for k, d in draws.items()}          # horas x nulos
+    AGREE = {k: np.array([(np.sign(predicted(A[d], P[d], h)) == np.sign(obs_v)).sum(1) for h in HOURS]) for k, d in draws.items()}
+    OBS = np.array([stats.spearmanr(predicted(D.measured_amplitude, D.measured_phase_h, h), obs_v).statistic for h in HOURS])
+    for j, hour in enumerate(HOURS):
+        pred = predicted(D.measured_amplitude, D.measured_phase_h, hour); r = OBS[j]
         agree = int((np.sign(pred) == np.sign(D.observed_log2)).sum())
-        # Cuantos signos coinciden por azar? El nulo es el mismo que para la correlacion: genes de la plantilla
-        # tomados al azar, con su fase y amplitud medidas. Responde a si genes ritmicos cualesquiera acertarian
-        # igual. No hace independientes a los ocho genes: siete son del brazo de salida y comparten fase, de modo
-        # que la coincidencia equivale a dos hechos, que ese brazo esta cerca de su maximo a la hora de la biopsia
-        # y mas bajo en los resistentes, y que BMAL1, en antifase, va al reves.
-        p_signs = (np.sum(null_agree >= agree) + 1) / (NNULL + 1)
-        out.append(dict(biopsy_hour=hour, prespecified=hour == HOUR, n_genes=len(D), signs_agree=agree, signs_agree_null_median=float(np.median(null_agree)),
-                        p_signs_vs_random_genes=p_signs, rho=r,
-                        null_median=np.median(null), null_p95=np.percentile(null, 95), p_vs_random_genes=pval))
+        row = dict(biopsy_hour=hour, prespecified=hour == HOUR, n_genes=len(D), signs_agree=agree, rho=r)
+        for k in NULL:
+            tag = k.replace(" ", "_")
+            row[f"p_rho_vs_{tag}"] = (np.sum(NULL[k][j] >= r) + 1) / (NNULL + 1)
+            row[f"p_signs_vs_{tag}"] = (np.sum(AGREE[k][j] >= agree) + 1) / (NNULL + 1)
+            row[f"signs_null_median_{tag}"] = float(np.median(AGREE[k][j]))
+        row["null_median"] = float(np.median(NULL["any template gene"][j])); row["null_p95"] = float(np.percentile(NULL["any template gene"][j], 95))
+        out.append(row)
         print(f"  biopsia a las {hour:4.1f} h{' (la del modelo)' if hour == HOUR else '':16s}: signos {agree}/{len(D)}; rho {r:+.2f}; "
-              f"genes al azar: mediana {np.median(null):+.2f}, percentil 95 {np.percentile(null, 95):+.2f}, P = {pval:.4f}"
-              f" | signos por azar: mediana {np.median(null_agree):.0f}/{len(D)}, P = {p_signs:.4f}")
-    pd.DataFrame(out).to_csv(f"{OUT}/new/model_signature_from_phases.tsv", sep="\t", index=False)
+              f"P frente a genes al azar {row['p_rho_vs_any_template_gene']:.4f}, de la misma amplitud {row['p_rho_vs_matched_on_amplitude']:.4f}"
+              f" | signos: P {row['p_signs_vs_any_template_gene']:.4f} y {row['p_signs_vs_matched_on_amplitude']:.4f}")
+    # La hora mejor, corregida por haberla buscado: el maximo entre las seis horas se compara con el maximo
+    # entre las seis horas de cada conjunto nulo. La hora preespecificada es las 08:00; esto es lo que vale
+    # la mejor de las exploradas.
+    jbest = int(np.argmax(OBS)); best = dict(biopsy_hour=HOURS[jbest], prespecified=False, n_genes=len(D), rho=OBS[jbest],
+                                             signs_agree=int((np.sign(predicted(D.measured_amplitude, D.measured_phase_h, HOURS[jbest])) == np.sign(obs_v)).sum()))
+    for k in NULL:
+        best[f"p_rho_vs_{k.replace(' ', '_')}"] = (np.sum(NULL[k].max(0) >= OBS[jbest]) + 1) / (NNULL + 1)
+    best["selected_as_the_best_of_six_hours"] = True
+    print(f"  la mejor de las seis horas ({HOURS[jbest]:.0f} h, rho {OBS[jbest]:+.2f}), corregida por la busqueda: "
+          f"P = {best['p_rho_vs_any_template_gene']:.4f} frente a genes al azar, {best['p_rho_vs_matched_on_amplitude']:.4f} de la misma amplitud")
+    R = pd.DataFrame(out); R["selected_as_the_best_of_six_hours"] = False
+    pd.concat([R, pd.DataFrame([best])], ignore_index=True).to_csv(f"{OUT}/new/model_signature_from_phases.tsv", sep="\t", index=False)
