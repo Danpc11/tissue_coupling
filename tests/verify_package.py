@@ -112,9 +112,35 @@ if os.path.exists(fp):
         tests = F[F.role == "test"]
         check("cada donante se predice exactamente una vez", bool((tests.groupby("donor").size() == 1).all()) and tests.donor.nunique() == F.donor.nunique(),
               f"{tests.donor.nunique()} donantes, {F.fold.nunique()} pliegues")
-        oof = pd.read_csv(glob.glob(f"{RES}/new/oof_predictions_*.tsv")[0], sep="\t")
-        m = oof.merge(tests[["donor", "fold"]], on="donor", suffixes=("", "_declared"))
-        check("las predicciones guardadas son las de esos pliegues", len(m) == len(oof) and bool((m.fold == m.fold_declared).all()))
+        oofs = sorted(glob.glob(f"{RES}/new/oof_predictions_*.tsv"))
+        check("hay tablas de prediccion que comprobar", len(oofs) > 0, ", ".join(os.path.basename(x) for x in oofs))
+        for fo_ in oofs:                                     # todas, no solo la primera
+            oof = pd.read_csv(fo_, sep="\t"); nm = os.path.basename(fo_)
+            m = oof.merge(tests[["donor", "fold"]], on="donor", suffixes=("", "_declared"))
+            check(f"{nm}: una fila por donante, sin repetir", oof.donor.is_unique and set(oof.donor) == set(tests.donor), f"{len(oof)} filas")
+            check(f"{nm}: las predicciones son las de los pliegues declarados", len(m) == len(oof) and bool((m.fold == m.fold_declared).all()))
+        # Recalculo independiente: con el diseno exportado y los pliegues declarados se vuelve a ajustar cada
+        # pliegue aqui, usando solo sus donantes de entrenamiento. Si el paso hubiera usado algo mas, no saldria lo mismo.
+        fdz = f"{RES}/new/crosstissue_prediction_design.tsv"; fo1 = f"{RES}/new/oof_predictions_adipose_to_muscle.tsv"
+        if os.path.exists(fdz) and os.path.exists(fo1):
+            from sklearn.linear_model import RidgeCV
+            Dz = pd.read_csv(fdz, sep="\t"); oof = pd.read_csv(fo1, sep="\t").set_index("donor").reindex(Dz.donor)
+            col = lambda k: Dz[[c for c in Dz.columns if c.startswith(k + ":")]].to_numpy(float)
+            Yx, Yy, H = col("x"), col("y"), col("h")
+            Cx, Cy = np.column_stack([col("cx"), H]), np.column_stack([col("cy"), H])
+            pred = np.full(len(Dz), np.nan); obs = np.full(len(Dz), np.nan); pos = {d: i for i, d in enumerate(Dz.donor)}
+            for k, q in F.groupby("fold"):
+                tr = np.array([pos[d] for d in q[q.role == "train"].donor]); te = np.array([pos[d] for d in q[q.role == "test"].donor])
+                def prep(Y, C):
+                    b, *_ = np.linalg.lstsq(C[tr], Y[tr], rcond=None); R = Y - C @ b
+                    return (R - R[tr].mean(0)) / (R[tr].std(0) + 1e-9)
+                y = prep(Yy, Cy).mean(1); Z = prep(Yx, Cx)
+                pred[te] = RidgeCV(alphas=np.logspace(-2, 3, 20)).fit(Z[tr], y[tr]).predict(Z[te]); obs[te] = y[te]
+            check("las predicciones se reproducen ajustando cada pliegue solo con sus donantes de entrenamiento",
+                  bool(np.allclose(pred, oof.predicted.values, atol=1e-6) and np.allclose(obs, oof.observed.values, atol=1e-6)),
+                  f"max dif {np.nanmax(np.abs(pred - oof.predicted.values)):.1e}")
+        else:
+            check("la prediccion exporta su diseno para poder recalcularla", False, "lo escribe el paso 11b")
     else:
         check("la prediccion exporta sus genes y sus pliegues", False, "lo escribe el paso 11b")
 else:
@@ -130,6 +156,19 @@ if os.path.exists(fm) and os.path.exists(fo):
     old = OF[~OF.written_by_this_run & ~OF.declared_cache]
     check("ningun fichero es anterior al inicio de la corrida", not len(old),
           ("anteriores: " + ", ".join(old.file.head(6))) if len(old) else f"{int(OF.declared_cache.sum())} son cache declarada y reutilizada")
+    # las huellas del inventario, recalculadas: un fichero cambiado despues de la corrida no pasa
+    import hashlib
+    def _sha(p_):
+        h = hashlib.sha256()
+        with open(p_, "rb") as fh:
+            for c in iter(lambda: fh.read(1 << 22), b""): h.update(c)
+        return h.hexdigest()
+    gone = [f for f in OF.file if not os.path.exists(os.path.join(RES, f))]
+    changed = [f for f, h in zip(OF.file, OF.sha256) if f not in gone and _sha(os.path.join(RES, f)) != h]
+    check("cada fichero conserva la huella sha256 con la que se inventario", not changed and not gone,
+          (f"cambiados: {', '.join(changed[:5])}" if changed else "") + (f" desaparecidos: {', '.join(gone[:5])}" if gone else "") or f"{len(OF)} huellas")
+    check("y la huella conjunta es la del manifiesto",
+          hashlib.sha256("".join(OF.sort_values("file").sha256).encode()).hexdigest() == M0.get("output_files_sha256"))
     now = {os.path.relpath(os.path.join(d, f), RES) for d, _, fs in os.walk(RES) for f in fs if not f.startswith(".")}
     extra = sorted(now - set(OF.file) - {"new/output_files.tsv", "new/run_manifest.json"})
     check("no hay ficheros que el inventario de la corrida no conozca", not extra, ", ".join(extra[:6]))

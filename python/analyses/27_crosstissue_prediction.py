@@ -25,6 +25,7 @@ con el que se obtuvo el valor publicado.
 Salidas: results/new/crosstissue_prediction.tsv         una fila por ajuste
          results/new/crosstissue_prediction_null.tsv    R2 de cada conjunto al azar
          results/new/oof_predictions_adipose_to_muscle.tsv  prediccion fuera de pliegue por donante
+         results/new/crosstissue_prediction_design.tsv  el diseno del analisis principal: predictores, resultado y covariables
          results/new/crosstissue_prediction_genes.tsv   los genes de cada lado
          results/new/crosstissue_prediction_folds.tsv   en cada pliegue, que donantes entrenan y cuales se predicen
 """
@@ -134,6 +135,12 @@ def run(nfold=5, seed=0):
                   f"   por pliegue: media {r2f.mean():+.3f}, de {r2f.min():+.3f} a {r2f.max():+.3f}   en escala comun: {r2c:+.3f}")
             if label == "death-adjusted" and centring == "none":
                 out_oof = pd.DataFrame(dict(donor=donors, fold=fold, observed=obs, predicted=pred))
+                # el diseno exacto de este analisis: con el, quien quiera puede volver a ajustar cada pliegue
+                design = pd.concat([pd.DataFrame({"donor": donors}),
+                                    pd.DataFrame(Yx, columns=[f"x:{g}" for g in gx]), pd.DataFrame(Yy, columns=[f"y:{g}" for g in gy]),
+                                    pd.DataFrame(tech["adipose"], columns=[f"cx:{i}" for i in range(tech["adipose"].shape[1])]),
+                                    pd.DataFrame(tech["muscle"], columns=[f"cy:{i}" for i in range(tech["muscle"].shape[1])]),
+                                    pd.DataFrame(extra, columns=[f"h:{i}" for i in range(extra.shape[1])])], axis=1)
                 observed_r2 = r2c                 # los nulos se comparan en la escala comun
 
     # especificidad: el mismo calculo (ajustado por causa de muerte, sin centrar) con genes al azar
@@ -163,6 +170,7 @@ def run(nfold=5, seed=0):
     d.to_csv(f"{OUT}/new/crosstissue_prediction.tsv", sep="\t", index=False)
     pd.DataFrame(null).to_csv(f"{OUT}/new/crosstissue_prediction_null.tsv", sep="\t", index=False)
     out_oof.to_csv(f"{OUT}/new/oof_predictions_adipose_to_muscle.tsv", sep="\t", index=False)
+    design.to_csv(f"{OUT}/new/crosstissue_prediction_design.tsv", sep="\t", index=False)
     # Lo que hace falta para comprobar desde fuera que no hay fuga: que genes hay a cada lado y, en
     # cada pliegue, que donantes entrenan y cuales se predicen.
     pd.DataFrame([dict(role="predictor", tissue="adipose", gene=g) for g in gx] + [dict(role="outcome", tissue="muscle", gene=g) for g in gy]

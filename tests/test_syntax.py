@@ -24,7 +24,18 @@ def main():
     if sys.version_info >= (3, 12):
         print("  aviso: 3.12 admite barras invertidas dentro de expresiones de f-string y las "
               "versiones anteriores no.\n  CI corre 3.11: compruebe ahi antes de empujar.")
-    return 1 if bad else 0
+    # La cita: su version es la de la primera entrada del CHANGELOG y su fecha no esta en el futuro.
+    import datetime, re
+    cff = open(f"{ROOT}/CITATION.cff", encoding="utf-8").read(); log = open(f"{ROOT}/CHANGELOG.md", encoding="utf-8").read()
+    ver = re.search(r"^version:\s*(\S+)", cff, re.M).group(1); day = re.search(r"^date-released:\s*(\S+)", cff, re.M).group(1)
+    top = re.search(r"^## v(\S+?):", log, re.M).group(1)
+    meta = []
+    if ver != top: meta.append(f"CITATION.cff dice version {ver} y la primera entrada del CHANGELOG es v{top}")
+    if datetime.date.fromisoformat(day) > datetime.datetime.now(datetime.timezone.utc).date() + datetime.timedelta(days=1):
+        meta.append(f"CITATION.cff tiene una fecha de publicacion futura: {day}")
+    for m in meta: print("  ", m)
+    print("la cita coincide con el CHANGELOG y su fecha no es futura" if not meta else f"{len(meta)} problema(s) en la cita")
+    return 1 if (bad or meta) else 0
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -1,5 +1,51 @@
 # Changelog
 
+## v2.13.4: checks that recompute, and the null of the sign agreement
+
+A further review, made on v2.13.3.
+
+### Fixed
+- **The check of the out-of-fold predictions read the first file it found** and would have stopped
+  with an error if there were none. It now goes through all of them. It also **recomputes the
+  predictions independently**: the cross-tissue prediction exports the design of its main analysis
+  (`crosstissue_prediction_design.tsv`), and `verify_package.py` fits every fold again with its own
+  code, using only the donors declared as training for that fold. The stored predictions are
+  reproduced to 7e-15. Had the step used anything else, they would not be.
+- **The inventory stored a sha256 of every output and nothing compared it.** `verify_package.py`
+  recomputes each one and the combined hash recorded in the manifest. Changing a file after the run
+  now fails the check, as does a file the inventory does not know.
+- **`CITATION.cff` carried a release date one day ahead** in v2.13.3. `tests/test_syntax.py`, which
+  runs in continuous integration, now checks that the version in the citation is the first entry
+  of this file and that the date is not in the future.
+
+### Added
+- **The null of the sign agreement in the model's prediction with measured phases** (step 20b).
+  At 08:00, the hour fixed in the model, the predicted and observed signs agree in 8 of 8 genes;
+  random genes of the phase template, with their measured phase and amplitude, agree in 3 of 8 in
+  the median, *P* = 0.0004. The correlation of the pattern at that hour stays at 0.52 (*P* = 0.10).
+  The eight genes are not eight independent tests: seven belong to the output arm and share a
+  phase, so the agreement amounts to two facts, that this arm is near its peak at the hour of the
+  biopsy and lower in the insulin-resistant group, and that *BMAL1*, in antiphase, goes the other
+  way. 08:00 remains the main result; the other hours are a sensitivity analysis.
+- **An interval for every fraction of the confusion matrix** (Wilson, 95%), in
+  `competing_models_confusion.tsv`. From the complete reproduction, with 50 new cohorts per cell,
+  fraction in which the other model is accepted:
+
+  | scenario | product true → receptor alone accepted | receptor alone true → product accepted |
+  |---|---|---|
+| closest to the data | 0.72 (0.58 to 0.83) | 0.96 (0.87 to 0.99) |
+| centre of the grid | 0.80 (0.67 to 0.89) | 0.88 (0.76 to 0.94) |
+| edge of compatibility | 0.92 (0.81 to 0.97) | 0.96 (0.87 to 0.99) |
+| most alike | 0.94 (0.84 to 0.98) | 0.94 (0.84 to 0.98) |
+| moderately different | 0.04 (0.01 to 0.13) | 1.00 (0.93 to 1.00) |
+| most different | 0.00 (0.00 to 0.07) | 0.90 (0.79 to 0.96) |
+
+  These replace the figures of v2.13.0, which had 16 cohorts per cell. They are frequencies of
+  acceptance under simulation, not probabilities that a mechanism is true: that the product can
+  reproduce what receptor alone produces does not show the product; it shows that the observables
+  identify the mechanism only in part.
+- `docs/REFERENCE_RUN.md`: which run the reported numbers come from.
+
 ## v2.13.3: after the first complete reproduction on the authors' cluster
 
 Release 2.13.2 was run from the public downloads to the last check on the authors' cluster: profile

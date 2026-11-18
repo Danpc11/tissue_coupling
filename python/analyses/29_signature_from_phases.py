@@ -57,14 +57,24 @@ if __name__ == "__main__":
     for hour in (6.0, 7.0, 8.0, 9.0, 10.0, 11.0):
         pred = predicted(D.measured_amplitude, D.measured_phase_h, hour)
         r = stats.spearmanr(pred, D.observed_log2).statistic
-        null = np.empty(NNULL)
+        null = np.empty(NNULL); null_agree = np.empty(NNULL)
         for i in range(NNULL):
             k = rng.choice(len(T), len(D), replace=False)
-            null[i] = stats.spearmanr(predicted(A[k], P[k], hour), D.observed_log2.values).statistic
+            pk = predicted(A[k], P[k], hour)
+            null[i] = stats.spearmanr(pk, D.observed_log2.values).statistic
+            null_agree[i] = (np.sign(pk) == np.sign(D.observed_log2.values)).sum()
         pval = (np.sum(null >= r) + 1) / (NNULL + 1)
         agree = int((np.sign(pred) == np.sign(D.observed_log2)).sum())
-        out.append(dict(biopsy_hour=hour, prespecified=hour == HOUR, n_genes=len(D), signs_agree=agree, rho=r,
+        # Cuantos signos coinciden por azar? El nulo es el mismo que para la correlacion: genes de la plantilla
+        # tomados al azar, con su fase y amplitud medidas. Responde a si genes ritmicos cualesquiera acertarian
+        # igual. No hace independientes a los ocho genes: siete son del brazo de salida y comparten fase, de modo
+        # que la coincidencia equivale a dos hechos, que ese brazo esta cerca de su maximo a la hora de la biopsia
+        # y mas bajo en los resistentes, y que BMAL1, en antifase, va al reves.
+        p_signs = (np.sum(null_agree >= agree) + 1) / (NNULL + 1)
+        out.append(dict(biopsy_hour=hour, prespecified=hour == HOUR, n_genes=len(D), signs_agree=agree, signs_agree_null_median=float(np.median(null_agree)),
+                        p_signs_vs_random_genes=p_signs, rho=r,
                         null_median=np.median(null), null_p95=np.percentile(null, 95), p_vs_random_genes=pval))
         print(f"  biopsia a las {hour:4.1f} h{' (la del modelo)' if hour == HOUR else '':16s}: signos {agree}/{len(D)}; rho {r:+.2f}; "
-              f"genes al azar: mediana {np.median(null):+.2f}, percentil 95 {np.percentile(null, 95):+.2f}, P = {pval:.4f}")
+              f"genes al azar: mediana {np.median(null):+.2f}, percentil 95 {np.percentile(null, 95):+.2f}, P = {pval:.4f}"
+              f" | signos por azar: mediana {np.median(null_agree):.0f}/{len(D)}, P = {p_signs:.4f}")
     pd.DataFrame(out).to_csv(f"{OUT}/new/model_signature_from_phases.tsv", sep="\t", index=False)

@@ -612,9 +612,13 @@ def _confusion_worker(args):
             d2, _, _ = distance(Z, est, C, n, P.n_simulated.values); dmin[m] = float(d2.min()); dist[m].append(dmin[m])
             acc[m] += int(dmin[m] <= thr)
         closest[min(dmin, key=dmin.get)] += 1
+    def wilson(k, m, z=1.96):                              # intervalo de una fraccion con pocas replicas
+        ph = k / m; d = 1 + z * z / m; c = (ph + z * z / (2 * m)) / d; h = z * np.sqrt(ph * (1 - ph) / m + z * z / (4 * m * m)) / d
+        return max(0.0, c - h), min(1.0, c + h)
     return [dict(cohort=o.cohort, n_cohort=n, scenario=scenario, generating_model=gen, generating_sd_F=point[0],
                  generating_rho_K=point[1], generating_proxy_noise=point[2], generating_window=point[3], candidate_model=m,
-                 independent_cohorts=reps, accepted_fraction=acc[m] / reps, closest_fraction=closest[m] / reps,
+                 independent_cohorts=reps, accepted_fraction=acc[m] / reps,
+                 accepted_ci95_lo=wilson(acc[m], reps)[0], accepted_ci95_hi=wilson(acc[m], reps)[1], closest_fraction=closest[m] / reps,
                  median_min_distance=float(np.median(dist[m])), threshold=thr) for m in MODELS]
 
 
