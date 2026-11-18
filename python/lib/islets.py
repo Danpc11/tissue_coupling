@@ -69,6 +69,11 @@ def counts_source(raw):
         src, quant, ok = "NCBI by its identifiers (GeneID); the file name does not say", "HISAT2 and featureCounts against RefSeq, if it is the NCBI file", True
     else:
         src, quant, ok = "unrecognised: gene symbols as identifiers, so not the NCBI file as downloaded", "unknown", False
-    return dict(source=src, quantification=quant, is_the_reported_source=ok, file=real, sha256=sha(path),
+    # la copia versionada en el repositorio es la de las cifras del articulo: se dice si es esa misma
+    ref = os.path.join(os.environ.get("T2D_REF", "data/reference"), "ncbi_counts", "GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz")
+    same = (sha(ref) == sha(path)) if os.path.exists(ref) else None
+    if same is False and ok:
+        src += " (but not the file versioned in data/reference/ncbi_counts)"
+    return dict(source=src, quantification=quant, is_the_reported_source=ok, is_the_versioned_file=same, file=real, sha256=sha(path),
                 annotation_file=os.path.basename(ann) if os.path.exists(ann) else None,
                 annotation_sha256=sha(ann) if os.path.exists(ann) else None)

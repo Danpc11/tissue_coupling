@@ -105,27 +105,33 @@ soft_table https://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL15nnn/GPL15331/soft/GPL
 for c in c2.cp.reactome c2.cp.wikipathways c2.cp.kegg_medicus c2.cgp c2.cp.pid c3.tft.gtrd c3.mir.mirdb c4.all c5.go.bp c7.all; do
   get $M/$c.v2026.2.Hs.symbols.gmt msigdb/$c.v2026.2.Hs.symbols.gmt
 done
-# cuentas generadas por NCBI (www.ncbi.nlm.nih.gov; si responde con una pagina HTML, reintentar mas tarde)
-N='https://www.ncbi.nlm.nih.gov/geo/download/?type=rnaseq_counts'
-# El CAPTCHA de NCBI es intermitente: se reintenta unas cuantas veces antes de rendirse, porque
-# sin estas cuentas el paso 02c (islotes) no corre.
-for a in GSE159984 GSE108539; do
-  f=${a}_raw_counts_GRCh38_p13_NCBI.tsv.gz
+# Cuentas de islotes generadas por NCBI (GSE159984). La pagina que las sirve responde a menudo con un
+# CAPTCHA a clientes no interactivos, y sin ellas el paso 02c no corre. Por eso van versionadas en
+# data/reference/ncbi_counts/, con su huella: se instala esa copia y no se toca la red. Solo si la
+# copia no estuviera se intenta la descarga.
+f=GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz
+V="$ROOT/data/reference/ncbi_counts"
+if [ -s "$V/$f" ]; then
+  if ( cd "$V" && sha256sum -c SHA256SUMS >/dev/null 2>&1 || shasum -a 256 -c SHA256SUMS >/dev/null 2>&1 ); then
+    if [ -s "$f" ] && cmp -s "$V/$f" "$f"; then echo "  [ya]    $f (la copia versionada)"
+    else cp "$V/$f" "$f" && echo "  [ok]    $f (copia versionada en data/reference/ncbi_counts, huella comprobada)"; fi
+  else
+    echo "  [FALLO] la copia versionada de $f no coincide con su huella (data/reference/ncbi_counts/SHA256SUMS)"
+  fi
+else
+  N='https://www.ncbi.nlm.nih.gov/geo/download/?type=rnaseq_counts'
   for intento in 1 2 3 4 5; do
     [ -s "$f" ] && gzip -t "$f" 2>/dev/null && break
     rm -f "$f"
-    get "$N&acc=$a&format=file&file=${a}_raw_counts_GRCh38.p13_NCBI.tsv.gz" "$f"
+    get "$N&acc=GSE159984&format=file&file=GSE159984_raw_counts_GRCh38.p13_NCBI.tsv.gz" "$f"
     if [ -s "$f" ] && ! gzip -t "$f" 2>/dev/null; then
-      rm -f "$f"
-      echo "  [reintento $intento] $a: NCBI devolvio HTML (CAPTCHA)"
-      sleep $((intento * 20))
+      rm -f "$f"; echo "  [reintento $intento] GSE159984: NCBI devolvio HTML (CAPTCHA)"; sleep $((intento * 20))
     fi
   done
   if [ -s "$f" ] && gzip -t "$f" 2>/dev/null; then :; else
-    echo "  [FALLO] $a: NCBI sigue devolviendo HTML. Reintente mas tarde, o para GSE159984 use"
-    echo "          T2D_ARCHS4_DL=1 bash download_public.sh && python python/analyses/00c_archs4_counts.py"
+    echo "  [FALLO] GSE159984: NCBI sigue devolviendo HTML. Descarguelo con un navegador (docs/DATA.md)."
   fi
-done
+fi
 [ -s GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz ] && ln -sfn GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz GSE159984_raw_counts.tsv.gz || true
 get "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE66nnn/GSE66446/suppl/GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt.gz" GSE66446_Cushings_htseq_gene_counts_GRCh37.74.txt.gz
 # la serie tiene dos plataformas; 00_prepare_data.py busca el nombre sin sufijo

@@ -33,8 +33,18 @@ def main():
     if ver != top: meta.append(f"CITATION.cff dice version {ver} y la primera entrada del CHANGELOG es v{top}")
     if datetime.date.fromisoformat(day) > datetime.datetime.now(datetime.timezone.utc).date() + datetime.timedelta(days=1):
         meta.append(f"CITATION.cff tiene una fecha de publicacion futura: {day}")
+    # Los datos versionados con huella declarada: que sean lo que dicen ser.
+    import hashlib
+    for sums in sorted(glob.glob(f"{ROOT}/data/reference/**/SHA256SUMS", recursive=True)):
+        for line in open(sums):
+            h, name = line.split(); p = os.path.join(os.path.dirname(sums), name)
+            if not os.path.exists(p): meta.append(f"falta {os.path.relpath(p, ROOT)}"); continue
+            raw = open(p, "rb").read()
+            if hashlib.sha256(raw).hexdigest() != h: meta.append(f"{os.path.relpath(p, ROOT)} no coincide con su huella")
+            if name.endswith(".gz") and raw[:2] != b"\x1f\x8b": meta.append(f"{os.path.relpath(p, ROOT)} no es un gzip")
     for m in meta: print("  ", m)
-    print("la cita coincide con el CHANGELOG y su fecha no es futura" if not meta else f"{len(meta)} problema(s) en la cita")
+    print("la cita coincide con el CHANGELOG, su fecha no es futura y los datos versionados conservan su huella" if not meta
+          else f"{len(meta)} problema(s) en la cita o en los datos versionados")
     return 1 if (bad or meta) else 0
 
 if __name__ == "__main__":

@@ -77,20 +77,23 @@ needs `tqdm` and `anndata`, both in `requirements.txt`. Without it step 06 runs 
 estimator only, marks the CHIRAL rows as not run and says so; `T2D_REQUIRE_CHIRAL=1` makes that
 an error.
 
-### When NCBI answers with a CAPTCHA
+### The islet counts are versioned in the repository
 
-The counts NCBI generates (GSE159984) are served from a page that sometimes returns a CAPTCHA to
-non-interactive clients. `download_public.sh` retries and says so, and the first step of the
-pipeline stops if the file is missing or is not a gzip. In that case download it with a browser:
+The counts NCBI generates for GSE159984 (HISAT2 and featureCounts against RefSeq) are served from a
+page that often answers non-interactive clients with a CAPTCHA, and the download failed for that
+reason on the authors' own cluster. They are therefore kept in the repository, the only downloaded
+input that is:
+
+    data/reference/ncbi_counts/GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz   5.8 MB
+    sha256 453fef221755eb1786dda26691df93fd89ffc0c1176b3b1ca8aaf5248a3516f7
+
+`download_public.sh` checks that hash, copies the file to `data/raw/` and makes the link the
+pipeline reads, without touching the network. The run manifest says whether the counts a run read
+are this file. It is the file as NCBI distributes it, unmodified, obtained from
 
     https://www.ncbi.nlm.nih.gov/geo/download/?type=rnaseq_counts&acc=GSE159984&format=file&file=GSE159984_raw_counts_GRCh38.p13_NCBI.tsv.gz
 
-and place it in `data/raw/` as `GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz` (an underscore
-before `p13`), with a link to it under the name the pipeline reads:
-
-    ln -sfn GSE159984_raw_counts_GRCh38_p13_NCBI.tsv.gz data/raw/GSE159984_raw_counts.tsv.gz
-
-It is about 5.5 MB and its first column is `GeneID`.
+The original data are those of GEO series GSE159984, which is the source to cite.
 
 ### The islet counts, and a fallback that is not equivalent
 

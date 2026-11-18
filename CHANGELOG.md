@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.13.5: the islet counts are versioned
+
+- **The counts NCBI generates for GSE159984 are now in the repository**
+  (`data/reference/ncbi_counts/`, 5.8 MB, with their sha256). The page that serves them answers
+  non-interactive clients with a CAPTCHA often enough that the download failed on the authors' own
+  cluster, and without them the islet step does not run and the meta-analysis stops. It is the
+  only downloaded input kept in the repository, and it is the file as NCBI distributes it.
+  `download_public.sh` checks its hash and installs it without touching the network; the download
+  is attempted only if the versioned copy is absent.
+- The run manifest records whether the counts a run read are that file
+  (`islet_counts.is_the_versioned_file`).
+- `download_public.sh` no longer requests the NCBI counts of GSE108539 from the same page: no step
+  reads them (that cohort is built from recount3), and the request could only fail.
+- `tests/test_syntax.py`, in continuous integration, checks that every versioned data file with a
+  declared hash still has it.
+
 ## v2.13.4: checks that recompute, and the null of the sign agreement
 
 A further review, made on v2.13.3.
