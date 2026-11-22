@@ -81,9 +81,16 @@ def read_series(acc):
 
 
 def load_counts(acc, p):
-    """Matriz de cuentas en log2 CPM. Si la serie no trae tabla, busca el fichero de cuentas."""
-    for fn in (f"{RAW}/{acc}_raw_counts_GRCh38_p13_NCBI.tsv.gz", f"{RAW}/{acc}_counts.tsv.gz"):
+    """Matriz de cuentas en log2 CPM. Si la serie no trae tabla, busca el fichero de cuentas.
+
+    Primero el que construye download_public.sh (recount3). Las cuentas de NCBI solo si no hay otro:
+    las de GSE108539 incluyen el rRNA (del 11 al 93 % de las cuentas de una muestra) y el CPM sobre
+    el total desplaza muestras enteras."""
+    for fn in (f"{RAW}/{acc}_counts.tsv.gz", f"{RAW}/{acc}_raw_counts_GRCh38_p13_NCBI.tsv.gz"):
         if os.path.exists(fn):
+            print(f"{acc}: cuentas de {os.path.basename(fn)}")
+            if fn.endswith("_NCBI.tsv.gz"):
+                print("  AVISO: cuentas de NCBI, con rRNA; la plantilla no sera la de la configuracion de referencia.")
             c = pd.read_csv(fn, sep="\t", index_col=0)
             ann = f"{RAW}/Human_GRCh38_p13_annot.tsv.gz"
             if os.path.exists(ann) and str(c.index[0]).isdigit():

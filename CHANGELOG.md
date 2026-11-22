@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.13.9: the phase template reads the counts the reference configuration names
+
+Found by Hugo Tovar while preparing the reference run.
+
+### Fixed
+- **The phase template took the NCBI counts of GSE108539 whenever they were in `data/raw`, and did
+  not say so.** `load_counts` in `02b_phase_template.py` looked for the NCBI file before the one
+  `download_public.sh` builds from recount3. The NCBI counts include the ribosomal RNA genes (45S
+  and 28S), which take from 11% to 93% of the counts of a sample, so counts per million over the
+  total shift whole samples. Two complete runs of v2.13.7 that differ only in that file give a
+  template of 13,430 genes against 13,836, and for the model's prediction with measured phases at
+  08:00 a correlation of 0.52 (*P* = 0.087) against 0.74 (*P* = 0.025); the receptor and clock
+  meta-analysis is the same in both. The order is now reversed, the step prints which file it
+  read, and it warns when it had to fall back on the NCBI counts. In the reference configuration
+  only the recount3 file exists, so the step reads the same file as before and no number changes.
+- **`docs/DATA.md` did not say why the versioned `template_2harm.tsv` reproduces only in part.**
+  It came from the NCBI counts; the cause is the rRNA. No step reads that table.
+
 ## v2.13.8: figures that read the tables, and the record of the reference run
 
 A check of the repository against the manuscript, its Supplementary Information, the thirty

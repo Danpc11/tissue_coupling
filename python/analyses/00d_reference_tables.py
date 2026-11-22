@@ -436,7 +436,7 @@ def t_template():
     T = pd.DataFrame(dict(gene=Z.index, r2=r2, a1=a1, b1=b1, a2=a2, b2=b2, amp1=np.hypot(a1, b1), amp2=np.hypot(a2, b2)))
     T["asym"] = T.amp2 / T.amp1
     T = T.sort_values("r2", ascending=False)
-    compare("template_2harm.tsv", T, key=["gene"], note="GSE108539 desde las cuentas de NCBI; 57 muestras")
+    compare("template_2harm.tsv", T, key=["gene"], note="la referencia versionada salio de las cuentas de NCBI, que incluyen el rRNA; la regenerada, de recount3")
     T.to_csv(f"{OUT}/template_2harm.tsv", sep="\t", index=False)   # 04, 05 y 17 la leen de results/
 
 
