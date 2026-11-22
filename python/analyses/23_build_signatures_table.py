@@ -147,3 +147,34 @@ if __name__ == "__main__":
     S.to_csv(f"{OUT}/new/signatures_log2_common_genes.tsv", sep="\t")
     print(f"las figuras 3h y 3i leen la tabla: {'fully regenerated' if S is B else 'published reference'} "
           f"({S.shape[0]} genes, {sum(g in S.index for g in SETS['Clock output']['genes'])} del brazo de salida)")
+
+    # La firma empirica de hidrocortisona frente a contrastes que no se usaron para construirla
+    # (Supp. Fig. 6c). Para cada contraste: cambio medio en log2 de los genes que la hidrocortisona
+    # sube menos el de los que baja, entre los genes de la firma medidos en ese contraste; y el
+    # cambio medio de los nueve genes fijados de antemano, que se esperan todos al alza. Se usa la
+    # tabla mas ancha que haya (la regenerada sin restringir a los genes comunes a los doce
+    # contrastes, si existe), columna a columna, para no perder genes de la firma por un contraste
+    # que no viene al caso.
+    fg = f"{OUT}/new/GRAS_signature.tsv"
+    if os.path.exists(fg):
+        G = pd.read_csv(fg, sep="\t")
+        W = pd.read_csv(full, sep="\t", index_col=0) if (os.path.exists(full) and use == "regenerated") else S
+        nine = SETS["Glucocorticoid"]["genes"]
+        VAL = [("Cushing adipose (GSE66446)", "Cushing|adipose"), ("dex 4d muscle (GSE17992)", "dex 4 d|muscle"),
+               ("dex 4d adipose (GSE17992, n=4)", "dex 4 d|adipose"), (IR, "IR|adipose")]
+        out = []
+        for c, lab in VAL:
+            if c not in W.columns: continue
+            x = W[c].dropna()
+            up = [g for g in G.gene[G.direction == "up"] if g in x.index]; dn = [g for g in G.gene[G.direction == "down"] if g in x.index]
+            n9 = [g for g in nine if g in x.index]
+            out.append(dict(contrast=c, label=lab, n_signature=len(G), n_up_measured=len(up), n_down_measured=len(dn),
+                            mean_up=x[up].mean() if up else np.nan, mean_down=x[dn].mean() if dn else np.nan,
+                            empirical_signature=(x[up].mean() if up else 0.0) - (x[dn].mean() if dn else 0.0),
+                            n_prespecified=len(n9), prespecified_set=x[n9].mean() if n9 else np.nan,
+                            genes_in_contrast=len(x)))
+        V = pd.DataFrame(out); V.to_csv(f"{OUT}/new/GRAS_validation.tsv", sep="\t", index=False)
+        print("\nFirma empirica de hidrocortisona frente a contrastes ajenos (subidos menos bajados; conjunto fijado: media):")
+        for r in out:
+            print(f"  {r['contrast'][:34]:36s} firma {r['empirical_signature']:+.2f} ({r['n_up_measured']} + {r['n_down_measured']} de {r['n_signature']} genes)"
+                  f"   conjunto fijado {r['prespecified_set']:+.2f} ({r['n_prespecified']} genes)")

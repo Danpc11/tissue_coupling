@@ -1,5 +1,40 @@
 # Changelog
 
+## v2.13.8: figures that read the tables, and the record of the reference run
+
+A check of the repository against the manuscript, its Supplementary Information, the thirty
+Supplementary Tables and the thirteen figures. No analysis whose numbers are in the text changes.
+
+### Fixed
+- **Supplementary Fig. 2f computed its own permutation test.** The panel drew 3,000 permutations
+  with seed 1 while the table of step 21 (`amplitude_dispersion.tsv`) uses 5,000 with seed 0, so the
+  figure and the table gave different *P* for the same comparison (0.174 against 0.162, 0.058
+  against 0.060, 0.096 against 0.090). The panel now reads the table. Its axis also starts low
+  enough to show the one ratio below 1 that was drawn outside it (0.71).
+- **Supplementary Fig. 6c was not computed.** The panel held eight numbers typed into the script,
+  from an earlier signature of 68 genes, under a label that said 68 while the signature of the run
+  has 131. Step 16 now writes `GRAS_validation.tsv`: for each contrast not used to build the
+  signature, the mean change of the genes hydrocortisone raises minus that of the genes it lowers,
+  among those measured, and the mean change of the nine pre-specified genes. The panel reads it.
+  The typed values could not be reproduced from any table of the repository.
+- **Supplementary Fig. 3c counted symbols and called them probes.** The table has one row per
+  retired symbol of a platform; the axis now says so.
+- **Labels.** `islotes` in Fig. 1c,d; the labels of Fig. 1j, which ran over panel i; the internal
+  names of the four contrasts in Supplementary Fig. 5; the legend of Supplementary Fig. 7b, which
+  covered a bar. The figure of the clamp against saline is written as `ED8` and listed as
+  Supplementary Fig. 8; it was listed as "not in the manuscript".
+- **`docs/REFERENCE_RUN.md` named the run of 2.13.2** while the tables of the manuscript were
+  written from a run of 2.13.7. It is now written by `tests/write_reference_run.py` from the
+  manifest of a run, and refuses a run that is not closed, verified and in the reference
+  configuration. Until that is done for the release archived, the file says what is known,
+  including that the two runs differ in the third decimal of two cohort estimates and that the
+  cause is not identified.
+- **README.** The median correlation of a random gene without centring is 0.42 in islets in the
+  regenerated table (0.44 was the versioned reference). The badge is the concept DOI.
+
+### Not in this release
+- The script that assembles the Supplementary Tables workbook is not in the repository.
+
 ## v2.13.7: what a run reproduced, every prediction recomputed, and the hour that was searched
 
 A further review. It was made on a cached view of the repository, at v2.13.3, so its remark on the

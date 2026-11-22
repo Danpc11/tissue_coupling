@@ -130,5 +130,5 @@ if __name__ == "__main__":
         strip_panel(a, P, letter, gset, ylabel)
     gene_panel(ax[1, 1], G, "D")
     os.makedirs(f"{OUT}/figs", exist_ok=True)
-    fig.savefig(f"{OUT}/figs/clamp_vs_saline.pdf"); fig.savefig(f"{OUT}/figs/clamp_vs_saline.png", dpi=400)
-    print(f"ok -> {OUT}/figs/clamp_vs_saline.pdf")
+    fig.savefig(f"{OUT}/figs/ED8.pdf"); fig.savefig(f"{OUT}/figs/ED8.png", dpi=400)
+    print(f"ok -> {OUT}/figs/ED8.pdf")

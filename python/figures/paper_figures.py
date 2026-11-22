@@ -97,7 +97,7 @@ def fig1():
     ax.axvline(len(SETS["Clock output"]["genes"]) - .5, color="k", lw=.8, ls="--")
     ax.set_xticks(range(len(genes))); ax.set_xticklabels(genes, rotation=90, fontsize=6.5)
     ax.set_yticks(range(len(cohs)))
-    ax.set_yticklabels([c.replace(" · ", "\n").replace("músculo", "muscle").replace("adiposo", "adipose")
+    ax.set_yticklabels([c.replace(" · ", "\n").replace("músculo", "muscle").replace("adiposo", "adipose").replace("islotes", "islets")
                         for c in cohs], fontsize=6.5)
     sm = plt.cm.ScalarMappable(cmap="RdBu_r", norm=plt.Normalize(-4, 4))
     cb = plt.colorbar(sm, ax=ax, shrink=.8, pad=.02); cb.set_label("moderated t (case − control)", fontsize=7)
@@ -113,7 +113,7 @@ def fig1():
     ax = fig.add_subplot(gs[1, 0]); im = ax.imshow(p.values, cmap="RdBu_r", vmin=-7, vmax=7, aspect="auto")
     ax.set_xticks(range(4)); ax.set_xticklabels(["clock\noutput", "gluco-\ncorticoid", "insulin", "oxidative"], fontsize=6.5)
     ax.set_yticks(range(len(p)))
-    ax.set_yticklabels([c.replace(" · ", "\n").replace("músculo", "muscle").replace("adiposo", "adipose")
+    ax.set_yticklabels([c.replace(" · ", "\n").replace("músculo", "muscle").replace("adiposo", "adipose").replace("islotes", "islets")
                         for c in p.index], fontsize=6.5)
     for i in range(p.shape[0]):
         for j in range(p.shape[1]):
@@ -211,7 +211,7 @@ def fig1():
         ax.plot([lo.iloc[i], hi.iloc[i]], [i, i], color=c, lw=1.4)
         ax.scatter(r.rho, i, s=18 + r.n / 4, color=c, zorder=3)
     ax.axvline(0, color="k", lw=.8); ax.set_yticks(range(len(s2)))
-    ax.set_yticklabels([f"{r.cohorte} · {r.tejido.replace('músculo','muscle').replace('adiposo','adipose')}  (n = {int(r.n)})"
+    ax.set_yticklabels([f"{r.cohorte}\n{r.tejido.replace('músculo','muscle').replace('adiposo','adipose')}\n(n = {int(r.n)})"
                         for _, r in s2.iterrows()], fontsize=6.5)
     ax.set_xlabel("\u03c1  receptor ~ clock output"); ax.set_xlim(-.05, .8); ax.set_ylim(-.6, len(s2) - .4)
     src(ax, "NR3C1 vs clock-output score, across individuals; 95% CI")

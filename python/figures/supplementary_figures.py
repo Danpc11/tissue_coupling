@@ -74,25 +74,24 @@ def ed2():
     src(ax, "two amplitude estimators on the same samples"); panel(ax, "E")
     # F  dispersion: la prueba correcta si el mecanismo es perdida de entrainment
     ax = fig.add_subplot(gs[1, 2])
-    rng2 = np.random.default_rng(1)
-    RNG = lambda v: np.percentile(v, 95) - np.percentile(v, 5)
+    # La razon, su P por permutacion y el P de Levene son los de la tabla que escribe el paso 21
+    # (10_amplitude_dispersion.py: 5,000 permutaciones, semilla 0). Antes este panel los recalculaba
+    # con otra semilla y otro numero de permutaciones, y la figura y la tabla daban P distintos.
+    T = pd.read_csv(f"{OUT}/new/amplitude_dispersion.tsv", sep="\t").set_index(["estimator", "cohort"])
     rows = []
-    for k, (col, lab) in enumerate(ests):
-        for coh, q in D.groupby("coh"):
-            gsx = [qq[col].dropna().values for _, qq in q.groupby("group")]
-            if len(gsx) != 2: continue
-            a, b = gsx[0], gsx[1]
-            obs = RNG(a) / RNG(b); pool = np.concatenate([a, b]); na = len(a)
-            null = np.array([RNG(p[:na]) / RNG(p[na:]) for p in (rng2.permutation(pool) for _ in range(3000))])
-            pv = (np.sum(np.abs(np.log(null)) >= abs(np.log(obs))) + 1) / 3001
-            rows.append((f"{lab} · {coh}", obs, pv, stats.levene(a, b, center="median").pvalue))
+    for col, lab in ests:
+        for coh in sorted(D.coh.unique()):
+            if (col, coh) not in T.index: continue
+            r = T.loc[(col, coh)]
+            rows.append((f"{lab} · {coh}", float(r.range_5_95_ratio), float(r.p_range), float(r.p_levene)))
     for i, (lab, o, pv, lv) in enumerate(rows):
         ax.scatter(o, i, s=36, color=MU if pv < .05 else GR)
         ax.text(.98, i, f"P = {pv:.3f}  (Levene {lv:.3f})", fontsize=5.8, va="center", ha="right", transform=ax.get_yaxis_transform())
     ax.axvline(1, color="k", lw=.8)
     ax.set_yticks(range(len(rows))); ax.set_yticklabels([r[0].replace("clock genes, ", "clock ").replace("800-gene projection", "800-gene") for r in rows], fontsize=6)
     ax.tick_params(axis="y", pad=1)
-    ax.set_xlabel("5–95 range ratio, resistant / sensitive"); ax.set_xlim(.85, 3.2)
+    ax.set_xlabel("5–95 range ratio, resistant / sensitive")
+    ax.set_xlim(min(.6, min(r[1] for r in rows) - .1), 3.2)
     src(ax, "ratio of 5\u201395 ranges; permutation P and Levene P")
     panel(ax, "F")
     tidy(fig); save(fig, "ED2")
@@ -126,7 +125,7 @@ def ed3():
     cnt = T.groupby(T.columns[0]).size().sort_values()
     ax.barh(range(len(cnt)), cnt.values, color=IS)
     ax.set_yticks(range(len(cnt))); ax.set_yticklabels([i.split(" ")[0] + "\n" + " ".join(i.split(" ")[1:]) for i in cnt.index], fontsize=6); ax.tick_params(axis="y", pad=1)
-    ax.set_xlabel("probes carrying a retired symbol")
+    ax.set_xlabel("platform symbols since retired")
     src(ax, "per platform"); panel(ax, "C")
     tidy(fig); save(fig, "ED3")
 
@@ -146,12 +145,14 @@ def ed5():
         ax.set_yticks(range(len(q))); ax.set_yticklabels(q.score, fontsize=6.5)
         ax.axvline(0, color="k", lw=.8); ax.set_xlabel("median per-person change (score units)")
         ax.set_xlim(min(q.median_delta) * 1.9 - .1, max(q.median_delta) * 1.9 + .1)
-        src(ax, f"{c} · n = {int(q.n_pairs.iloc[0])} pairs"); panel(ax, "ABCD"[k])
+        ttl = {"clamp_baseline": "clamp, muscle, before thiazolidinedione", "clamp_postTZD": "clamp, muscle, after thiazolidinedione",
+               "tzd_muscle": "thiazolidinedione, 3 months, muscle", "tzd_adipose": "thiazolidinedione, 3 months, adipose"}.get(c, c)
+        src(ax, f"{ttl} · n = {int(q.n_pairs.iloc[0])} pairs"); panel(ax, "ABCD"[k])
     tidy(fig); save(fig, "ED5")
 
 # ---------------------------------------------------------------- ED6
 def ed6():
-    """The empirical GRAS signature and its failure to validate."""
+    """The empirical glucocorticoid signature against contrasts not used to build it."""
     T = pd.read_csv(f"{OUT}/new/GSE148640_HC_response_stats.tsv", sep="\t", index_col=0)
     G = pd.read_csv(f"{OUT}/new/GRAS_signature.tsv", sep="\t")
     fig = plt.figure(figsize=(13, 4.6)); gs = fig.add_gridspec(1, 3, wspace=.42)
@@ -170,14 +171,15 @@ def ed6():
     fcol = "fdr" if "fdr" in T.columns else "FDR" if "FDR" in T.columns else None
     src(ax, (f"{int((T[fcol] < 0.10).sum())} genes with FDR < 0.10 · " if fcol else "") + f"n = {NP}"); panel(ax, "B")
     ax = fig.add_subplot(gs[0, 2])
-    tests = ["Cushing\nadipose", "dexamethasone\nmuscle", "dexamethasone\nadipose", "GSE13070\nIR adipose"]
-    gras = [0.39, -0.06, -0.33, 0.12]; nine = [0.14, 0.48, 0.48, 0.21]
-    x = np.arange(4); w = .38
-    ax.bar(x - w / 2, gras, w, color=GR, label="empirical GRAS (68 genes)")
-    ax.bar(x + w / 2, nine, w, color=AD, label="pre-specified set (9 genes)")
-    ax.axhline(0, color="k", lw=.8); ax.set_xticks(x); ax.set_xticklabels(tests, fontsize=6.5)
-    ax.set_ylabel("score difference (log$_2$)"); ax.legend(frameon=False, loc="lower left")
-    src(ax, "external validation: none of these cohorts was used to build GRAS"); panel(ax, "C")
+    # Antes este panel llevaba ocho valores escritos a mano, de una firma anterior de 68 genes.
+    # Ahora lee la tabla que escribe el paso 16 con la firma de esta corrida.
+    V = pd.read_csv(f"{OUT}/new/GRAS_validation.tsv", sep="\t")
+    x = np.arange(len(V)); w = .38
+    ax.bar(x - w / 2, V.empirical_signature, w, color=GR, label=f"empirical signature ({len(G)} genes)")
+    ax.bar(x + w / 2, V.prespecified_set, w, color=AD, label=f"pre-specified set ({int(V.n_prespecified.max())} genes)")
+    ax.axhline(0, color="k", lw=.8); ax.set_xticks(x); ax.set_xticklabels(V.label.str.replace("|", "\n", regex=False), fontsize=6)
+    ax.set_ylabel("mean change (log$_2$)"); ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(.5, -0.16), ncol=1)
+    src(ax, "contrasts not used to build either set"); panel(ax, "C")
     tidy(fig); save(fig, "ED6")
 
 # ---------------------------------------------------------------- ED7
@@ -215,7 +217,7 @@ def ed7():
     ax.bar(x - w / 2, [np.mean(lv[k]) for k in lv], w, yerr=[np.std(lv[k]) for k in lv], capsize=4, color=IS, label="LEVEL difference")
     ax.bar(x + w / 2, [np.mean(av[k]) for k in av], w, yerr=[np.std(av[k]) for k in av], capsize=4, color=GR, label="AMPLITUDE difference")
     ax.axhline(0, color="k", lw=.8); ax.set_xticks(x); ax.set_xticklabels(["morning window", "uniform hours"], fontsize=7)
-    ax.set_ylabel("low − high coupling"); ax.legend(frameon=False, loc="upper left")
+    ax.set_ylabel("low − high coupling"); ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(.5, -0.12), ncol=2)
     src(ax, "five seeds per condition; mean ± s.d."); panel(ax, "B")
     ax = fig.add_subplot(gs[0, 2])
     for sig, c in ((0.6, GC), (1.2, AD), (2.0, MU)):

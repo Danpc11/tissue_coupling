@@ -1,14 +1,14 @@
 # Glucocorticoid signalling tracks circadian output across human metabolic tissues
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23379059.svg)](https://doi.org/10.5281/zenodo.23379059)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23379058.svg)](https://doi.org/10.5281/zenodo.23379058)
 [![tests](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml/badge.svg)](https://github.com/Danpc11/tissue_coupling/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Code for the manuscript. `run_all.sh` recomputes its tables and figures from public data.
 
-The DOI badge points to the record of v1.0.0, the only release archived so far. That release
-cannot regenerate the results (see "Which version is the reference"); the release to cite is the
-latest tag, and its own record will replace the badge when it is deposited.
+The DOI badge is the concept DOI of the Zenodo record, which resolves to the latest archived
+release. The releases archived before v2.0.0 cannot regenerate the results (see "Which version is
+the reference"); the release to cite is the latest tag, under the version DOI that Zenodo gives it.
 
 Recomputing is not the same as reproducing the published numbers, and both are kept apart. Every
 figure is drawn from tables computed in the run. The tables shipped with earlier releases stay in
@@ -62,7 +62,8 @@ our own estimator, marks the others as not run and the pipeline says so at the e
 `T2D_RSCRIPT` selects the `Rscript` to use and `T2D_REQUIRE_R=1` makes their absence an error.
 
 Every stochastic routine draws from NumPy `default_rng` with an explicit, fixed seed, so two runs
-of the same release on the same inputs give the same tables. CHIRAL uses NumPy's global generator,
+of the same release on the same inputs give the same tables. A figure does not draw its own random
+numbers for a statistic that a table reports: it reads the table. CHIRAL uses NumPy's global generator,
 which is seeded before each call. Continuous integration runs on Python 3.11.
 
 **All thirteen estimates or none.** The meta-analysis lists the thirteen cohort and tissue
@@ -138,7 +139,7 @@ The file names date from earlier numberings of the figures.
 | Figure 5 | `python/figures/fig7_modelo.py`, called by `paper_figures.py` | `F5` (also written as `F7_modelo`) |
 | Supplementary Figures 1 to 3 and 5 to 7 | `python/figures/supplementary_figures.py` | `ED1` to `ED3`, `ED5` to `ED7` |
 | Supplementary Figure 4 | `python/figures/ed4_gc_architecture.py` | `ED4` |
-| not in the manuscript | `python/figures/fig_clamp_vs_saline.py` | `clamp_vs_saline` |
+| Supplementary Figure 8 | `python/figures/fig_clamp_vs_saline.py` | `ED8` |
 
 ## Layout
 
@@ -163,7 +164,7 @@ per-gene parameter tables. `tests/test_gene_lists.py` enforces this on the code.
 
 **Expression is centred per sample for scores, and not for group differences.** Centring removes
 a common component that otherwise inflates every correlation in RNA-seq (the median correlation of
-a random gene with the clock-output score is 0.44 rather than zero without it). The signature table
+a random gene with the clock-output score is 0.42 in islets rather than zero without it). The signature table
 compares differences between groups and is built without centring. Mixing the two conventions
 changes results.
 
@@ -205,6 +206,7 @@ simulated phases).
 | `tests/test_model_null.py` | on simulated cohorts the estimator recovers the effect of the receptor gain when the model has one and finds none when it has none | no |
 | `tests/test_model_verdict.py` | the criterion that compares the competing models, on values built by hand: three states per observable, with state and interval required at the same grid point; a joint region, cohort by cohort, on the effective rank of the covariance; predictions averaged over seeds; the sampling window fixed where the design fixes it and scanned where it does not; a covariance that defines no region is refused; calibration uses people independent of the predictions, at the exact size of the observed cohort; a cache is reused only if its manifest matches; every cohort, observed, predicted or drawn for calibration, is scored with its own people by one function; the confusion matrix applies the whole procedure to cohorts of each mechanism | no |
 | `tests/test_clamp_vs_saline.py` | runs step 14b on a small simulated series with a known answer and checks the contents of its output | no |
+| `tests/write_reference_run.py` | not a test: after a complete run, rewrites `docs/REFERENCE_RUN.md` from the manifest of the run, and refuses a run that is not closed, verified and in the reference configuration | no |
 | `tests/smoke_test.py` | the phase estimator recovers a known phase | no |
 | `tests/verify_package.py` | arithmetic and consistency of the tables of a real run; whether the run is a complete reproduction; where the islet counts come from; the tables of the comparison of mechanisms | yes |
 
