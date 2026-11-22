@@ -1,32 +1,29 @@
 # The run the reported numbers come from
 
-The numbers of the manuscript, its figures and its Supplementary Tables are those of one complete
-run of the pipeline, from the public downloads to the last check, in the reference configuration
-(profile `full`, default settings).
-
-This file is rewritten by `tests/write_reference_run.py` from the `run_manifest.json` of that run:
-release, commit, run identifier, number and hash of the inputs and of the outputs, duration, and
-which external benchmarks were computed. Until it has been rewritten for the release being
-archived, what can be said is this:
+This file is written by `tests/write_reference_run.py` from the `run_manifest.json` of the run; it is not
+edited by hand. The numbers of the manuscript, its figures and its Supplementary Tables are those of
+this one complete run of the pipeline, from the public downloads to the last check.
 
 | | |
 |---|---|
-| Supplementary Tables and figures of the manuscript | written from a complete run of release 2.13.7 |
-| earlier complete run on record | release 2.13.2, run `20261117T221711Z-b6a76416-16f4e1`, commit `b6a76416b066dc437457c1d7eb71d850b177029d` (52 steps, 76 inputs, 176 outputs, 49 minutes) |
-| difference between the two | the pooled estimate is 0.415 (two-level) and 0.456 (three-level) in the run of 2.13.7 and was 0.416 and 0.458 in that of 2.13.2; two cohort estimates differ in the third decimal (GSE78721, 0.542 against 0.545; GSE25462, 0.553 against 0.550). The cause has not been identified |
-| release 2.13.8 | changes how two supplementary panels are drawn, adds one table (`GRAS_validation.tsv`) and corrects labels; it changes no analysis whose numbers are in the text |
+| release | 2.13.9 |
+| commit | `1301046a4281362c432cdadb5ba9bdeae585379c` |
+| run identifier | `20261122T202227Z-1301046a-2fae26` |
+| profile | full (default settings) |
+| started | 2026-11-22T20:22:27+00:00 |
+| finished | 2026-11-22T21:09:27+00:00 |
+| duration | 47.0 minutes |
+| input files | 75 (sha256 of their hashes `0e34a95a713832f3eb20f178cc54de54d1cf54a8cea47e13284c61c3ae710a79`) |
+| output files | 181 (sha256 of their hashes `a2f61d910a2a670621ea846bd5ac466bf7bcd29c07e17c52bc2ba180cfe42267`) |
+| islet counts | NCBI |
+| uncommitted changes in versioned files | none |
+| CHIRAL (step 06) | computed |
+| ZeitZeiger and tauFisher (step 02f) | computed |
+| final check | `verify_package.py` clean; the run reproduces every result of the release, the external benchmarks included |
 
-To record the run of a release:
-
-```bash
-bash run_all.sh                              # one complete run, default settings
-python tests/write_reference_run.py          # rewrites this file from results/new/run_manifest.json
-```
-
-The script refuses a run that did not pass the verification, was not in the reference
-configuration or had uncommitted changes in versioned files. `run_manifest.json`,
-`input_files.tsv` and `output_files.tsv` of that run are deposited with the archived release, so
-that a later reproduction can be compared file by file.
+The record of the run is its `run_manifest.json`, with `input_files.tsv` and `output_files.tsv`: the
+sha256 of every input and of every output. They are deposited with the archived release, so that a
+later reproduction can be compared file by file.
 
 The history of this repository was rewritten on 17 November 2026 (see the entry of v2.13.2 in
-`CHANGELOG.md`); the commit above is an identifier after the rewriting.
+`CHANGELOG.md`); commits are identified as they are after the rewriting.
